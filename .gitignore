@@ -1,0 +1,60 @@
+# .NET build output
+**/bin/
+**/obj/
+**/out/
+**/TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio and VS Code local state
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+
+# Test and coverage output
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+
+# NuGet and package-manager output
+packages/
+*.nupkg
+*.snupkg
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local.json
+appsettings.*.json
+!appsettings.json
+*.pfx
+*.key
+*.pem
+*.publishsettings
+
+# Azure CLI and deployment output
+azuredeploy.parameters.json
+*.parameters.local.json
+**/deployment-outputs*.json
+
+# Local Service Bus emulator state and logs
+**/servicebus/data/
+**/servicebus/logs/
+*.log
+
+# Docker and local tool state
+.docker/
+docker-compose.override.yml
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+

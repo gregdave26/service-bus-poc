@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://service-bus-poc/schemas/product-holding-change-v1.schema.json",
+  "title": "Product Holding Change Event",
+  "description": "Emitted when a product or holding is added, modified, or removed for a contact",
+  "type": "object",
+  "properties": {
+    "contactId": {
+      "type": "string",
+      "description": "Unique contact identifier in the source system"
+    },
+    "holdingId": {
+      "type": "string",
+      "description": "Unique holding or product identifier"
+    },
+    "productType": {
+      "type": "string",
+      "enum": ["insurance", "parks-resorts", "carwash", "other"],
+      "description": "Classification of the product or holding"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["created", "modified", "removed"],
+      "description": "Action performed on the holding"
+    },
+    "holdingData": {
+      "type": "object",
+      "description": "Product/holding specific fields",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contactId",
+    "holdingId",
+    "productType",
+    "action"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://service-bus-poc/schemas/envelope-v1.schema.json",
+  "title": "Event Envelope",
+  "description": "Generic event wrapper for all Service Bus messages",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier (UUID v4)"
+    },
+    "type": {
+      "type": "string",
+      "description": "Event type identifier (e.g., 'contact.updated', 'product.holding.changed')",
+      "pattern": "^[a-z]+\\.[a-z]+(\\.v[0-9]+)?$"
+    },
+    "source": {
+      "type": "string",
+      "description": "System or service originating the event (e.g., 'crm', 'mdm', 'product-service')"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when event was created"
+    },
+    "dataVersion": {
+      "type": "string",
+      "description": "Version of the data schema (e.g., '1', '1.0', 'v1')",
+      "pattern": "^v?\\d+(\\.\\d+)?$"
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Correlation identifier for tracing related events across systems"
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific payload"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "source",
+    "timestamp",
+    "dataVersion",
+    "data"
+  ]
+}

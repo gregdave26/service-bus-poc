@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="../tests/ServiceBusPoc.Tests/ServiceBusPoc.Tests.csproj" />
+  <Project Path="ServiceBusPoc.Carwash/ServiceBusPoc.Carwash.csproj" />
+  <Project Path="ServiceBusPoc.Core/ServiceBusPoc.Core.csproj" />
+  <Project Path="ServiceBusPoc.DigitalChannels/ServiceBusPoc.DigitalChannels.csproj" />
+  <Project Path="ServiceBusPoc.Insurance/ServiceBusPoc.Insurance.csproj" />
+  <Project Path="ServiceBusPoc.ParksResorts/ServiceBusPoc.ParksResorts.csproj" />
+  <Project Path="ServiceBusPoc.Producer/ServiceBusPoc.Producer.csproj" />
+  <Project Path="ServiceBusPoc.Verifier/ServiceBusPoc.Verifier.csproj" />
+</Solution>

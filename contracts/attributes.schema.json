@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://service-bus-poc/schemas/attributes-v1.schema.json",
+  "title": "Contact Attributes",
+  "description": "Contact capability and product holding flags for subscription filtering",
+  "type": "object",
+  "properties": {
+    "hasInsurance": {
+      "type": "boolean",
+      "description": "Contact has insurance products or holdings"
+    },
+    "hasParksResorts": {
+      "type": "boolean",
+      "description": "Contact has Parks & Resorts products or holdings"
+    },
+    "hasCarwashProduct": {
+      "type": "boolean",
+      "description": "Contact has Carwash products or memberships"
+    }
+  },
+  "additionalProperties": false,
+  "required": []
+}

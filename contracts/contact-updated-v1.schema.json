@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://service-bus-poc/schemas/contact-updated-v1.schema.json",
+  "title": "Contact Updated Event",
+  "description": "Emitted when a contact record is created or updated in the CRM/MDM system",
+  "type": "object",
+  "properties": {
+    "contactId": {
+      "type": "string",
+      "description": "Unique contact identifier in the source system"
+    },
+    "firstName": {
+      "type": "string",
+      "description": "Contact's first name",
+      "minLength": 1
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Contact's last name",
+      "minLength": 1
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Contact's email address (optional)"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Contact's phone number (optional)"
+    },
+    "attributes": {
+      "$ref": "attributes.schema.json",
+      "description": "Contact capability and product flags"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contactId",
+    "firstName",
+    "lastName"
+  ]
+}

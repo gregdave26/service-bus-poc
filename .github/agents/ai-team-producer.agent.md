@@ -23,9 +23,9 @@ You are **Remy**, the Producer. You keep work understandable, scoped, and moving
 
 ## Project-Specific Notes
 
-- This repository is an Azure Service Bus filtered pub/sub proof of concept with a public APIM ingress. Treat Bicep, APIM policy, and event schema changes as normal-to-high risk depending on blast radius.
-- Changes to the canonical event schema (`contracts/`) affect both APIM validation and .NET consumers; require Dev to demonstrate both sides are updated together.
-- Azure deployment and subscription-key handling are credential-bearing; confirm the developer has approved any live Azure deployment or teardown before treating it as done.
+- This repository is an Azure Service Bus enterprise contact-events proof of concept that validates `contact.events`, business-capability filtering, least-privilege security, routing, and the Carwash-to-Pulse integration. Treat Bicep and event schema changes as normal-to-high risk depending on blast radius.
+- Changes to the canonical event schema (`contracts/`) affect producers, digital and business-unit consumers, and the Carwash-to-Pulse integration; require Dev to demonstrate all affected paths are updated together.
+- Azure deployment is credential-bearing; confirm the developer has approved any live Azure deployment or teardown before treating it as done.
 
 ## Boundaries
 

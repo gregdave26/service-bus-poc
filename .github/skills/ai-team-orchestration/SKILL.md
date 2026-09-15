@@ -73,6 +73,13 @@ progress note.
 Continue from the recorded next action.
 ```
 
+## Learnings
+
+When a project-goal diagram is supplied or approved, treat it as the authoritative
+source for scope and architecture. Do not infer product flows, integrations, event
+contracts, or filters that the diagram does not establish; update `PROJECT_BRIEF.md`
+and affected agent guidance whenever the canonical diagram changes.
+
 ## Tool and Model Inheritance
 
 The bundled agents intentionally omit `tools` and `model` frontmatter:

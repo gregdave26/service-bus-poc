@@ -1,8 +1,10 @@
 # ADR 003: Carwash API Testing - Mock Pulse Client
 
-**Status:** APPROVED (2026-09-15)  
+**Status:** SUPERSEDED by ADR 009 (2026-09-16)  
 **Date:** 2026-09-15  
 **Decided By:** Product Owner  
+
+> ADR 009 preserves the mock-Pulse testing approach but replaces the proposed generic contact endpoints with `POST /carwash/v1/verify` and keeps the API independent from Service Bus processing.
 
 ---
 

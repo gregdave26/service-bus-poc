@@ -1,7 +1,7 @@
 # Technical Decisions Summary
 
-**Date:** 2026-09-15  
-**Status:** All Approved ✅  
+**Date:** 2026-09-16  
+**Status:** Current decisions recorded  
 **Document:** Reference for team during implementation
 
 ---
@@ -11,13 +11,14 @@
 | # | Decision | Approval | Rationale | File |
 |---|----------|----------|-----------|------|
 | 1 | Emulator-first validation | ✅ Yes | Fast iteration, deterministic tests, zero cost | [ADR-001](001-emulator-first-validation.md) |
-| 2 | In-memory Carwash storage | ✅ In-memory (MVP) | Simple, zero dependencies, acceptable for MVP | [ADR-002](002-carwash-in-memory-storage.md) |
-| 3 | Carwash API testing | ✅ Mock Pulse client | Self-contained testing, no external dependencies | [ADR-003](003-carwash-api-mock-pulse.md) |
+| 2 | In-memory Carwash storage | Superseded | API no longer depends on Service Bus contact storage | [ADR-002](002-carwash-in-memory-storage.md) |
+| 3 | Generic Carwash contact API | Superseded | Replaced by the member-verification endpoint | [ADR-003](003-carwash-api-mock-pulse.md) |
 | 4 | Async/await strategy | ✅ Async-first | Efficient resource utilization, production-grade design | [ADR-004](004-async-first.md) |
 | 5 | Schema validation | ✅ JSON Schema + annotations | Standard .NET approach, no extra dependencies | [ADR-005](005-schema-validation.md) |
 | 6 | Configuration & secrets | ✅ Environment variables | Simple, zero friction, no risk of secret leakage | [ADR-006](006-configuration-env-vars.md) |
 | 7 | Application architecture | ✅ Separate console apps | Clear separation of concerns, independent testing | [ADR-007](007-separate-apps.md) |
 | 8 | Infrastructure as Code | ✅ Bicep templates | Azure-native, clean syntax, purpose-built | [ADR-008](008-bicep-iac.md) |
+| 9 | Carwash integration boundary | ✅ Independent paths | Pulse calls verification API; Carwash separately consumes Service Bus | [ADR-009](009-carwash-integration-boundary.md) |
 
 ---
 
@@ -34,11 +35,11 @@
 - **Service Bus:** Azure Service Bus SDK (cloud + emulator)
 - **Topology:** Local Docker Compose emulator → Phase 4 Bicep cloud deployment
 - **Filter Routing:** SQL filter expressions on subscriptions
-- **Carwash API:** HTTP endpoints (minimal WebAPI or console-based listener)
-- **Pulse Integration:** Mock client in MVP → real HTTP client post-MVP
+- **Carwash API:** `POST /carwash/v1/verify`
+- **Pulse Integration:** Mock Pulse calls Carwash in the MVP; live Pulse integration is post-MVP
 
 ### Data & Storage
-- **Carwash Contact Store:** In-memory `ConcurrentDictionary` (MVP)
+- **Carwash Verification:** Mock RAC ID rule; no Service Bus-backed contact store in the MVP
 - **Event Serialization:** JSON with data annotations validation
 - **Schema Definition:** JSON Schema + C# DTOs with `[Required]`, `[EmailAddress]`, etc.
 
@@ -69,13 +70,14 @@ Phase 2: Core MVP (3-5 days)
 ├─ Docker Compose emulator topology
 ├─ Producer (publishes events)
 ├─ 4 Consumers (route by subscription)
-├─ Carwash consumer + in-memory storage + HTTP API
+├─ Independent Carwash consumer
+├─ Carwash verification API (complete)
 └─ Scenario verifier (end-to-end testing)
 
 Phase 3: Tests (2-3 days, parallel with Phase 2)
 ├─ Schema validation tests
 ├─ Filter routing tests (all 8 scenarios)
-├─ Carwash integration tests
+├─ Carwash API and independent consumer tests
 └─ Configuration tests
 
 Phase 5.1: Local Scripts (1 day)
@@ -117,12 +119,10 @@ Consumers
 ├─ DigitalChannels (all events, validation harness)
 ├─ Insurance (filtered events)
 ├─ ParksResorts (filtered events)
-└─ Carwash Consumer
-   ├─ Listens to carwash subscription
-   ├─ Stores contacts in-memory
-   └─ Exposes HTTP API for Pulse to call
-      ↓
-      Mock Pulse (MVP) / Real Pulse (Phase 5)
+├─ Carwash Consumer
+│  └─ Listens to carwash subscription
+└─ Pulse / Mock Pulse
+   └─ Calls Carwash POST /carwash/v1/verify
 ```
 
 ---
@@ -130,8 +130,8 @@ Consumers
 ## Critical Constraints & Assumptions
 
 ### MVP Constraints
-- ✗ No persistent storage for contacts (in-memory only)
-- ✗ No real Pulse API calls (mock only)
+- ✗ No persistence for Carwash verification data
+- ✗ No live Pulse integration (mock caller only)
 - ✗ No cloud deployment (emulator only)
 - ✗ No multi-region or HA (single emulator instance)
 - ✓ Local Docker required for emulator
@@ -139,8 +139,8 @@ Consumers
 
 ### Post-MVP Additions
 - Phase 4: Real Azure deployment via Bicep
-- Phase 5: Real Pulse API integration
-- Phase 5+: Persistent storage (EF Core + database)
+- Phase 5: Live Pulse integration with the Carwash verification API
+- Phase 5+: Persistent verification data if required
 - Phase 5+: HA, monitoring, load testing
 
 ### Security & Compliance
@@ -156,8 +156,8 @@ Consumers
 | Risk | Severity | Mitigation |
 |------|----------|-----------|
 | Emulator filter behavior differs from cloud | Medium | ADR-001: Test edge cases; Phase 4 validates on real Azure |
-| Carwash storage not persistent | Low | ADR-002: Documented MVP limitation; Phase 5 adds database |
-| Pulse integration untested | Low | ADR-003: Mock client validates API shape; Phase 5 integrates real API |
+| Verification data not persistent | Low | ADR-009: Mock rule is explicit; add storage only when required |
+| Live Pulse integration untested | Low | ADR-009: Mock Pulse validates the API contract; Phase 5 integrates live Pulse |
 | Async code complexity | Low | ADR-004: Code templates + documentation; pair programming |
 | Schema/DTO drift | Medium | ADR-005: Unit tests validate round-trip serialization |
 | Secret leakage | High | ADR-006: Pre-commit hook + grep checks; CI validates |

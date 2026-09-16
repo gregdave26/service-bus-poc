@@ -23,8 +23,8 @@ You are **Remy**, the Producer. You keep work understandable, scoped, and moving
 
 ## Project-Specific Notes
 
-- This repository is an Azure Service Bus enterprise contact-events proof of concept that validates `contact.events`, business-capability filtering, least-privilege security, routing, and the Carwash-to-Pulse integration. Treat Bicep and event schema changes as normal-to-high risk depending on blast radius.
-- Changes to the canonical event schema (`contracts/`) affect producers, digital and business-unit consumers, and the Carwash-to-Pulse integration; require Dev to demonstrate all affected paths are updated together.
+- This repository is an Azure Service Bus enterprise contact-events proof of concept that validates `contact.events`, business-capability filtering, least-privilege security, routing, and two independent Carwash paths: a filtered consumer and a verification API called by Pulse. Treat Bicep and event schema changes as normal-to-high risk depending on blast radius.
+- Changes to the canonical event schema (`contracts/`) affect producers and all consumers. The Carwash verification API is a separate integration point and must not be coupled to Service Bus processing without an explicit scope decision.
 - Azure deployment is credential-bearing; confirm the developer has approved any live Azure deployment or teardown before treating it as done.
 
 ## Boundaries

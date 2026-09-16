@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Carwash service exposes a member verification HTTP API endpoint that validates whether a RAC member ID is associated with an active carwash product subscription. This endpoint is consumed by the Pulse system to verify membership eligibility before contact sync operations.
+The Carwash service exposes a member verification HTTP API endpoint that validates whether a RAC member ID is associated with an active carwash product subscription. Pulse or mock Pulse calls this endpoint to verify membership eligibility before contact sync operations.
 
 ## Endpoint Specification
 
@@ -111,8 +111,10 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 
 ## Integration Points
 
-1. **Pulse System:** Calls this endpoint before syncing contacts with carwash product records
-2. **Service Bus Consumer:** Carwash consumer processes contact events filtered by `hasCarwashProduct=true` and uses this API to validate members before acting on events
+1. **Pulse or mock Pulse:** Calls this endpoint before syncing contacts with carwash product records.
+2. **Service Bus consumer:** Independently processes contact events filtered by `hasCarwashProduct=true`.
+
+The API and consumer are separate integration points: the consumer does not call this API, and this API does not consume Service Bus messages or call Pulse.
 
 ## Future Enhancements
 

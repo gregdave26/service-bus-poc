@@ -1,8 +1,10 @@
 # ADR 002: Carwash Contact Storage - In-Memory for MVP
 
-**Status:** APPROVED (2026-09-15)  
+**Status:** SUPERSEDED by ADR 009 (2026-09-16)  
 **Date:** 2026-09-15  
 **Decided By:** Product Owner  
+
+> ADR 009 removes the proposed runtime coupling between Service Bus contact storage and the Carwash verification API. This document remains as historical context only.
 
 ---
 

@@ -18,7 +18,11 @@ flowchart LR
         Digital["Digital Channels<br/>(All Events)"]
         Insurance["Insurance Business Unit<br/>(Filtered)"]
         Parks["Parks & Resorts Business Unit<br/>(Filtered)"]
-        Carwash["Carwash<br/>(Filtered + API Integration)"]
+        CarwashConsumer["Carwash Consumer<br/>(hasCarwashProduct = true)"]
+    end
+
+    subgraph CarwashHttp["Carwash HTTP"]
+        CarwashApi["Carwash Verification API<br/>POST /carwash/v1/verify"]
     end
 
     CRM -->|"ContactUpdated Event"| ContactTopic
@@ -29,12 +33,12 @@ flowchart LR
     ContactTopic -->|"All Contact Events"| Digital
     ContactTopic -->|"Filtered: hasInsurance = true"| Insurance
     ContactTopic -->|"Filtered: hasParksResorts = true"| Parks
-    ContactTopic -->|"Filtered: hasCarwashProduct = true"| Carwash
+    ContactTopic -->|"Filtered: hasCarwashProduct = true"| CarwashConsumer
 
-    Carwash --> Pulse["Pulse API<br/>Contact CRUD"]
+    Pulse["Pulse / Mock Pulse"] -->|"POST /carwash/v1/verify"| CarwashApi
 ```
 
-Azure Service Bus provides the `contact.events` topic as the enterprise messaging backbone for contact, product, and holding changes. Consumers receive either all contact events or subscription-filtered events based on their business capability. Carwash uses matching events to integrate with the Pulse Contact CRUD API.
+Azure Service Bus provides the `contact.events` topic as the enterprise messaging backbone for contact, product, and holding changes. Consumers receive either all contact events or subscription-filtered events based on their business capability. Separately, Pulse or mock Pulse calls the Carwash verification API; that API has no runtime dependency on the Carwash consumer.
 
 ## Topology
 
@@ -49,7 +53,7 @@ The central routing point for all contact-related events in the enterprise.
 | `all-events` | *(none)* | Digital Channels | Receives all contact updates (no filtering) |
 | `insurance` | `attributes.hasInsurance = 'true'` | Insurance | Receives only contacts with insurance products |
 | `parks-resorts` | `attributes.hasParksResorts = 'true'` | Parks & Resorts | Receives only contacts with parks & resorts holdings |
-| `carwash` | `attributes.hasCarwashProduct = 'true'` | Carwash | Receives only contacts with carwash products; integrates with Pulse API |
+| `carwash` | `attributes.hasCarwashProduct = 'true'` | Carwash consumer | Receives only contacts with carwash products |
 
 ## Event Types
 
@@ -132,7 +136,12 @@ The central routing point for all contact-related events in the enterprise.
 ### Carwash
 - **Subscription:** `carwash` (filtered by `hasCarwashProduct = true`)
 - **Processing:** Receives only contacts with active carwash products
-- **Action:** Integrates with Pulse Contact CRUD API via HTTP (mock mode for local testing)
+- **Action:** Processes filtered contact events. It is independent of the verification API.
+
+### Carwash Verification API
+- **Endpoint:** `POST /carwash/v1/verify`
+- **Caller:** Pulse or mock Pulse
+- **Action:** Validates the supplied RAC member ID using the documented mock rule. It does not consume Service Bus messages or call Pulse.
 
 ### Verifier
 - **Role:** Scenario validation
@@ -150,14 +159,6 @@ ServiceBus__ConnectionString    # "Endpoint=sb://..." or emulator connection
 ServiceBus__Namespace           # Namespace name (e.g., "my-namespace")
 ServiceBus__TopicName           # Topic name (e.g., "contact.events")
 ServiceBus__SubscriptionName    # Subscription name (varies by app)
-```
-
-### Carwash Settings (Carwash app only)
-
-```powershell
-Carwash__ApiUrl                 # Pulse API base URL
-Carwash__MockMode               # true = mock HTTP responses; false = live API
-Carwash__AuthToken              # Authentication token for Pulse API
 ```
 
 ## Key Design Decisions

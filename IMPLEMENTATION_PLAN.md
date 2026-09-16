@@ -4,7 +4,7 @@
 
 This document proposes a phased implementation approach for the Azure Service Bus contact events POC. The plan prioritizes validating the core messaging backbone, filter routing, and Carwash integration in the fastest, leanest way possible. The MVP delivers end-to-end event flow with local emulator testing before moving to cloud deployment.
 
-**Current status (2026-09-16):** Phase 1 (foundation, contracts, scaffolding) is complete. Within Phase 2, the Carwash HTTP verification API is built and tested ahead of schedule, but Service Bus messaging (producer, consumers, emulator topology) is not yet implemented — see per-phase status notes below for detail.
+**Current status (2026-09-16):** Phase 1 (foundation, contracts, scaffolding) is complete. `infra/servicebus/compose.yaml` and `config.json` exist. The Carwash HTTP verification API is implemented and its API test files exist; the producer and consumer messaging services remain stubs, and the emulator topology has not yet been validated end to end.
 
 ---
 
@@ -17,11 +17,12 @@ This document proposes a phased implementation approach for the Azure Service Bu
 - [x] Create `contracts/` folder with JSON Schema definitions for canonical event types
 - [x] Create `src/ServiceBusPoc.*/` .NET console project scaffolds (Producer, DigitalChannels, Insurance, ParksResorts, Carwash, Verifier)
 - [x] Create `tests/ServiceBusPoc.Tests/` xUnit test project
-- [ ] Create `infra/` folder structure for Bicep modules
+- [x] Create `infra/servicebus/` local-emulator configuration
+- [ ] Create Bicep module structure
 - [x] Create `scripts/` folder for local and Azure deployment scripts
 - [x] Create `docs/decisions/` folder for ADRs
 
-**Deliverable:** Folder structure matching key files table in brief; .csproj files ready for dotnet build — ✅ done (8 projects build clean).
+**Deliverable:** Folder structure matching the key-files table in the brief; project files are scaffolded.
 
 ### 1.2 Event Contracts (JSON Schema)
 Define canonical event schemas in `contracts/` as JSON Schema:
@@ -65,12 +66,12 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 
 **Goal:** Implement end-to-end producer → Service Bus → consumer routing with local Azure Service Bus emulator (Docker Compose).
 
-**Status:** ⏳ Not started — Carwash's HTTP verification API (2.4/2.5 scope, see below) is built and tested, but the actual Service Bus messaging (2.1–2.3) is not. Producer, DigitalChannels, Insurance, ParksResorts, and Carwash consumer services are all stubs that log settings and return immediately (see `TODO: Implement ... in Phase 2` in `ProducerService.cs` and `CarwashConsumerService.cs`).
+**Status:** ⏳ In progress — the 2.4 Carwash HTTP verification API is implemented and its API test files exist, but the actual Service Bus messaging (2.1–2.3) is not. Producer, DigitalChannels, Insurance, ParksResorts, and Carwash consumer services are all stubs that log settings and return immediately (see `TODO: Implement ... in Phase 2` in `ProducerService.cs` and `CarwashConsumerService.cs`).
 
 ### 2.1 Azure Service Bus Emulator Topology (Docker Compose)
 **File:** `infra/servicebus/compose.yaml` and `config.json`
 
-**Status:** ⏳ Not started — no `infra/` folder exists yet.
+**Status:** ⏳ Configuration exists — `infra/servicebus/compose.yaml` and `config.json` define the local emulator setup; topology startup and end-to-end validation remain outstanding.
 
 **Topology:**
 - Service Bus namespace (emulator)
@@ -95,7 +96,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 - Log result (success/error)
 
 **Features:**
-- Dependency injection via `IServiceProvider`
+- Constructor injection for explicit service dependencies
 - Configuration via `IConfiguration` and options pattern
 - Error handling with retry logic (exponential backoff)
 - Structured logging with `ILogger`
@@ -130,39 +131,20 @@ dotnet run -- --producer \
 - **DigitalChannels:** Log all received events (validation harness)
 - **Insurance:** Log events with `hasInsurance = true`
 - **ParksResorts:** Log events with `hasParksResorts = true`
-- **Carwash:** Parse contact data and prepare for Pulse API call (see 2.4)
+- **Carwash:** Process contacts received through the `hasCarwashProduct=true` subscription. This consumer is independent of the verification API in 2.4.
 
 **Deliverable:** Runnable consumers for all 4 subscriptions; async message handling
 
-### 2.4 Carwash-to-Pulse Contact API Integration
+### 2.4 Carwash Verification API
 **File:** `src/ServiceBusPoc.Carwash/Api/CarwashApiServer.cs`
 
-**Status:** ✅ Done, but scoped differently than originally planned — instead of a `CarwashContactMatcher` that calls out to Pulse, Carwash exposes its own `POST /carwash/v1/verify` HTTP endpoint for Pulse to call (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, and error handling are implemented and covered by tests in `tests/ServiceBusPoc.Tests/`. Business logic is still mocked (RAC IDs starting with `VALID` return true). The Service Bus side of the Carwash consumer (receiving `hasCarwashProduct=true` events and invoking this logic) is not yet wired up — see 2.3.
+**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, and Carwash API test files are present. The mock verification rule returns true for RAC IDs beginning with `VALID` (case-insensitive). This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
 
 **Responsibilities:**
-- Receive contact event from Carwash subscription
-- Match contact properties with Pulse Contact CRUD API schema
-- Transform event data to Pulse API request shape
-- (MVP: Mock Pulse API calls; production will call real endpoint)
+- Accept a RAC member ID and return the verification result.
+- Validate request and return the documented HTTP error response.
 
-**Contract Match Logic:**
-- Map `contactId` → Pulse contact identifier
-- Map `firstName`, `lastName`, `email`, `phone` to Pulse contact properties
-- Track matched contacts in-memory (MVP) or persist to SQL (future)
-
-**Pulse API Schema (Mocked for MVP):**
-```csharp
-public class PulseContactRequest
-{
-    public string ContactId { get; set; }
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    public string Email { get; set; }
-    public string Phone { get; set; }
-}
-```
-
-**Deliverable:** CarwashContactMatcher that transforms events; mock Pulse HTTP client; logs successful matches
+**Deliverable:** Carwash verification endpoint and its request/response contract. It does not call Pulse or depend on Service Bus message processing.
 
 ### 2.5 Scenario Verifier & Test Harness
 **File:** `src/ServiceBusPoc.Verifier/Services/VerifierService.cs`
@@ -177,11 +159,10 @@ public class PulseContactRequest
    - Assert Insurance subscription receives it, others do not
    - Repeat for all attribute combinations (8 test cases)
 
-2. **Carwash Integration Validation**
+2. **Carwash Consumer Validation**
    - Emit contact with `hasCarwashProduct=true`
    - Assert Carwash consumer receives event
-   - Assert ContactMatcher produces Pulse API request shape
-   - Verify no errors in matching logic
+   - Assert the consumer does not receive events when `hasCarwashProduct=false`
 
 3. **Schema Validation**
    - Emit malformed event (missing required field)
@@ -195,7 +176,7 @@ public class PulseContactRequest
 
 **Goal:** Prove filter routing and integration logic with automated tests.
 
-**Status:** ⏳ Partial — 39 tests exist and pass, but they cover the Carwash HTTP API only (constructor, JSON parsing, validation, start/stop, request/response contracts). No schema, filter-routing, Carwash-Service-Bus-integration, or settings tests exist yet under the names below.
+**Status:** ⏳ Partial — Carwash HTTP API test files cover the API surface (constructor, JSON parsing, validation, start/stop, and request/response contracts). Schema, filter-routing, Service-Bus consumer, and settings test work remains.
 
 ### 3.1 Schema Tests
 **File:** `tests/ServiceBusPoc.Tests/SchemaTests.cs`
@@ -218,15 +199,13 @@ public class PulseContactRequest
 - Test all 8 attribute combinations (2³ boolean attributes)
 - Assert no cross-subscription leakage
 
-### 3.3 Carwash Integration Tests
+### 3.3 Carwash API and Consumer Tests
 **File:** `tests/ServiceBusPoc.Tests/CarwashIntegrationTests.cs`
 
-**Status:** ✅ Partially covered — `CarwashApiServer*Tests.cs`, `VerifyMemberRequestTests.cs`, `VerifyMemberResponseTests.cs`, and `ErrorResponseTests.cs` cover the HTTP API contract and validation. Pulse HTTP client mocking and Service-Bus-triggered integration are not started.
+**Status:** ✅ Partially covered — `CarwashApiServer*Tests.cs`, `VerifyMemberRequestTests.cs`, `VerifyMemberResponseTests.cs`, and `ErrorResponseTests.cs` cover the HTTP API contract and validation. Service Bus consumer tests are not started; they must remain independent of the verification API.
 
-- Mock Pulse API HTTP client
-- Test event-to-Pulse-request transformation
-- Test error handling (timeout, 4xx, 5xx responses)
-- Test contact matching edge cases (null fields, special characters)
+- Test verification API request validation and responses.
+- Test Carwash consumer routing separately from the HTTP API.
 
 ### 3.4 Settings & Configuration Tests
 **File:** `tests/ServiceBusPoc.Tests/SettingsTests.cs`
@@ -245,7 +224,7 @@ public class PulseContactRequest
 
 **Goal:** Define production-grade Azure Service Bus infrastructure; deployable via `az bicep build` and `az deployment group create`.
 
-**Status:** ⏳ Not started — no `infra/` folder or `.bicep` files exist yet. ADR-008 approves Bicep as the IaC choice; implementation is still pending.
+**Status:** ⏳ Not started — local emulator files exist under `infra/servicebus/`, but no Bicep files exist yet. ADR-008 approves Bicep as the IaC choice; implementation is still pending.
 
 ### 4.1 Bicep Modules
 **Files:**
@@ -291,12 +270,12 @@ Document the decision to validate with local emulator before cloud deployment, i
 
 **Goal:** Automate local emulator and Azure cloud deployment.
 
-**Status:** ⏳ Partial — `scripts/debug-run.ps1` and `scripts/test-carwash-api.ps1` exist and are used for local Carwash API testing. `run-local-poc.ps1` exists but depends on Phase 2/4 work (emulator topology, producer/consumer messaging) that isn't implemented yet, so it cannot complete end-to-end. `deploy-azure.ps1` is not started.
+**Status:** ⏳ Partial — `scripts/debug-run.ps1`, `scripts/test-carwash-api.ps1`, and `run-local-poc.ps1` exist. The local script depends on Phase 2 emulator topology and producer/consumer messaging, which are not implemented end to end. `deploy-azure.ps1` is not started.
 
 ### 5.1 Local POC Script
 **File:** `scripts/run-local-poc.ps1`
 
-**Status:** ⏳ Script scaffold exists (see `scripts/README.md`); blocked on Phase 2 messaging and Phase 4 emulator topology.
+**Status:** ⏳ Script scaffold exists (see `scripts/README.md`); blocked on Phase 2 emulator topology and messaging.
 
 **Steps:**
 1. Spin up Docker Compose (Service Bus emulator)
@@ -305,7 +284,7 @@ Document the decision to validate with local emulator before cloud deployment, i
 4. Start all 4 consumers in background tasks
 5. Run producer with test scenarios
 6. Collect consumer logs
-7. Generate report (routing verified, Carwash integration working)
+7. Generate a report for all 8 boolean routing combinations
 8. Cleanup
 
 **Deliverable:** One-command local POC execution
@@ -341,7 +320,7 @@ Document the decision to validate with local emulator before cloud deployment, i
 - System diagram (producers → topic → subscriptions → consumers)
 - Event flow walkthrough
 - Filter routing rules
-- Carwash integration flow
+- Carwash consumer and verification-API flows
 
 ### 6.2 Developer Guide
 **File:** `docs/DEVELOPER.md`
@@ -382,12 +361,12 @@ Document the decision to validate with local emulator before cloud deployment, i
 
 **MVP = Phases 1–3 + Phase 5.1 (Local Scripts)**
 
-**Status:** ⏳ In progress — Phase 1 is complete; Phase 2 messaging, most of Phase 3 tests, and Phase 5.1's end-to-end script are outstanding. The Carwash HTTP API (originally scoped under 2.4) is complete and tested ahead of the rest of the MVP.
+**Status:** ⏳ In progress — Phase 1 is complete; Phase 2 messaging, most of Phase 3 tests, and Phase 5.1's end-to-end script are outstanding. The independent Carwash verification API in 2.4 is implemented, with API test files present.
 
 The MVP aims to demonstrate:
 1. ⏳ End-to-end event flow: producer → topic → subscriptions → consumers
 2. ⏳ Filter routing validation (all 8 scenarios)
-3. ⏳ Carwash integration with Pulse API shape (mocked) — HTTP API side done; Service Bus side not started
+3. ✅ Carwash exposes the verification API that Pulse or mock Pulse calls; its mock verification rule is implemented
 4. ⏳ Comprehensive unit & integration tests — Carwash API tests done; schema/routing/settings tests outstanding
 5. ⏳ Reproducible local execution via Docker + script
 6. ⏳ Schema validation and error handling — contracts and DTOs exist; end-to-end validation not yet wired up
@@ -395,14 +374,12 @@ The MVP aims to demonstrate:
 **MVP Does NOT Include:**
 - Cloud deployment to real Azure subscription
 - Production Bicep (deferred to Phase 4)
-- Real Pulse API calls (mocked in MVP)
+- Live Pulse integration beyond the Carwash verification API contract
 - Persistence, sagas, load testing, custom domains
 
 **MVP Validation Criteria:**
-- ✅ `dotnet build` succeeds
-- ✅ `dotnet test` passes all tests (39/39; coverage of the completed Carwash API surface, not yet ≥80% overall)
 - ⏳ `scripts/run-local-poc.ps1` completes with all 8 routing scenarios passing
-- ⏳ Carwash consumer produces valid Pulse API request shape (HTTP verification endpoint done; Pulse-facing client not started)
+- ✅ Carwash exposes `POST /carwash/v1/verify` for Pulse or mock Pulse to call
 - ✅ No secrets committed; all sensitive config externalized
 - ⏳ README and DEVELOPER.md enable onboarding (README exists; DEVELOPER.md not started)
 
@@ -420,13 +397,13 @@ Phase 2: Core MVP Implementation
 ├── Emulator docker-compose
 ├── Producer
 ├── 4 Consumers (in parallel)
-├── Carwash matcher
+├── Carwash verification API (complete)
 └── Scenario verifier
 
 Phase 3: Tests (parallel with Phase 2)
 ├── Schema tests
 ├── Filter routing tests
-├── Carwash integration tests
+├── Carwash API and independent consumer tests
 └── Settings tests
 
 Phase 5.1: Local Scripts
@@ -449,8 +426,8 @@ Phase 6: Documentation (parallel with others)
 ## Key Technical Decisions (to be formalized as ADRs)
 
 1. **Emulator First:** Validate with local Azure Service Bus emulator before cloud (faster, cheaper, deterministic)
-2. **Mock Pulse API in MVP:** Real API calls deferred to post-MVP integration phase
-3. **In-Memory Carwash Matcher:** No database in MVP; track matched contacts in memory; log results
+2. **Mock Verification Rule in MVP:** Carwash exposes a verification API for Pulse or mock Pulse to call; live integration is deferred.
+3. **Independent Carwash Paths:** The `hasCarwashProduct=true` consumer and the verification API have no runtime dependency on each other.
 4. **Dependency Injection:** Use `IServiceProvider` + `Microsoft.Extensions.DependencyInjection` for all consumers and producers
 5. **Structured Logging:** Use `ILogger` with JSON-structured output for machine-parseable logs
 6. **Schema Validation:** Use JSON Schema for event contracts; C# DTO validation via FluentValidation or data annotations
@@ -464,7 +441,6 @@ Phase 6: Documentation (parallel with others)
 |------|--------|-----------|
 | Emulator incompatibility | MVP can't validate cloud behavior | Test subscription filters with explicit edge cases; compare with cloud docs |
 | Event schema churn | Consumers break on schema changes | Version schemas explicitly; use envelope with dataVersion field |
-| Carwash integration latency | Real Pulse API calls may timeout | MVP mocks API; post-MVP adds circuit breaker + retry logic |
 | Filter logic errors | Wrong subscriptions receive events | Write exhaustive filter tests (2³ scenarios); manual verification via logs |
 | Secret leakage | Credentials committed to repo | Pre-commit hook + review rule: reject any connection strings in code |
 
@@ -473,12 +449,12 @@ Phase 6: Documentation (parallel with others)
 ## Success Metrics (MVP Complete)
 
 - [ ] All 8 filter routing scenarios pass (emulator + tests)
-- [ ] Carwash integration produces valid Pulse API request shape
+- [x] Carwash exposes its verification API contract for Pulse or mock Pulse callers
 - [ ] No schema validation errors on valid events
 - [ ] Graceful error handling on invalid events (schema, network, malformed)
 - [ ] Single command (`scripts/run-local-poc.ps1`) validates entire system
 - [ ] Test coverage ≥80% for business logic
-- [ ] Zero secrets in committed code
+- [ ] Sensitive configuration remains externalized
 - [ ] README enables new dev onboarding in <30 min
 - [ ] All code builds and tests pass in CI
 
@@ -487,8 +463,8 @@ Phase 6: Documentation (parallel with others)
 ## Post-MVP Roadmap (Phase 4+)
 
 1. **Cloud Deployment** (Phase 4): Bicep for real Azure; deploy to actual subscription with credentials
-2. **Real Pulse API Integration** (Phase 4.1): Replace mock client; test against real Pulse endpoints
-3. **Persistence** (Future): Store matched contacts in SQL; expose query API
+2. **Live Pulse Integration** (Phase 4.1): Connect Pulse to the Carwash verification API; replace the mock verification rule as needed.
+3. **Persistence** (Future): Store verification data as required; expose a query API if needed.
 4. **Sagas & Orchestration** (Future): Handle multi-step workflows (e.g., contact validated → provision in system X)
 5. **Load Testing** (Future): Validate throughput, latency, subscription filter performance
 6. **Producer Integration** (Future): Integrate real CRM/MDM and product systems as publishers
@@ -502,7 +478,7 @@ Phase 6: Documentation (parallel with others)
 |------|-----------------|
 | **Producer (Remy)** | Scope coordination, plan approval, handoff to Dev, merge PR |
 | **Dev (Nova+Sage+Milo)** | Implement all phases 1–5; write tests; author ADRs; deliver working MVP |
-| **QA (Ivy)** | Independent verification of filter routing; Carwash integration E2E tests; sign-off on MVP validation criteria |
+| **QA (Ivy)** | Independent verification of filter routing and the separate Carwash consumer/API paths; sign-off on MVP validation criteria |
 
 ---
 
@@ -511,7 +487,7 @@ Phase 6: Documentation (parallel with others)
 | Phase | Effort | Duration |
 |-------|--------|----------|
 | Phase 1 | 1–2 days | Structure, contracts, scaffolds |
-| Phase 2 | 3–5 days | Producer, 4 consumers, integration |
+| Phase 2 | 3–5 days | Emulator, producer, consumers, verifier |
 | Phase 3 | 2–3 days | Tests (parallel with Phase 2) |
 | Phase 5.1 | 1 day | Local scripts |
 | **MVP Subtotal** | **7–11 days** | |
@@ -523,9 +499,8 @@ Phase 6: Documentation (parallel with others)
 
 ## Next Steps
 
-1. **Approve this plan** with Producer (Remy)
-2. **Create ADRs** for key technical decisions (Phase 1)
-3. **Launch dev team** (Nova+Sage+Milo) on Phase 1 & 2 in parallel
-4. **Define QA scenarios** (optional Ivy) for filter routing validation
-5. **Begin implementation** following the sequence above
-
+1. Validate the existing emulator Compose topology in 2.1.
+2. Implement the producer in 2.2 using tests from Phase 3.
+3. Implement the four consumers in 2.3 using tests from Phase 3.
+4. Implement the verifier in 2.5 for all 8 routing combinations.
+5. Complete Phase 5.1 and request independent QA for the end-to-end MVP.

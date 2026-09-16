@@ -1,10 +1,10 @@
 # PROJECT_BRIEF.md - Enterprise Contact Events POC
 
-> Last updated: 2026-09-14
+> Last updated: 2026-09-16
 
 ## 1. Goal and Users
 
-Proof of concept demonstrating `contact.events` as an Azure Service Bus enterprise messaging backbone. CRM/MDM and product/holding systems publish contact-related changes, while digital channels and business units consume all or filtered events. Carwash consumes carwash-product contacts and integrates them with the Pulse Contact CRUD API.
+Proof of concept demonstrating `contact.events` as an Azure Service Bus enterprise messaging backbone. CRM/MDM and product/holding systems publish contact-related changes, while digital channels and business units consume all or filtered events. Carwash independently consumes carwash-product contacts and exposes a verification API that Pulse or mock Pulse calls.
 
 ## 2. Current Scope
 
@@ -13,7 +13,7 @@ Proof of concept demonstrating `contact.events` as an Azure Service Bus enterpri
 - Producer integration from CRM/MDM and product/holding systems.
 - Consumer routing to digital channels, Insurance, Parks & Resorts, and Carwash.
 - Subscription filters for Insurance (`hasInsurance = true`), Parks & Resorts (`hasParksResorts = true`), and Carwash (`hasCarwashProduct = true`).
-- Carwash integration with the Pulse Contact CRUD API for matching contact events.
+- Carwash member-verification API at `POST /carwash/v1/verify`, called by Pulse or mock Pulse.
 - Bicep IaC for the above, deployable to a real Azure subscription.
 - .NET 10 console harness that runs the same topology against the official Azure Service Bus emulator (Docker Compose) to deterministically prove filter routing without cloud credentials.
 
@@ -34,14 +34,14 @@ The architecture reference defines the project context:
 1. **Producers:** CRM/MDM and product/holding systems publish contact-related events.
 2. **Backbone:** Azure Service Bus routes events through the `contact.events` topic.
 3. **Consumers:** digital channels receive all events; Insurance, Parks & Resorts, and Carwash receive capability-filtered events.
-4. **Integration:** Carwash applies matching events through the Pulse Contact CRUD API.
+4. **Carwash paths:** Carwash consumes `hasCarwashProduct=true` events; separately, Pulse or mock Pulse calls Carwash's verification API.
 
 ## 4. Key Files
 
 | Area | Path | Purpose |
 |---|---|---|
 | Event contract | `contracts/` | Canonical `contact.events` schemas used by producers and consumers |
-| App | `src/ServiceBusPoc.*/` | Producer, consumer, Carwash-to-Pulse integration, scenario verifier, settings |
+| App | `src/ServiceBusPoc.*/` | Producer, consumers, Carwash verification API, scenario verifier, settings |
 | Tests | `tests/ServiceBusPoc.Tests/` | Schema, routing, settings, scenario tests |
 | Azure IaC | `infra/main.bicep`, `infra/modules/` | `contact.events` topology, filtered subscriptions, and least-privilege RBAC (planned, not yet implemented) |
 | Local infra | `infra/servicebus/compose.yaml`, `config.json` | Emulator topology equivalent to Bicep |
@@ -67,20 +67,22 @@ The architecture reference defines the project context:
 **Working**
 - Event contracts (`EventEnvelope<TData>`, `ContactUpdatedEvent`, product/holding-change, attributes) and matching JSON Schemas in `contracts/`.
 - .NET 10 solution scaffolded: Producer, DigitalChannels, Insurance, ParksResorts, Carwash, and Verifier console apps, plus a shared test project.
-- Carwash HTTP API (member verification) implemented and tested against a mock Pulse client (ADR-002, ADR-003).
+- Local emulator configuration exists at `infra/servicebus/compose.yaml` and `infra/servicebus/config.json`.
+- Carwash HTTP member-verification API is implemented; its API test files exist. Pulse or mock Pulse calls this API.
 
 **Known issues**
-- Bicep IaC for the Azure Service Bus topology (ADR-008) is approved but not yet implemented — the project currently runs only against the local emulator.
+- Bicep IaC for the Azure Service Bus topology (ADR-008) is approved but not yet implemented.
+- Producer and consumer messaging services remain stubs; no end-to-end Service Bus message flow is implemented yet.
 - No external/APIM ingress exists yet; producers publish directly. Not currently in scope (see `.github/copilot-instructions.md`).
 
 **Next**
-- Remaining plan items: Bicep infrastructure, emulator Compose topology, automated tests for routing/scenario verification, automation scripts, and final end-to-end validation.
+- Remaining plan items: emulator topology validation, messaging implementations, routing/schema/settings tests, local-script completion, Bicep infrastructure, and final end-to-end validation.
 
 ## 8. Team and Handoff
 
 - Producer (`@ai-team-producer` / Remy): scope, coordination, and merge.
 - Dev (`@ai-team-dev` / Nova+Sage+Milo): implementation and verification.
-- QA (`@ai-team-qa` / Ivy): optional independent behavioral verification, especially for contact-event filters, routing, and the Carwash-to-Pulse integration.
+- QA (`@ai-team-qa` / Ivy): optional independent behavioral verification, especially for contact-event filters, routing, and the independent Carwash consumer and verification API paths.
 
 ## Where to record decisions
 

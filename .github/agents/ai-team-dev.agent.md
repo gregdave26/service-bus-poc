@@ -22,8 +22,8 @@ Do not invent layers or frameworks that the repository does not use.
 
 ## Project-Specific Notes
 
-- Stack: .NET 10 / C# producer and consumer applications and tests, Bicep IaC, Azure Service Bus (cloud and local emulator), Pulse Contact CRUD API integration, and `contact.events` contracts.
-- The canonical `contact.events` contract lives once in `contracts/` and must stay consistent across CRM/MDM and product/holding producers, digital and business-unit consumers, the Carwash-to-Pulse integration, and test fixtures.
+- Stack: .NET 10 / C# producer and consumer applications and tests, Bicep IaC, Azure Service Bus (cloud and local emulator), a Carwash verification API called by Pulse, and `contact.events` contracts.
+- The canonical `contact.events` contract lives once in `contracts/` and must stay consistent across CRM/MDM and product/holding producers, digital and business-unit consumers, and test fixtures. Keep the Carwash Service Bus consumer independent from `POST /carwash/v1/verify`.
 - Prefer explicit Bicep resources over hidden module abstractions so Service Bus topology and RBAC scope stay reviewable.
 - Never commit secrets, subscription keys, or connection strings; use secure parameters, environment variables, or `.gitignore`d local files.
 - Validate Bicep with `az bicep build` (and deployment what-if/validate where credentials are available) before treating IaC work as done.

@@ -142,7 +142,7 @@ if ($Emulator) {
     }
     else {
         # Check if containers already running
-        $runningContainers = docker-compose -f $composePath ps --quiet 2>/dev/null
+        $runningContainers = docker-compose -f $composePath ps --quiet 2>$null
         if ($runningContainers) {
             Write-Host "  ℹ Containers already running. Restarting..." -ForegroundColor Cyan
             docker-compose -f $composePath down | Out-Null

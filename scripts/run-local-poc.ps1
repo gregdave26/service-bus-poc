@@ -120,7 +120,7 @@ $composeLogs = Join-Path $logsPath "emulator-$timestamp.log"
 Push-Location (Split-Path $composePath)
 try {
     # Check for existing containers
-    $existing = docker-compose ps --quiet 2>/dev/null
+    $existing = docker-compose ps --quiet 2>$null
     if ($existing) {
         Write-Host "  Stopping existing containers..." -ForegroundColor Gray
         docker-compose down | Out-Null

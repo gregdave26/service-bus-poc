@@ -1,16 +1,9 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace ServiceBusPoc.Core.Contracts;
 
 /// <summary>
 /// Contact.Updated event containing contact information changes.
-/// Represents the data payload in an EventEnvelope for contact.updated events.
+/// Represents the canonical data payload in an EventEnvelope for contact.updated events.
 /// </summary>
-public class ContactUpdatedEvent
+public class ContactUpdatedEvent : ContactData
 {
-    /// <summary>
-    /// Gets or sets the contact data.
-    /// </summary>
-    [Required(ErrorMessage = "Contact data is required")]
-    public ContactData? Contact { get; set; }
 }

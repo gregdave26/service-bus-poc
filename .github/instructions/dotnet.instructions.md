@@ -56,6 +56,6 @@ catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.Messag
 
 ## Testing
 
-xUnit with Moq, target ≥80% meaningful coverage (ADR-007). Write tests first where practical. Cover happy paths, validation, error handling, and edge cases. Do not emit "Arrange/Act/Assert" comments. Match the naming style of nearby test files.
+xUnit with Moq. Follow `.github/instructions/unit-test-coverage.instructions.md` for the mandatory meaningful unit test coverage threshold and exclusions. Write tests first where practical. Cover happy paths, validation, error handling, and edge cases. Do not emit "Arrange/Act/Assert" comments. Match the naming style of nearby test files.
 
-Before opening a PR: `dotnet build` with zero warnings, and `dotnet test` passing.
+Before opening a PR: `dotnet build` with zero warnings, `dotnet test` passing, and the required unit test coverage verified.

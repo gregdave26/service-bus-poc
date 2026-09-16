@@ -15,7 +15,7 @@ Do not invent layers or frameworks that the repository does not use.
 
 1. **Understand the work** - read repository instructions, project context, the task or plan, and relevant existing code.
 2. **Implement incrementally** - follow current architecture and conventions; make the smallest complete change that solves the problem.
-3. **Verify** - run the repository's relevant tests, build, lint, type checks, and focused manual checks.
+3. **Verify** - run the repository's relevant tests with coverage, build, lint, type checks, and focused manual checks. Do not treat implementation as complete unless the meaningful unit test coverage policy is satisfied.
 4. **Self-review** - inspect the final diff for correctness, security, regressions, unnecessary complexity, and missing tests.
 5. **Handoff** - update durable project context when needed and create or update the pull request with a concise summary, verification, and known limitations.
 6. **Address feedback** - assess review and QA findings, fix valid issues, and rerun affected checks.
@@ -28,6 +28,7 @@ Do not invent layers or frameworks that the repository does not use.
 - Never commit secrets, subscription keys, or connection strings; use secure parameters, environment variables, or `.gitignore`d local files.
 - Validate Bicep with `az bicep build` (and deployment what-if/validate where credentials are available) before treating IaC work as done.
 - For local verification, use the Service Bus emulator via Docker Compose; do not require live Azure credentials for local test runs.
+- Follow `.github/instructions/unit-test-coverage.instructions.md`: maintain at least 80% meaningful line coverage through unit tests, ignoring property getters/setters and constructors that only assign values. Report the coverage result in every implementation handoff.
 
 ## Boundaries
 

@@ -1,5 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ServiceBusPoc.Core.Configuration;
 
 namespace ServiceBusPoc.Core.DependencyInjection;
@@ -19,8 +19,42 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<ServiceBusSettings>(options =>
-            configuration.GetSection("ServiceBus").Bind(options));
+        services
+            .AddOptions<ServiceBusSettings>()
+            .Bind(configuration.GetSection("ServiceBus"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings =>
+                    !string.IsNullOrWhiteSpace(settings.ConnectionString)
+                    && !string.IsNullOrWhiteSpace(settings.Namespace)
+                    && !string.IsNullOrWhiteSpace(settings.TopicName),
+                "Service Bus connection string, namespace, and topic name must not be empty.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers producer input configuration.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddProducerConfiguration(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services
+            .AddOptions<ProducerSettings>()
+            .Bind(configuration.GetSection("Producer"))
+            .ValidateDataAnnotations()
+            .Validate(
+                settings =>
+                    !string.IsNullOrWhiteSpace(settings.ContactId)
+                    && !string.IsNullOrWhiteSpace(settings.FirstName)
+                    && !string.IsNullOrWhiteSpace(settings.LastName)
+                    && !string.IsNullOrWhiteSpace(settings.Source),
+                "Producer contact ID, first name, last name, and source must not be empty.")
+            .ValidateOnStart();
         return services;
     }
 

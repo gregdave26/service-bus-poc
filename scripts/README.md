@@ -96,8 +96,10 @@ Both scripts set these automatically, but you can override:
 
 ```powershell
 # Service Bus configuration
-$env:ServiceBusConnectionString = "Endpoint=sb://localhost:5672/..."
-$env:ServiceBusTopicName = "contact.events"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/..."
+$env:ServiceBus__Namespace = "sbemulatorns"
+$env:ServiceBus__TopicName = "contact.events"
+$env:ServiceBus__SubscriptionName = "insurance" # Consumer-specific
 
 # Logging
 $env:DOTNET_LOG_LEVEL = "Information"  # or "Debug" for verbose
@@ -145,7 +147,7 @@ Get-Content -Path logs/debug-run-*.log -Wait
 
 ### Applications start but don't receive messages
 → Verify Service Bus emulator is running: `docker-compose ps`
-→ Check environment variables are set: `$env:ServiceBusConnectionString`
+→ Check environment variables are set: `$env:ServiceBus__ConnectionString`
 
 ### Emulator times out or doesn't start
 → Ensure Docker Desktop is running

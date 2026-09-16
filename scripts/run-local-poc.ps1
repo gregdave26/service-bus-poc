@@ -163,8 +163,9 @@ Write-Host ""
 # Step 3: Set environment variables
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
-$env:ServiceBusConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
-$env:ServiceBusTopicName = "contact.events"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
+$env:ServiceBus__Namespace = "sbemulatorns"
+$env:ServiceBus__TopicName = "contact.events"
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = if ($Verbose) { "Debug" } else { "Information" }
 
@@ -177,10 +178,10 @@ Write-Host "STEP 4: Starting consumer applications..." -ForegroundColor Yellow
 
 $processes = @()
 $apps = @(
-    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.DigitalChannels' }
-    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.Insurance' }
-    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ParksResorts' }
-    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.Carwash' }
+    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.DigitalChannels'; Subscription = 'digital-channels' }
+    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.Insurance'; Subscription = 'insurance' }
+    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ParksResorts'; Subscription = 'parks-resorts' }
+    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.Carwash'; Subscription = 'carwash' }
 )
 
 foreach ($app in $apps) {
@@ -189,13 +190,16 @@ foreach ($app in $apps) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
         $outputPath = Join-Path $logsPath "$($app.Name)-$timestamp.stdout.log"
         $errorPath = Join-Path $logsPath "$($app.Name)-$timestamp.stderr.log"
+        $env:ServiceBus__SubscriptionName = $app.Subscription
         $process = Start-Process `
             -FilePath 'dotnet' `
             -ArgumentList @('run', '--configuration', 'Debug', '--project', $projectFile) `
             -WorkingDirectory $projectRoot `
             -RedirectStandardOutput $outputPath `
             -RedirectStandardError $errorPath `
+            -NoNewWindow `
             -PassThru
+        $env:ServiceBus__SubscriptionName = $null
 
         $processes += $process
         Write-Host "  ➜ $($app.Name)"

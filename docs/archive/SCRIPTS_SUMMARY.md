@@ -340,8 +340,8 @@ Ensure `infra/servicebus/compose.yaml` exists with emulator topology.
 ## 📚 Related Documentation
 
 - [scripts/README.md](./README.md) — Detailed usage guide
-- [DEVELOPER.md](../DEVELOPER.md) — Development workflow (forthcoming)
-- [PHASE_1_PLAN.md](../PHASE_1_PLAN.md) — Current phase details
+- [DEVELOPER.md](../../DEVELOPER.md) — Development workflow (forthcoming)
+- [PHASE_1_PLAN.md](PHASE_1_PLAN.md) — Current phase details
 - [docs/architecture/project-goal.md](../docs/architecture/project-goal.md) — System architecture
 
 ---

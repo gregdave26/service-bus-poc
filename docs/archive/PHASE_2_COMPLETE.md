@@ -320,7 +320,7 @@ All 9 tasks now include architecture standards compliance:
 2. [PHASE_2_HYBRID_TDD.md](./PHASE_2_HYBRID_TDD.md) — TDD approach (321 lines)
    - Sections: Decision, Approach by Layer, Workflow Examples, Architecture Principles
 
-3. [docs/phase-2-dev-guidelines.md](docs/phase-2-dev-guidelines.md) — Developer guide (524 lines)
+3. [docs/phase-2-dev-guidelines.md](../phase-2-dev-guidelines.md) — Developer guide (524 lines)
    - Sections: Core Principles, TDD Workflow, DI Pattern, Error Handling, Logging, Anti-Patterns, Code Review Checklist
 
 **Quick Reference:**

@@ -11,7 +11,7 @@
 
 | File | Purpose | Size | Status |
 |------|---------|------|--------|
-| [PROJECT_BRIEF.md](PROJECT_BRIEF.md) | Business goals and scope | 85 lines | ✅ Existing |
+| [PROJECT_BRIEF.md](../../PROJECT_BRIEF.md) | Business goals and scope | 85 lines | ✅ Existing |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Full project phases and timeline | 484 lines | ✅ Created today |
 | [PHASE_1_PLAN.md](PHASE_1_PLAN.md) | Detailed Phase 1 work plan | 11.8 KB | ✅ Created today |
 | [PHASE_1_ORCHESTRATION.md](PHASE_1_ORCHESTRATION.md) | Team coordination workflow | 9.3 KB | ✅ Created today |
@@ -212,7 +212,7 @@ service-bus-poc/
 ## 📚 Reading Order
 
 **First Time Onboarding:**
-1. [PROJECT_BRIEF.md](PROJECT_BRIEF.md) (business context)
+1. [PROJECT_BRIEF.md](../../PROJECT_BRIEF.md) (business context)
 2. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (full timeline)
 3. [PHASE_1_PLAN.md](PHASE_1_PLAN.md) (current phase)
 4. [docs/decisions/DECISIONS_SUMMARY.md](docs/decisions/DECISIONS_SUMMARY.md) (technical overview)
@@ -229,7 +229,7 @@ service-bus-poc/
 
 | Need | Document |
 |------|----------|
-| Business goals? | [PROJECT_BRIEF.md](PROJECT_BRIEF.md) |
+| Business goals? | [PROJECT_BRIEF.md](../../PROJECT_BRIEF.md) |
 | Full timeline? | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) |
 | Phase 1 tasks? | [PHASE_1_PLAN.md](PHASE_1_PLAN.md) |
 | Technical decisions? | [docs/decisions/DECISIONS_SUMMARY.md](docs/decisions/DECISIONS_SUMMARY.md) |

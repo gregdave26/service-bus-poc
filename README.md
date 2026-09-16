@@ -124,8 +124,9 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for stack
 ## References
 
 - [PROJECT_BRIEF.md](PROJECT_BRIEF.md) — Business context and requirements
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — Full phase breakdown and remaining work
 - [docs/decisions/](docs/decisions/) — ADRs for technical decisions
-- [docs/archive/](docs/archive/) — Historical phase plans and status reports, kept for record but superseded by this README and the ADRs
+- [docs/archive/](docs/archive/) — Historical status reports and completed-phase writeups, superseded by this README, the ADRs, and IMPLEMENTATION_PLAN.md
 
 ## License
 

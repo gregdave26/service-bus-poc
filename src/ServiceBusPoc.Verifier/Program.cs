@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.DependencyInjection;
 using ServiceBusPoc.Core.Logging;
+using ServiceBusPoc.Core.Utilities;
 using ServiceBusPoc.Verifier.Services;
 
 var host = Host.CreateDefaultBuilder(args)
@@ -18,6 +19,7 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
+            .AddScoped<TopologyValidator>()
             .AddScoped<VerifierService>();
     })
     .Build();

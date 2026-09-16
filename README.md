@@ -9,7 +9,7 @@ This project implements a contact event distribution system where CRM/MDM system
 - **Digital Channels** receives all contact events
 - **Insurance** receives only contacts with `hasInsurance = true`
 - **Parks & Resorts** receives only contacts with `hasParksResorts = true`
-- **Carwash** receives only contacts with `hasCarwashProduct = true` and integrates with Pulse Contact CRUD API
+- **Carwash** receives only contacts with `hasCarwashProduct = true` and provides an API to verify membership
 
 ## Project Structure
 

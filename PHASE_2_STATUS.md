@@ -34,7 +34,7 @@ Phase 2 plan has been **comprehensively updated** to integrate user-level guidan
    - New "Code Quality Assurance" section with pre-PR checklist
    - 30+ items grouped by concern (Architecture, SOLID, Clean Code, Error Handling, etc.)
 
-4. **[.github/instructions/phase-2-dev-guidelines.instructions.md](./\.github\instructions\phase-2-dev-guidelines.instructions.md)** (524 lines) **NEW**
+4. **[docs/phase-2-dev-guidelines.md](./docs/phase-2-dev-guidelines.md)** (524 lines) **NEW**
    - Developer-focused implementation guide
    - Core Principles section (Clean Architecture, SOLID, Clean Code with examples)
    - TDD Workflow (4 steps with code examples)
@@ -138,7 +138,7 @@ Phase 2 plan has been **comprehensively updated** to integrate user-level guidan
 | **Error Handling** | Added explicit "no catch-swallow" requirement |
 | **Code Review** | Added 30+ item pre-PR checklist |
 | **Anti-Patterns** | Added explicit list of 7 patterns to avoid |
-| **Developer Guidance** | Added .github/instructions/phase-2-dev-guidelines.instructions.md |
+| **Developer Guidance** | Added docs/phase-2-dev-guidelines.md |
 | **Documentation** | Increased from ~600 to 1,416+ lines |
 | **Timeline** | Updated to 14–16 hours (includes architecture review) |
 
@@ -155,7 +155,7 @@ Phase 2 plan has been **comprehensively updated** to integrate user-level guidan
 - Read all documents in order:
   1. PHASE_2_PLAN.md (406 lines, specification)
   2. PHASE_2_HYBRID_TDD.md (321 lines, TDD approach + examples)
-  3. .github/instructions/phase-2-dev-guidelines.instructions.md (524 lines, dev guide)
+  3. docs/phase-2-dev-guidelines.md (524 lines, dev guide)
 - Begin with Docker Compose topology
 - Write ProducerServiceTests.cs first (TDD)
 - Follow architecture standards from dev guidelines
@@ -170,7 +170,7 @@ Phase 2 plan has been **comprehensively updated** to integrate user-level guidan
 ## Files Updated/Created
 
 ### Created
-- ✅ `.github/instructions/phase-2-dev-guidelines.instructions.md` (524 lines)
+- ✅ `docs/phase-2-dev-guidelines.md` (524 lines)
 - ✅ `PHASE_2_HYBRID_TDD.md` (321 lines, architecture + TDD workflow)
 - ✅ `PHASE_2_COMPLETE.md` (comprehensive summary)
 

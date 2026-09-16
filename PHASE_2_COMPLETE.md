@@ -39,7 +39,7 @@ Phase 2 plan now includes **comprehensive RAC Engineering Standards** applied th
    - **NEW:** "Code Quality Assurance (Pre-PR Review Checklist)" section (lines 60–124)
    - Comprehensive checklist covering: Architecture, SOLID, Clean Code, Error Handling, Async/Await, Testing, Compiler, Anti-Patterns
 
-4. **[.github/instructions/phase-2-dev-guidelines.instructions.md](./\\.github\\instructions\\phase-2-dev-guidelines.instructions.md)** (524 lines) **NEW**
+4. **[docs/phase-2-dev-guidelines.md](./docs/phase-2-dev-guidelines.md)** (524 lines) **NEW**
    - Developer-focused implementation guide
    - **Core Principles section:** Clean Architecture, SOLID, Clean Code (with examples)
    - **TDD Workflow section:** Step-by-step with code examples for each step
@@ -320,7 +320,7 @@ All 9 tasks now include architecture standards compliance:
 2. [PHASE_2_HYBRID_TDD.md](./PHASE_2_HYBRID_TDD.md) — TDD approach (321 lines)
    - Sections: Decision, Approach by Layer, Workflow Examples, Architecture Principles
 
-3. [.github/instructions/phase-2-dev-guidelines.instructions.md](./.github/instructions/phase-2-dev-guidelines.instructions.md) — Developer guide (524 lines)
+3. [docs/phase-2-dev-guidelines.md](docs/phase-2-dev-guidelines.md) — Developer guide (524 lines)
    - Sections: Core Principles, TDD Workflow, DI Pattern, Error Handling, Logging, Anti-Patterns, Code Review Checklist
 
 **Quick Reference:**
@@ -329,7 +329,7 @@ All 9 tasks now include architecture standards compliance:
 ### During Implementation
 
 **Code Review Checklist:**
-Use `.github/instructions/phase-2-dev-guidelines.instructions.md` sections 10–14 for every PR:
+Use `docs/phase-2-dev-guidelines.md` sections 10–14 for every PR:
 - ✅ Architecture & Design (3 items)
 - ✅ SOLID Principles (5 items)
 - ✅ Clean Code (5 items)
@@ -373,7 +373,7 @@ Use `.github/instructions/phase-2-dev-guidelines.instructions.md` sections 10–
 2. ✅ Study TDD workflow with architecture examples
 3. ✅ Begin with Docker Compose topology
 4. ✅ Write ProducerServiceTests.cs first (TDD)
-5. ✅ Follow architecture standards from phase-2-dev-guidelines.instructions.md
+5. ✅ Follow architecture standards from phase-2-dev-guidelines.md
 6. ✅ Use code review checklist for every PR
 
 ### For QA (Ivy, optional)

@@ -8,9 +8,9 @@
 
 ## Before You Start: Read These First
 
-1. ✅ [PHASE_2_PLAN.md](../../PHASE_2_PLAN.md) — Complete specification and acceptance criteria
-2. ✅ [PHASE_2_HYBRID_TDD.md](../../PHASE_2_HYBRID_TDD.md) — TDD workflow with examples
-3. ✅ [PHASE_2_APPROVED.md](../../PHASE_2_APPROVED.md) — Architecture standards and checklist
+1. ✅ [PHASE_2_PLAN.md](../PHASE_2_PLAN.md) — Complete specification and acceptance criteria
+2. ✅ [PHASE_2_HYBRID_TDD.md](../PHASE_2_HYBRID_TDD.md) — TDD workflow with examples
+3. ✅ [PHASE_2_APPROVED.md](../PHASE_2_APPROVED.md) — Architecture standards and checklist
 
 ---
 

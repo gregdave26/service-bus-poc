@@ -41,9 +41,9 @@ The architecture reference defines the project context:
 | Area | Path | Purpose |
 |---|---|---|
 | Event contract | `contracts/` | Canonical `contact.events` schemas used by producers and consumers |
-| App | `src/ServiceBus.Poc/` | Producer, consumer, Carwash-to-Pulse integration, scenario verifier, settings |
-| Tests | `tests/ServiceBus.Poc.Tests/` | Schema, routing, settings, scenario tests |
-| Azure IaC | `infra/main.bicep`, `infra/modules/` | `contact.events` topology, filtered subscriptions, and least-privilege RBAC |
+| App | `src/ServiceBusPoc.*/` | Producer, consumer, Carwash-to-Pulse integration, scenario verifier, settings |
+| Tests | `tests/ServiceBusPoc.Tests/` | Schema, routing, settings, scenario tests |
+| Azure IaC | `infra/main.bicep`, `infra/modules/` | `contact.events` topology, filtered subscriptions, and least-privilege RBAC (planned, not yet implemented) |
 | Local infra | `infra/servicebus/compose.yaml`, `config.json` | Emulator topology equivalent to Bicep |
 | Scripts | `scripts/` | Local run and Azure deploy |
 | Agents | `.github/agents/` | Producer, Dev, QA |
@@ -65,13 +65,16 @@ The architecture reference defines the project context:
 ## 7. Current State
 
 **Working**
-- (to be updated as implementation proceeds)
+- Event contracts (`EventEnvelope<TData>`, `ContactUpdatedEvent`, product/holding-change, attributes) and matching JSON Schemas in `contracts/`.
+- .NET 10 solution scaffolded: Producer, DigitalChannels, Insurance, ParksResorts, Carwash, and Verifier console apps, plus a shared test project.
+- Carwash HTTP API (member verification) implemented and tested against a mock Pulse client (ADR-002, ADR-003).
 
 **Known issues**
-- None yet - implementation not started.
+- Bicep IaC for the Azure Service Bus topology (ADR-008) is approved but not yet implemented — the project currently runs only against the local emulator.
+- No external/APIM ingress exists yet; producers publish directly. Not currently in scope (see `.github/copilot-instructions.md`).
 
 **Next**
-- Follow the approved plan: agent/instruction setup -> event contract -> .NET scaffold -> Bicep -> emulator infra -> implementation -> tests -> scripts -> docs -> validation.
+- Remaining plan items: Bicep infrastructure, emulator Compose topology, automated tests for routing/scenario verification, automation scripts, and final end-to-end validation.
 
 ## 8. Team and Handoff
 

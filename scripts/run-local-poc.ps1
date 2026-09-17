@@ -63,7 +63,7 @@ if (-not (Test-Path $logsPath)) {
     New-Item -ItemType Directory -Path $logsPath | Out-Null
 }
 
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
 $logFile = Join-Path $logsPath "poc-run-$timestamp.log"
 
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -187,18 +187,25 @@ foreach ($app in $apps) {
     $projectPath = Join-Path $srcPath $app.Project
     if (Test-Path $projectPath) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
-        $outputPath = Join-Path $logsPath "$($app.Name)-$timestamp.stdout.log"
-        $errorPath = Join-Path $logsPath "$($app.Name)-$timestamp.stderr.log"
+        $appNameLower = $app.Name.ToLower()
+        
+        $serviceTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+        $stdoutLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stdout.log"
+        $stderrLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stderr.log"
+        
         $process = Start-Process `
             -FilePath 'dotnet' `
             -ArgumentList @('run', '--configuration', 'Debug', '--project', $projectFile) `
             -WorkingDirectory $projectRoot `
-            -RedirectStandardOutput $outputPath `
-            -RedirectStandardError $errorPath `
+            -RedirectStandardOutput $stdoutLog `
+            -RedirectStandardError $stderrLog `
             -PassThru
 
+        $pidNumber = $process.Id
+
         $processes += $process
-        Write-Host "  ➜ $($app.Name)"
+        Write-Host "  ➜ $($app.Name) [PID: $pidNumber]"
+        Write-Host "    📌 Logs: logs/$appNameLower-$serviceTimestamp-stdout.log | stderr.log" -ForegroundColor Gray
         Start-Sleep -Milliseconds 500
     }
 }

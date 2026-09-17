@@ -70,7 +70,7 @@ $logsPath = Join-Path $projectRoot 'logs'
 
 # Default log path if not provided
 if (-not $LogPath) {
-    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
     $LogPath = Join-Path $logsPath "debug-run-$timestamp.log"
 }
 
@@ -207,16 +207,24 @@ function Start-App {
 
     $projectPath = Join-Path $srcPath $ProjectName
     $projectFile = Join-Path $projectPath "$ProjectName.csproj"
-    $outputPath = Join-Path $logsPath "$AppName-$timestamp.stdout.log"
-    $errorPath = Join-Path $logsPath "$AppName-$timestamp.stderr.log"
+    $appNameLower = $AppName.ToLower()
+    
+    $serviceTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+    $stdoutLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stdout.log"
+    $stderrLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stderr.log"
 
-    return Start-Process `
+    $process = Start-Process `
         -FilePath 'dotnet' `
         -ArgumentList @('run', '--configuration', 'Debug', '--project', $projectFile) `
         -WorkingDirectory $projectRoot `
-        -RedirectStandardOutput $outputPath `
-        -RedirectStandardError $errorPath `
+        -RedirectStandardOutput $stdoutLog `
+        -RedirectStandardError $stderrLog `
         -PassThru
+    
+    $pidNumber = $process.Id
+    Write-Host "      📌 Logs: logs/$appNameLower-$serviceTimestamp-stdout.log | stderr.log" -ForegroundColor Gray
+    
+    return $process
 }
 
 # Start applications

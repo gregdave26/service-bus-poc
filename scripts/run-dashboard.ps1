@@ -20,7 +20,7 @@
     - Testing subscription filters with real events
     - Verifying consumer message routing
     
-    All output is displayed in real-time (not redirected to files).
+    All output is captured in the logs/ folder while services continue running.
 
 .PARAMETER DashboardPort
     Port for the dashboard HTTP server. Default: 5100
@@ -64,6 +64,92 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Store all processes for cleanup on exit
+$script:allProcesses = @()
+$script:shutdownInProgress = $false
+
+# Helper function to perform cleanup
+function Invoke-Cleanup {
+    if ($script:shutdownInProgress) { return }
+    $script:shutdownInProgress = $true
+    
+    Write-Host ""
+    Write-Host "⚠️  Shutting down services gracefully..." -ForegroundColor Yellow
+    
+    # Kill all tracked .NET processes and close their windows
+    Write-Host ""
+    Write-Host "Stopping .NET services:" -ForegroundColor Cyan
+    foreach ($process in $script:allProcesses) {
+        if ($null -ne $process -and -not $process.HasExited) {
+            try {
+                # Try to close window gracefully first
+                $window = $process.MainWindowHandle
+                if ($window -ne 0) {
+                    $process.CloseMainWindow() | Out-Null
+                    Start-Sleep -Milliseconds 500
+                }
+                
+                # If still running, force kill
+                if (-not $process.HasExited) {
+                    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                }
+                
+                Write-Host "  ✓ Stopped $($process.Name) (PID: $($process.Id))"
+            }
+            catch {
+                Write-Host "  ⚠️  Could not stop process $($process.Id)"
+            }
+        }
+    }
+    
+    # Force-kill any remaining dotnet processes
+    Write-Host ""
+    Write-Host "Cleaning up remaining processes:" -ForegroundColor Cyan
+    try {
+        $remaining = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue
+        if ($remaining) {
+            # Try graceful close first
+            $remaining | ForEach-Object {
+                if ($_.MainWindowHandle -ne 0) {
+                    $_.CloseMainWindow() | Out-Null
+                }
+            }
+            Start-Sleep -Milliseconds 500
+            
+            # Force kill what didn't close
+            $remaining | Where-Object { -not $_.HasExited } | Stop-Process -Force -ErrorAction SilentlyContinue
+            Write-Host "  ✓ Killed remaining dotnet processes and closed windows"
+        }
+    } catch {
+        # No remaining processes
+    }
+    
+    # Stop and remove Docker containers
+    Write-Host ""
+    Write-Host "Stopping Docker containers:" -ForegroundColor Cyan
+    try {
+        $infraPath = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent (Get-PSCallStack)[-1].ScriptName }
+        $projectRoot = Split-Path -Parent $infraPath
+        $composePath = Join-Path $projectRoot 'infra' 'servicebus'
+        
+        if (Test-Path $composePath) {
+            Push-Location $composePath
+            docker-compose down 2>&1 | ForEach-Object { Write-Host "    $_" }
+            Pop-Location
+            Write-Host "  ✓ Docker containers stopped and removed"
+        }
+    } catch {
+        Write-Host "  ⚠️  Docker cleanup failed (Docker may not be running)"
+    }
+    
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║                    ✓ Cleanup complete. Goodbye!                           ║" -ForegroundColor Green
+    Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host ""
+    
+}
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
@@ -142,11 +228,53 @@ if (-not $NoEmulator) {
         $null = docker-compose up -d
         Write-Host "  ✓ Emulator started"
         
-        # Give SQL Server and Service Bus a moment to start listening
-        # (Much shorter than before - the Producer will verify actual AMQP readiness)
-        Write-Host "  Waiting 15 seconds for minimal initialization..."
-        Start-Sleep -Seconds 15
-        Write-Host "  ✓ Ready to proceed (Producer will verify AMQP readiness)"
+        # Wait for AMQP port - SIMPLE AND ROBUST approach
+        # The emulator needs: SQL Edge (15-30s) + Service Bus (10-20s) + AMQP ready (5-10s) = 45-60s minimum
+        Write-Host "  Waiting for emulator AMQP port (5672) to become available..."
+        
+        # Start with a guaranteed fixed wait for initial startup
+        Write-Host "    Phase 1: Initial startup (30 seconds guaranteed)..."
+        Start-Sleep -Seconds 30
+        
+        # Then actively poll with timeout
+        Write-Host "    Phase 2: Polling for AMQP readiness (up to 90 more seconds)..."
+        $maxPollingSeconds = 90
+        $found = $false
+        
+        for ($i = 1; $i -le $maxPollingSeconds; $i++) {
+            $socket = $null
+            try {
+                $socket = New-Object System.Net.Sockets.TcpClient
+                $socket.ConnectAsync('localhost', 5672) | Wait-Job -Timeout 2 | Out-Null
+                
+                if ($socket.Connected) {
+                    Write-Host "  ✓ AMQP port 5672 is ready (after $((30 + $i))s total)" -ForegroundColor Green
+                    $found = $true
+                    $socket.Close()
+                    break
+                }
+            } catch {
+                # Connection attempt failed - expected for first 20-40 seconds
+            } finally {
+                if ($socket) {
+                    $socket.Dispose()
+                }
+            }
+            
+            # Show progress every 10 seconds
+            if (-not $found -and $i % 10 -eq 0) {
+                Write-Host "    [$($i)/$maxPollingSeconds seconds of polling] Still waiting for port to respond..."
+            }
+            
+            Start-Sleep -Seconds 1
+        }
+        
+        # If polling succeeded, great! If not, we've still waited 60 seconds minimum
+        if ($found) {
+            Write-Host "  ✓ Port confirmed ready"
+        } else {
+            Write-Host "  ⚠️  Port not responding after polling, but proceeding anyway (emulator may still be initializing)"
+        }
     }
     catch {
         Write-Error "❌ Failed to start emulator: $_"
@@ -229,34 +357,41 @@ function Start-AppWithLogging {
     }
     
     try {
-        if ($Terminals) {
-            # Launch in separate terminal window
-            $process = Start-Process `
-                -FilePath 'dotnet' `
-                -ArgumentList @('run', '--configuration', 'Debug', '--project', $ProjectFile) `
-                -WorkingDirectory $projectRoot `
-                -PassThru
-        } else {
-            # Create timestamped log filenames
-            $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-            $stdoutLog = Join-Path $logsPath "$Name-$timestamp.stdout.log"
-            $stderrLog = Join-Path $logsPath "$Name-$timestamp.stderr.log"
-            
-            # Launch inline with output redirected to console
-            $process = Start-Process `
-                -FilePath 'dotnet' `
-                -ArgumentList @('run', '--configuration', 'Debug', '--project', $ProjectFile) `
-                -WorkingDirectory $projectRoot `
-                -PassThru `
-                -NoNewWindow `
-                -RedirectStandardOutput $stdoutLog `
-                -RedirectStandardError $stderrLog
-            
-            # Display where logs are being written
-            Write-Host "  ℹ Output redirected to logs/$Name-$timestamp.stdout.log and logs/$Name-$timestamp.stderr.log"
-        }
+        $appNameLower = $Name.ToLower()
+        $timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
         
-        Write-Host "  ✓ $Name ($Description)" -ForegroundColor Green
+        # Use a timestamp in the log name so each service run is easy to identify.
+        $launchArguments = @(
+            '-NoProfile',
+            '-Command',
+            "& dotnet run --configuration Debug --project '$ProjectFile' 1> '$logsPath\$appNameLower-$timestamp-stdout.log' 2> '$logsPath\$appNameLower-$timestamp-stderr.log'"
+        )
+
+        $startOptions = @{
+            FilePath = 'powershell'
+            ArgumentList = $launchArguments
+            WorkingDirectory = $projectRoot
+            PassThru = $true
+        }
+        if (-not $Terminals) {
+            $startOptions.NoNewWindow = $true
+        }
+        $process = Start-Process @startOptions
+
+        $pidNumber = $process.Id
+        $finalStdoutLog = Join-Path $logsPath "$appNameLower-$timestamp-stdout.log"
+        $finalStderrLog = Join-Path $logsPath "$appNameLower-$timestamp-stderr.log"
+        
+        Write-Host "  ✓ $Name ($Description) [PID: $pidNumber]" -ForegroundColor Green
+        Write-Host "    📌 Logs: logs/$appNameLower-$timestamp-stdout.log | stderr.log" -ForegroundColor Gray
+        
+        # Store the log file paths on the process object for later reference
+        $process | Add-Member -NotePropertyName LogFiles -NotePropertyValue @{
+            StdOut = $finalStdoutLog
+            StdErr = $finalStderrLog
+            Name = $appNameLower
+        } -Force
+        
         return $process
     }
     catch {
@@ -265,8 +400,8 @@ function Start-AppWithLogging {
     }
 }
 
-# Store the set of all started processes for cleanup
-$allProcesses = @()
+# Store the set of all started processes for cleanup (uses $script:allProcesses from trap)
+$script:allProcesses = @()
 
 # Start each application
 foreach ($app in $apps) {
@@ -276,7 +411,7 @@ foreach ($app in $apps) {
         $process = Start-AppWithLogging -Name $app.Name -ProjectPath $projectPath -ProjectFile $projectFile -Description $app.Description -SubscriptionName $app.SubscriptionName
         
         if ($null -ne $process) {
-            $allProcesses += $process
+            $script:allProcesses += $process
             
             # Give each service time to start and initialize (stagger startup to avoid emulator connection contention)
             Start-Sleep -Seconds 2
@@ -351,32 +486,51 @@ Write-Host "  4. See dashboard status update in real-time"
 Write-Host "  5. Stop services: Press Ctrl+C here"
 Write-Host ""
 
-# Set up Ctrl+C handler for graceful shutdown
-$null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
-    Write-Host ""
-    Write-Host "Shutting down services..." -ForegroundColor Yellow
-    
-    foreach ($process in $allProcesses) {
-        if ($null -ne $process -and -not $process.HasExited) {
-            try {
-                Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
-                Write-Host "  ✓ Stopped process $($process.Id)"
-            }
-            catch {
-                Write-Host "  ⚠️ Could not stop process $($process.Id)"
-            }
-        }
-    }
-    
-    Write-Host "  ✓ Services stopped"
-    Write-Host ""
-}
-
-# Keep the script running
+# Keep the script running and listen for Ctrl+C
 Write-Host "Press Ctrl+C to stop all services..."
 Write-Host ""
 
-# Monitor processes and keep script alive
-while ($true) {
-    Start-Sleep -Seconds 10
+# Main monitoring loop.
+# Treat Ctrl+C as a console key so PowerShell does not terminate the script
+# before the application cleanup runs.
+$previousTreatControlCAsInput = [Console]::TreatControlCAsInput
+[Console]::TreatControlCAsInput = $true
+
+try {
+    while ($true) {
+        if ($Host.UI.RawUI.KeyAvailable) {
+            $key = $Host.UI.RawUI.ReadKey('AllowCtrlC,NoEcho,IncludeKeyDown')
+            if ([int]$key.Character -eq 3) {
+                Write-Host ""
+                Write-Host "Ctrl+C detected. Stopping all services..." -ForegroundColor Yellow
+                Invoke-Cleanup
+                break
+            }
+        }
+
+        # Check if any process has exited unexpectedly
+        $running = $script:allProcesses | Where-Object { $null -ne $_ -and -not $_.HasExited }
+        if (-not $running) {
+            Write-Host ""
+            Write-Host "All services have stopped." -ForegroundColor Yellow
+            
+            # Call cleanup before exiting
+            if (-not $script:shutdownInProgress) {
+                Invoke-Cleanup
+            }
+            break
+        }
+        
+        Start-Sleep -Milliseconds 100
+    }
+}
+catch {
+    Write-Host ""
+    Write-Host "Unexpected shutdown signal received. Stopping all services..." -ForegroundColor Yellow
+    if (-not $script:shutdownInProgress) {
+        Invoke-Cleanup
+    }
+}
+finally {
+    [Console]::TreatControlCAsInput = $previousTreatControlCAsInput
 }

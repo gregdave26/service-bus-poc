@@ -20,6 +20,12 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
 $infraPath = Join-Path $projectRoot 'infra'
+$logsPath = Join-Path $projectRoot 'logs'
+
+# Ensure logs directory exists
+if (-not (Test-Path $logsPath)) {
+    New-Item -ItemType Directory -Path $logsPath | Out-Null
+}
 
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║                  MINIMAL TEST: Producer + One Consumer                     ║" -ForegroundColor Cyan
@@ -92,32 +98,47 @@ $processes = @()
 
 # Start Producer
 Write-Host "  Starting Producer..."
+$producerTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+$producerStdoutLog = Join-Path $logsPath "producer-$producerTimestamp-stdout.log"
+$producerStderrLog = Join-Path $logsPath "producer-$producerTimestamp-stderr.log"
+
 $producerProc = Start-Process `
     -FilePath 'dotnet' `
     -ArgumentList @('run', '--configuration', 'Debug', '--project', 'src/ServiceBusPoc.Producer/ServiceBusPoc.Producer.csproj') `
     -WorkingDirectory $projectRoot `
+    -RedirectStandardOutput $producerStdoutLog `
+    -RedirectStandardError $producerStderrLog `
     -PassThru `
     -NoNewWindow
 
 if ($null -ne $producerProc) {
     $processes += $producerProc
     Write-Host "  ✓ Producer started (PID: $($producerProc.Id))"
+    Write-Host "    📌 Logs: logs/producer-$producerTimestamp-stdout.log | stderr.log" -ForegroundColor Gray
     Start-Sleep -Seconds 3
 }
 
 # Start DigitalChannels Consumer
 Write-Host "  Starting DigitalChannels consumer..."
 $env:ServiceBus__SubscriptionName = "digital-channels"
+
+$digitalTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+$digitalStdoutLog = Join-Path $logsPath "digitalchannels-$digitalTimestamp-stdout.log"
+$digitalStderrLog = Join-Path $logsPath "digitalchannels-$digitalTimestamp-stderr.log"
+
 $digitalProc = Start-Process `
     -FilePath 'dotnet' `
     -ArgumentList @('run', '--configuration', 'Debug', '--project', 'src/ServiceBusPoc.DigitalChannels/ServiceBusPoc.DigitalChannels.csproj') `
     -WorkingDirectory $projectRoot `
+    -RedirectStandardOutput $digitalStdoutLog `
+    -RedirectStandardError $digitalStderrLog `
     -PassThru `
     -NoNewWindow
 
 if ($null -ne $digitalProc) {
     $processes += $digitalProc
     Write-Host "  ✓ DigitalChannels started (PID: $($digitalProc.Id))"
+    Write-Host "    📌 Logs: logs/digitalchannels-$digitalTimestamp-stdout.log | stderr.log" -ForegroundColor Gray
     Start-Sleep -Seconds 3
 }
 

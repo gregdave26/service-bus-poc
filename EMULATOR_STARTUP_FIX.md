@@ -23,22 +23,28 @@ EMULATOR_HTTP_PORT=5300
 **Note:** This file is in `.gitignore` and should never be committed with real secrets.
 
 ### 2. ✅ Increased Emulator Initialization Wait
-**File:** `scripts/run-dashboard.ps1` (lines 145-157)
+**File:** `scripts/run-dashboard.ps1` (lines 145-161)
 
-Changed emulator wait time from **30 seconds → 120 seconds** to account for:
-- SQL Server initialization
-- Service Bus startup
-- AMQP port becoming ready for SDK connections
+Changed emulator wait time from **15 seconds → 60 seconds** with **progress countdown** to account for:
+- SQL Edge container initialization: 15-30 seconds
+- Service Bus startup: 10-20 seconds  
+- AMQP port binding: 5-10 seconds
 
 ```powershell
-Write-Host "  Waiting 120 seconds for complete emulator initialization..."
-for ($i = 0; $i -lt 120; $i++) {
-    if ($i % 30 -eq 0 -and $i -gt 0) {
-        Write-Host "    ${i}s elapsed, continuing to wait..." -ForegroundColor Gray
-    }
+Write-Host "  Waiting for emulator to fully initialize (60 seconds)..."
+$remainingSeconds = 60
+while ($remainingSeconds -gt 0) {
+    $mins = [math]::Floor($remainingSeconds / 60)
+    $secs = $remainingSeconds % 60
+    Write-Host "  ⏳ Waiting... $mins`:$("{0:D2}" -f $secs) remaining" -NoNewline
     Start-Sleep -Seconds 1
+    $remainingSeconds--
+    Write-Host "`r" -NoNewline
 }
+Write-Host "  ✓ Ready to proceed (Producer will verify AMQP readiness)        "
 ```
+
+This progress feedback ensures visibility that emulator initialization is in progress.
 
 ### 3. ✅ Producer Retry Logic with Exponential Backoff
 **File:** `src/ServiceBusPoc.Producer/Services/ProducerService.cs` (lines 87-156)

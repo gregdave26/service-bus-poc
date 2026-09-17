@@ -18,10 +18,20 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
-            .AddScoped<InsuranceConsumerService>();
+            .AddDashboardConfiguration(context.Configuration)
+            .AddContactEventConsuming()
+            .AddDashboardReporting()
+            .AddSingleton<InsuranceConsumerService>();
     })
     .Build();
 
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 await using var scope = host.Services.CreateAsyncScope();
 var consumer = scope.ServiceProvider.GetRequiredService<InsuranceConsumerService>();
-await consumer.RunAsync();
+await consumer.RunAsync(cts.Token);

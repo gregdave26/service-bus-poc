@@ -1,37 +1,48 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using ServiceBusPoc.Core.Configuration;
+using ServiceBusPoc.Core.Dashboard;
+using ServiceBusPoc.Core.Messaging;
 
 namespace ServiceBusPoc.ParksResorts.Services;
 
 /// <summary>
-/// Parks & Resorts consumer service stub for Phase 2 implementation.
-/// Receives contact events filtered by hasParksResorts = true.
+/// Consumes contact events from the <c>parks-resorts</c> subscription.
+/// Only receives messages where <c>hasParksResorts = true</c> (filtering done by the broker).
+/// Logs each received message to the console and reports heartbeats to the dashboard.
 /// </summary>
-public class ParksResortsConsumerService
+public sealed class ParksResortsConsumerService
 {
+    private readonly SubscriptionConsumerRunner _consumerRunner;
     private readonly ILogger<ParksResortsConsumerService> _logger;
-    private readonly IOptions<ServiceBusSettings> _serviceBusSettings;
 
     public ParksResortsConsumerService(
-        ILogger<ParksResortsConsumerService> logger,
-        IOptions<ServiceBusSettings> serviceBusSettings)
+        SubscriptionConsumerRunner consumerRunner,
+        ILogger<ParksResortsConsumerService> logger)
     {
+        _consumerRunner = consumerRunner;
         _logger = logger;
-        _serviceBusSettings = serviceBusSettings;
     }
 
     /// <summary>
-    /// Runs the consumer service.
+    /// Runs the consumer service, listening for messages on the parks-resorts subscription.
     /// </summary>
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Parks & Resorts consumer service starting...");
-        _logger.LogInformation("Subscription: {SubscriptionName}", _serviceBusSettings.Value.SubscriptionName);
-        _logger.LogInformation("Filter: hasParksResorts = true");
 
-        // TODO: Implement consumer logic in Phase 2
-        _logger.LogInformation("Parks & Resorts consumer service ready for Phase 2 implementation");
-        await Task.CompletedTask;
+        var descriptor = new ConsumerDescriptor("parks-resorts", "hasParksResorts = true");
+
+        try
+        {
+            await _consumerRunner.RunAsync(descriptor, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Parks & Resorts consumer service cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Parks & Resorts consumer service encountered an error");
+            throw;
+        }
     }
 }

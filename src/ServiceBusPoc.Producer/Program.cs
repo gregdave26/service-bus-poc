@@ -18,10 +18,20 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
-            .AddScoped<ProducerService>();
+            .AddDashboardConfiguration(context.Configuration)
+            .AddContactEventPublishing()
+            .AddDashboardReporting()
+            .AddSingleton<ProducerService>();
     })
     .Build();
 
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 await using var scope = host.Services.CreateAsyncScope();
 var producer = scope.ServiceProvider.GetRequiredService<ProducerService>();
-await producer.RunAsync();
+await producer.RunAsync(cts.Token);

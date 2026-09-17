@@ -237,6 +237,11 @@ function Start-AppWithLogging {
                 -WorkingDirectory $projectRoot `
                 -PassThru
         } else {
+            # Create timestamped log filenames
+            $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+            $stdoutLog = Join-Path $logsPath "$Name-$timestamp.stdout.log"
+            $stderrLog = Join-Path $logsPath "$Name-$timestamp.stderr.log"
+            
             # Launch inline with output redirected to console
             $process = Start-Process `
                 -FilePath 'dotnet' `
@@ -244,11 +249,11 @@ function Start-AppWithLogging {
                 -WorkingDirectory $projectRoot `
                 -PassThru `
                 -NoNewWindow `
-                -RedirectStandardOutput (Join-Path $logsPath "$Name-stdout.log") `
-                -RedirectStandardError (Join-Path $logsPath "$Name-stderr.log")
+                -RedirectStandardOutput $stdoutLog `
+                -RedirectStandardError $stderrLog
             
-            # Tail the log files in the console
-            Write-Host "  ℹ Output redirected to logs/$Name-stdout.log and logs/$Name-stderr.log"
+            # Display where logs are being written
+            Write-Host "  ℹ Output redirected to logs/$Name-$timestamp.stdout.log and logs/$Name-$timestamp.stderr.log"
         }
         
         Write-Host "  ✓ $Name ($Description)" -ForegroundColor Green

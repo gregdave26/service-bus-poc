@@ -33,6 +33,16 @@ public sealed class CarwashConsumerService
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Carwash consumer service starting...");
+        var startTime = DateTimeOffset.UtcNow;
+
+        // Wait for the Service Bus subscription to be ready with exponential backoff
+        var connected = await _consumerRunner.WaitForReadyAsync(startTime, cancellationToken);
+        if (!connected)
+        {
+            _logger.LogError("Service Bus subscription did not become ready within timeout");
+            throw new InvalidOperationException("Service Bus subscription did not become ready within timeout");
+        }
+
         _logger.LogInformation("Pulse API URL: {ApiUrl}", _carwashSettings.Value.ApiUrl);
         _logger.LogInformation("Mock mode: {MockMode}", _carwashSettings.Value.MockMode);
 

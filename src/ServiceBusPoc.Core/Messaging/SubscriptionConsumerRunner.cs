@@ -49,6 +49,112 @@ public sealed class SubscriptionConsumerRunner
     }
 
     /// <summary>
+    /// Waits for the Service Bus subscription to be ready by attempting to receive a message.
+    /// Uses exponential backoff: 100ms, 200ms, 400ms, 800ms, 1.6s, 3.2s, 6.4s, 12.8s, 25.6s, 51.2s max.
+    /// </summary>
+    /// <param name="startTime">Time when the wait started.</param>
+    /// <param name="cancellationToken">Token used to cancel the wait.</param>
+    /// <returns>True if subscription is ready, false if timeout occurs.</returns>
+    public async Task<bool> WaitForReadyAsync(DateTimeOffset startTime, CancellationToken cancellationToken)
+    {
+        var maxWaitDuration = TimeSpan.FromSeconds(120);
+        var initialDelay = TimeSpan.FromMilliseconds(100);
+        var currentDelay = initialDelay;
+        var attempt = 0;
+
+        while ((DateTimeOffset.UtcNow - startTime) < maxWaitDuration)
+        {
+            attempt++;
+            var elapsedAtCheck = DateTimeOffset.UtcNow - startTime;
+
+            try
+            {
+                // Log connection attempt start - every attempt for first 5, then every 10th
+                if (attempt <= 5 || attempt % 10 == 0)
+                {
+                    _logger.LogInformation(
+                        "Service Bus subscription connection attempt {Attempt} (elapsed: {ElapsedSeconds:F1}s)... [ABOUT TO TRY]",
+                        attempt,
+                        elapsedAtCheck.TotalSeconds);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "Service Bus subscription connection attempt {Attempt} (elapsed: {ElapsedSeconds:F1}s)...",
+                        attempt,
+                        elapsedAtCheck.TotalSeconds);
+                }
+
+                // Try to receive with a short timeout to verify the subscription is accessible
+                await _receiver.ReceiveMessageAsync(TimeSpan.FromMilliseconds(100), cancellationToken);
+
+                var elapsedAtSuccess = DateTimeOffset.UtcNow - startTime;
+                _logger.LogInformation(
+                    "✓ Service Bus subscription is ready! Connected after {ElapsedSeconds:F1}s (attempt {Attempt})",
+                    elapsedAtSuccess.TotalSeconds,
+                    attempt);
+                return true;
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Log cancellation
+                _logger.LogInformation(
+                    ex,
+                    "Service Bus subscription connection attempt {Attempt} cancelled (elapsed: {ElapsedSeconds:F1}s)",
+                    attempt,
+                    elapsedAtCheck.TotalSeconds);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Log exceptions immediately after catch for first 5 attempts and every 10th
+                var elapsedAtError = DateTimeOffset.UtcNow - startTime;
+                if (attempt <= 5 || attempt % 10 == 0)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Connection attempt {Attempt} failed (elapsed: {ElapsedSeconds:F1}s): {ExceptionType} - {Message} [EXCEPTION CAUGHT]",
+                        attempt,
+                        elapsedAtError.TotalSeconds,
+                        ex.GetType().Name,
+                        ex.Message);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        ex,
+                        "Connection attempt {Attempt} failed (elapsed: {ElapsedSeconds:F1}s): {ExceptionType}",
+                        attempt,
+                        elapsedAtError.TotalSeconds,
+                        ex.GetType().Name);
+                }
+
+                // Exponential backoff: cap at ~12.8s to avoid excessive waits
+                var delayMs = (int)Math.Min(currentDelay.TotalMilliseconds, 12800);
+
+                _logger.LogDebug(
+                    "Sleeping for {DelayMs}ms before retry (exponential backoff) [ABOUT TO DELAY]",
+                    delayMs);
+
+                await Task.Delay(delayMs, cancellationToken);
+
+                _logger.LogDebug(
+                    "Sleep completed, resuming loop iteration (attempt {Attempt}) [DELAY COMPLETE]",
+                    attempt + 1);
+
+                currentDelay = TimeSpan.FromMilliseconds(currentDelay.TotalMilliseconds * 2);
+            }
+        }
+
+        _logger.LogError(
+            "Service Bus subscription connection timeout after {TotalSeconds:F1}s and {Attempts} attempts",
+            maxWaitDuration.TotalSeconds,
+            attempt);
+
+        return false;
+    }
+
+    /// <summary>
     /// Runs the receive loop until the token is cancelled.
     /// </summary>
     /// <param name="descriptor">Identity of the consuming application.</param>

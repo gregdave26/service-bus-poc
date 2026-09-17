@@ -94,28 +94,21 @@ public sealed class ProducerService
         var initialDelay = TimeSpan.FromMilliseconds(100);
         var currentDelay = initialDelay;
         var attempt = 0;
+        var lastProgressLogTime = startTime;
+        const int ProgressLogIntervalSeconds = 25;
 
         while ((DateTimeOffset.UtcNow - startTime) < maxWaitDuration)
         {
             attempt++;
+            var elapsedAtCheck = DateTimeOffset.UtcNow - startTime;
+            
             try
             {
-                // Log every attempt
-                var elapsedAtCheck = DateTimeOffset.UtcNow - startTime;
-                if (attempt % 10 == 1)  // Log attempts 1, 11, 21, etc
-                {
-                    _logger.LogInformation(
-                        "Service Bus connection attempt {Attempt} (elapsed: {ElapsedSeconds:F1}s)...",
-                        attempt,
-                        elapsedAtCheck.TotalSeconds);
-                }
-                else if (attempt % 10 == 0)
-                {
-                    _logger.LogDebug(
-                        "Service Bus connection attempt {Attempt} (elapsed: {ElapsedSeconds:F1}s)...",
-                        attempt,
-                        elapsedAtCheck.TotalSeconds);
-                }
+                // Log connection attempt start
+                _logger.LogInformation(
+                    "Service Bus connection attempt {Attempt} (elapsed: {ElapsedSeconds:F1}s)... [ABOUT TO TRY]",
+                    attempt,
+                    elapsedAtCheck.TotalSeconds);
 
                 // Try to create a test contact to verify the Service Bus is ready
                 var testContact = new ContactData
@@ -138,27 +131,59 @@ public sealed class ProducerService
                     attempt);
                 return true;
             }
+            catch (OperationCanceledException ex)
+            {
+                // Log cancellation
+                _logger.LogInformation(
+                    ex,
+                    "Service Bus connection attempt {Attempt} cancelled (elapsed: {ElapsedSeconds:F1}s)",
+                    attempt,
+                    elapsedAtCheck.TotalSeconds);
+                throw;
+            }
             catch (Exception ex)
             {
-                // Only log errors less frequently to avoid spam
-                if (attempt <= 5 || attempt % 20 == 0)
+                // Log exception immediately after catch
+                var elapsedAtError = DateTimeOffset.UtcNow - startTime;
+                _logger.LogWarning(
+                    ex,
+                    "Connection attempt {Attempt} failed (elapsed: {ElapsedSeconds:F1}s): {ExceptionType} - {Message} [EXCEPTION CAUGHT]",
+                    attempt,
+                    elapsedAtError.TotalSeconds,
+                    ex.GetType().Name,
+                    ex.Message);
+
+                // Log intermediate progress every 25 seconds to show we're still waiting
+                if ((elapsedAtError - TimeSpan.FromSeconds(ProgressLogIntervalSeconds)) >= (lastProgressLogTime - startTime))
                 {
-                    var elapsedAtError = DateTimeOffset.UtcNow - startTime;
-                    _logger.LogDebug(
-                        ex,
-                        "Connection attempt {Attempt} failed (elapsed: {ElapsedSeconds:F1}s): {ExceptionType}",
-                        attempt,
+                    _logger.LogInformation(
+                        "Still waiting for Service Bus... (elapsed: {ElapsedSeconds:F1}s, attempt {Attempt})",
                         elapsedAtError.TotalSeconds,
-                        ex.GetType().Name);
+                        attempt);
+                    lastProgressLogTime = DateTimeOffset.UtcNow;
                 }
 
                 // Exponential backoff: cap at ~12.8s to avoid excessive waits
                 var delayMs = (int)Math.Min(currentDelay.TotalMilliseconds, 12800);
+                
+                _logger.LogDebug(
+                    "Sleeping for {DelayMs}ms before retry (exponential backoff) [ABOUT TO DELAY]",
+                    delayMs);
+
                 await Task.Delay(delayMs, cancellationToken);
+
+                _logger.LogDebug(
+                    "Sleep completed, resuming loop iteration (attempt {Attempt}) [DELAY COMPLETE]",
+                    attempt + 1);
 
                 currentDelay = TimeSpan.FromMilliseconds(currentDelay.TotalMilliseconds * 2);
             }
         }
+
+        _logger.LogError(
+            "Service Bus connection timeout after {TotalSeconds:F1}s and {Attempts} attempts",
+            maxWaitDuration.TotalSeconds,
+            attempt);
 
         return false;
     }

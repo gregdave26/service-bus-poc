@@ -28,6 +28,15 @@ public sealed class InsuranceConsumerService
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Insurance consumer service starting...");
+        var startTime = DateTimeOffset.UtcNow;
+
+        // Wait for the Service Bus subscription to be ready with exponential backoff
+        var connected = await _consumerRunner.WaitForReadyAsync(startTime, cancellationToken);
+        if (!connected)
+        {
+            _logger.LogError("Service Bus subscription did not become ready within timeout");
+            throw new InvalidOperationException("Service Bus subscription did not become ready within timeout");
+        }
 
         var descriptor = new ConsumerDescriptor("insurance", "hasInsurance = true");
 

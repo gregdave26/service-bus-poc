@@ -70,6 +70,7 @@ $ErrorActionPreference = 'Stop'
 $script:allProcesses = @()
 $script:shutdownInProgress = $false
 $script:transcriptActive = $false
+$script:emulatorLogProcess = $null
 $script:previousTreatControlCAsInput = [Console]::TreatControlCAsInput
 [Console]::TreatControlCAsInput = $true
 
@@ -78,10 +79,10 @@ function Stop-OrchestrationTranscript {
         Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
         $script:transcriptActive = $false
     }
+}
 
-    function Restore-ControlCHandling {
-        [Console]::TreatControlCAsInput = $script:previousTreatControlCAsInput
-    }
+function Restore-ControlCHandling {
+    [Console]::TreatControlCAsInput = $script:previousTreatControlCAsInput
 }
 
 # Helper function to perform cleanup
@@ -139,6 +140,11 @@ function Invoke-Cleanup {
         }
     } catch {
         # No remaining processes
+    }
+
+    if ($script:emulatorLogProcess -and -not $script:emulatorLogProcess.HasExited) {
+        Stop-Process -Id $script:emulatorLogProcess.Id -Force -ErrorAction SilentlyContinue
+        $script:emulatorLogProcess = $null
     }
     
     # Stop and remove Docker containers
@@ -249,6 +255,23 @@ if (-not $NoEmulator) {
         Write-Host "  Starting containers..."
         $null = docker-compose up -d
         Write-Host "  ✓ Emulator started"
+
+        $emulatorTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+        $emulatorStdoutLog = Join-Path $logsPath "emulator-$emulatorTimestamp-stdout.log"
+        $emulatorStderrLog = Join-Path $logsPath "emulator-$emulatorTimestamp-stderr.log"
+        $script:emulatorLogProcess = Start-Process `
+            -FilePath 'docker-compose' `
+            -ArgumentList @(
+                '-f', $composePath,
+                'logs', '--follow', '--no-color', '--timestamps',
+                'emulator', 'sqledge'
+            ) `
+            -WorkingDirectory (Split-Path $composePath) `
+            -RedirectStandardOutput $emulatorStdoutLog `
+            -RedirectStandardError $emulatorStderrLog `
+            -NoNewWindow `
+            -PassThru
+        Write-Host "  Emulator logs: logs/emulator-$emulatorTimestamp-stdout.log and stderr.log"
         
         Wait-ServiceBusEmulatorReady `
             -ComposePath $composePath `
@@ -263,9 +286,12 @@ if (-not $NoEmulator) {
     catch {
         if ($_.Exception -is [System.OperationCanceledException]) {
             Write-Host "Ctrl+C detected. Stopping all services and containers..." -ForegroundColor Yellow
+            Invoke-Cleanup
+            return
         }
-        Write-Error "❌ Failed to start emulator: $_"
+
         Invoke-Cleanup
+        Write-Error "❌ Failed to start emulator: $_"
         return
     }
     finally {

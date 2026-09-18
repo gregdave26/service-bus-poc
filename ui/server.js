@@ -192,7 +192,7 @@ app.post("/api/publish", async (request, response) => {
     storeMessage({
       messageId: event.id,
       eventId: event.id,
-      serviceName: "Dashboard",
+      serviceName: "producer",
       direction: "sent",
       timestamp: event.timestamp,
       payload: JSON.stringify(event),

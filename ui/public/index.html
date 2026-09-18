@@ -18,7 +18,7 @@
       .eyebrow { color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
       .top-actions { display:flex; align-items:center; gap:12px; color:var(--muted); }
       .refresh-button, .icon-button { display:inline-grid; place-items:center; width:38px; height:38px; border-radius:11px; background:var(--surface); color:var(--ink); border:1px solid var(--line); }
-      .refresh-button:hover, .icon-button:hover { border-color:#b8c7e6; color:var(--primary); }
+      .refresh-button:hover, .icon-button:hover { border-color:#b8c7e6; color:var(--primary); } button:disabled { cursor:not-allowed; opacity:.5; }
       .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:28px; }
       .tile { position:relative; overflow:hidden; min-height:142px; width:100%; padding:20px; border:0; border-radius:22px; color:#fff; box-shadow:var(--shadow); background:linear-gradient(145deg,#2e63dc,#244bb4); text-align:left; transition:transform .18s, box-shadow .18s; }
       .tile:not(:disabled) { cursor:pointer; } .tile:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(30,55,95,.14); } .tile.selected { outline:3px solid #17233c; outline-offset:3px; }
@@ -45,7 +45,8 @@
       .message-row:hover { background:#f5f8ff; } .message-row.selected { border-color:#b9ccfa; background:#eef4ff; }
       .message-meta { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; } .message-title { margin:5px 0 3px; font-weight:700; } .message-preview { overflow:hidden; color:var(--muted); white-space:nowrap; text-overflow:ellipsis; }
       .pill { display:inline-flex; align-items:center; padding:3px 8px; border-radius:20px; font-size:11px; font-weight:700; } .pill.sent { color:#2454c9; background:#dce8ff; } .pill.received { color:#087166; background:#d9f5ef; }
-      .detail-body { padding:20px; } .detail-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; } .detail-heading p { color:var(--muted); font-size:12px; }
+      .detail-body { padding:20px; } .detail-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; } .detail-heading p { color:var(--muted); font-size:12px; } .draft-editor { padding:20px; border-top:1px solid var(--line); } .draft-editor h3 { margin-bottom:4px; } .draft-editor p { margin-bottom:16px; color:var(--muted); font-size:12px; }
+      .received-list { display:grid; gap:10px; } .received-item { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#fbfcfe; } .received-item[open] { border-color:#b9ccfa; background:#fff; } .received-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 14px; cursor:pointer; list-style:none; } .received-summary::-webkit-details-marker { display:none; } .received-summary::before { content:"›"; color:var(--muted); transition:transform .2s; } .received-item[open] .received-summary::before { transform:rotate(90deg); } .received-summary-main { min-width:0; flex:1; } .received-summary-title { overflow:hidden; font-weight:700; text-overflow:ellipsis; white-space:nowrap; } .received-summary-meta { margin-top:3px; color:var(--muted); font-size:11px; } .received-content { padding:0 14px 14px; } .received-content pre { max-height:280px; }
       pre { margin:0; max-height:320px; overflow:auto; padding:16px; border-radius:13px; background:#17233c; color:#dce7ff; font:12px/1.6 "SFMono-Regular", Consolas, monospace; }
       .verification { margin-top:16px; padding:14px; border:1px solid #bce8dd; border-radius:13px; background:#effbf8; } .verification strong { color:#087166; } .verification p { margin-top:4px; color:#4f6e69; font-size:12px; }
       .empty { padding:36px 20px; color:var(--muted); text-align:center; }
@@ -72,30 +73,29 @@
 
       <section class="workspace" aria-label="Message workspace">
         <aside class="panel">
-          <div class="panel-header"><div><h2>Draft explorer</h2><small>Folders &amp; saved payloads</small></div><button class="icon-button" id="new-draft" title="Create draft" aria-label="Create draft">＋</button></div>
+          <div class="panel-header"><div><h2>Draft explorer</h2><small>Published by Producer</small></div><button class="icon-button" id="new-draft" title="Create draft" aria-label="Create draft">＋</button></div>
           <nav id="draft-tree" class="tree" aria-label="Draft folders"></nav>
         </aside>
         <section class="panel">
-          <div class="panel-header"><div><h2 id="message-heading">Messages</h2><small id="message-count">Sent and received activity</small></div><button class="button primary" id="edit-draft">Edit draft</button></div>
+          <div class="panel-header"><div><h2 id="message-heading">Messages</h2></div></div>
           <div id="message-list" class="message-list"></div>
+          <form id="draft-form" class="draft-editor" aria-labelledby="draft-editor-title">
+            <h3 id="draft-editor-title">Message draft</h3>
+            <p>Edit the selected draft, then save it or publish it through the Producer.</p>
+            <div class="form-grid">
+              <label>Contact ID<input name="contactId" required></label><label>First name<input name="firstName" required></label><label>Last name<input name="lastName" required></label><label>Phone<input name="phone" required></label><label class="full">Email<input name="email" type="email" required></label>
+              <div class="checks"><label><input type="checkbox" name="hasInsurance"> Insurance</label><label><input type="checkbox" name="hasParksResorts"> Parks &amp; Resorts</label><label><input type="checkbox" name="hasCarwashProduct"> Carwash</label></div>
+            </div>
+            <div class="modal-actions"><button type="button" class="button secondary" id="save-draft">Save draft</button><button type="submit" class="button primary">Publish</button></div>
+          </form>
         </section>
         <section class="panel detail-panel">
-          <div class="panel-header"><div><h2>Message detail</h2><small>Read-only event inspection</small></div><span class="pill received">JSON</span></div>
+          <div class="panel-header"><div><h2>Received messages</h2><small>Expandable read-only event inspection</small></div><span class="pill received">JSON</span></div>
           <div id="message-detail" class="detail-body"></div>
         </section>
       </section>
     </main>
 
-    <div id="draft-modal" class="modal-backdrop" role="presentation" hidden>
-      <form id="draft-form" class="modal" aria-labelledby="modal-title">
-        <div class="modal-header"><div><h2 id="modal-title">Edit draft</h2><p>Update the payload before saving or publishing.</p></div><button type="button" class="icon-button" id="close-modal" aria-label="Close dialog">×</button></div>
-        <div class="form-grid">
-          <label>Contact ID<input name="contactId" required></label><label>First name<input name="firstName" required></label><label>Last name<input name="lastName" required></label><label>Phone<input name="phone" required></label><label class="full">Email<input name="email" type="email" required></label>
-          <div class="checks"><label><input type="checkbox" name="hasInsurance"> Insurance</label><label><input type="checkbox" name="hasParksResorts"> Parks &amp; Resorts</label><label><input type="checkbox" name="hasCarwashProduct"> Carwash</label></div>
-        </div>
-        <div class="modal-actions"><button type="button" class="button secondary" id="cancel-modal">Cancel</button><button type="button" class="button secondary" id="save-draft">Save draft</button><button type="submit" class="button primary">Publish</button></div>
-      </form>
-    </div>
     <div id="toast" role="status" aria-live="polite" hidden></div>
 
     <script>
@@ -112,6 +112,11 @@
       function draftById(id) { return drafts.find((draft) => draft.id === id) || drafts[0]; }
       function messagePayload(message) { try { return JSON.parse(message.payload); } catch { return null; } }
       function messageMatchesDraft(message, draft) { const payload = messagePayload(message); return !draft || payload?.data?.contactId === draft.data.contactId; }
+      function populateDraftForm() {
+        const data = selectedDraft.data;
+        for (const field of ["contactId", "firstName", "lastName", "phone", "email"]) draftForm.elements[field].value = data[field] || "";
+        for (const field of ["hasInsurance", "hasParksResorts", "hasCarwashProduct"]) draftForm.elements[field].checked = !!data[field];
+      }
 
       function renderTree() {
         const folders = [...new Set(drafts.map((draft) => draft.folder))];
@@ -119,18 +124,13 @@
           const details = document.createElement("details"); details.open = true;
           const summary = document.createElement("summary"); summary.textContent = folder; details.append(summary);
           const list = document.createElement("ul");
-          drafts.filter((draft) => draft.folder === folder).forEach((draft) => { const item = document.createElement("li"); const button = document.createElement("button"); button.className = "tree-item" + (draft.id === selectedDraft.id ? " selected" : ""); button.textContent = `▱ ${draft.name} ⋯`; button.addEventListener("click", () => { selectedDraft = draft; selectedMessage = messages.find((message) => messageMatchesDraft(message, draft)) || null; renderTree(); renderMessages(); renderDetail(); }); item.append(button); list.append(item); }); details.append(list); return details;
+          drafts.filter((draft) => draft.folder === folder).forEach((draft) => { const item = document.createElement("li"); const button = document.createElement("button"); button.className = "tree-item" + (draft.id === selectedDraft.id ? " selected" : ""); button.textContent = `▱ ${draft.name} ⋯`; button.addEventListener("click", () => { selectedDraft = draft; selectedMessage = messages.find((message) => messageMatchesDraft(message, draft)) || null; populateDraftForm(); renderTree(); renderMessages(); renderDetail(); }); item.append(button); list.append(item); }); details.append(list); return details;
         }));
       }
       function renderMessages() {
         const related = messages.filter((message) => message.serviceName === selectedService && messageMatchesDraft(message, selectedDraft));
         selectedMessage = related.find((message) => message.messageId === selectedMessage?.messageId) || related[0] || null;
-        $("#message-heading").textContent = selectedService ? `${selectedService} messages` : "Select a service";
-        $("#message-count").textContent = messagesLoading
-          ? "Loading live activity…"
-          : selectedService
-            ? `${related.length} ${related.length === 1 ? "activity item" : "activity items"} · ${selectedDraft.name}`
-            : "Choose a service tile to inspect activity";
+        $("#message-heading").textContent = "Messages";
         if (!related.length) { const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = messagesLoading ? "Loading live messages…" : "No live activity for this draft yet."; $("#message-list").replaceChildren(empty); return; }
         $("#message-list").replaceChildren(...related.map((message) => {
           const row = document.createElement("button"); row.className = "message-row" + (selectedMessage?.messageId === message.messageId ? " selected" : "");
@@ -141,10 +141,64 @@
         }));
       }
       function renderDetail() {
-        const detail = $("#message-detail"); detail.replaceChildren(); if (!selectedMessage) { const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = messagesLoading ? "Loading live messages…" : "Select a live message to inspect its event envelope."; detail.append(empty); return; }
-        const heading = document.createElement("div"); heading.className = "detail-heading"; const copy = document.createElement("div"); const title = document.createElement("h3"); title.textContent = selectedMessage.eventId; const sub = document.createElement("p"); sub.textContent = `${selectedMessage.serviceName} · ${new Date(selectedMessage.timestamp).toLocaleString()}`; copy.append(title, sub); const pill = document.createElement("span"); pill.className = `pill ${selectedMessage.direction}`; pill.textContent = selectedMessage.direction; heading.append(copy, pill);
-        const pre = document.createElement("pre"); const payload = messagePayload(selectedMessage); pre.textContent = payload ? JSON.stringify(payload, null, 2) : selectedMessage.payload;
-        const verification = document.createElement("div"); verification.className = "verification"; const strong = document.createElement("strong"); strong.textContent = "✓ Live message"; const note = document.createElement("p"); note.textContent = "Original dashboard-reported payload. This panel is read-only."; verification.append(strong, note); detail.append(heading, pre, verification);
+        const detail = $("#message-detail");
+        detail.replaceChildren();
+        const received = messages
+          .filter((message) => message.serviceName === selectedService && message.direction === "received")
+          .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp));
+
+        if (!received.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = messagesLoading
+            ? "Loading live messages…"
+            : selectedService
+              ? "No received messages for this service yet."
+              : "Select a service to inspect received messages.";
+          detail.append(empty);
+          return;
+        }
+
+        const list = document.createElement("div");
+        list.className = "received-list";
+        received.forEach((message, index) => {
+          const item = document.createElement("details");
+          item.className = "received-item";
+          item.open = index === 0 || message.messageId === selectedMessage?.messageId;
+
+          const summary = document.createElement("summary");
+          summary.className = "received-summary";
+          const summaryMain = document.createElement("div");
+          summaryMain.className = "received-summary-main";
+          const summaryTitle = document.createElement("div");
+          summaryTitle.className = "received-summary-title";
+          summaryTitle.textContent = message.eventId;
+          const summaryMeta = document.createElement("div");
+          summaryMeta.className = "received-summary-meta";
+          summaryMeta.textContent = `${new Date(message.timestamp).toLocaleString()}${message.subscriptionName ? ` · ${message.subscriptionName}` : ""}`;
+          summaryMain.append(summaryTitle, summaryMeta);
+          const pill = document.createElement("span");
+          pill.className = "pill received";
+          pill.textContent = "received";
+          summary.append(summaryMain, pill);
+
+          const content = document.createElement("div");
+          content.className = "received-content";
+          const pre = document.createElement("pre");
+          const payload = messagePayload(message);
+          pre.textContent = payload ? JSON.stringify(payload, null, 2) : message.payload;
+          const verification = document.createElement("div");
+          verification.className = "verification";
+          const strong = document.createElement("strong");
+          strong.textContent = "✓ Live message";
+          const note = document.createElement("p");
+          note.textContent = "Original dashboard-reported payload. This panel is read-only.";
+          verification.append(strong, note);
+          content.append(pre, verification);
+          item.append(summary, content);
+          list.append(item);
+        });
+        detail.append(list);
       }
       function renderStatusTiles(statuses, emulator) {
         const reportedServices = Array.isArray(statuses) ? statuses : [];
@@ -168,15 +222,13 @@
           messagesLoading = false; emulatorCache = { running:false }; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); $("#last-updated").textContent = "Status unavailable"; showToast(`Could not refresh status: ${error.message}`, true);
         }
       }
-      function openModal() { const data = selectedDraft.data; for (const field of ["contactId","firstName","lastName","phone","email"]) draftForm.elements[field].value = data[field] || ""; for (const field of ["hasInsurance","hasParksResorts","hasCarwashProduct"]) draftForm.elements[field].checked = !!data[field]; $("#draft-modal").hidden = false; draftForm.elements.contactId.focus(); }
-      function closeModal() { $("#draft-modal").hidden = true; }
       function readDraftForm() { const data = Object.fromEntries(new FormData(draftForm)); for (const field of ["hasInsurance","hasParksResorts","hasCarwashProduct"]) data[field] = draftForm.elements[field].checked; return data; }
-      function saveDraft() { selectedDraft.data = readDraftForm(); renderTree(); renderMessages(); renderDetail(); closeModal(); showToast("Draft saved locally."); }
+      function saveDraft() { selectedDraft.data = readDraftForm(); renderTree(); renderMessages(); renderDetail(); showToast("Draft saved locally."); }
       async function publishDraft(event) {
-        event.preventDefault(); const data = readDraftForm(); const response = await fetch("/api/publish", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) }); const result = await readJson(response, "/api/publish"); if (!result.success) throw new Error(result.error || "Publish failed."); selectedDraft.data = data; closeModal(); showToast(`Published ${result.eventId}`); renderTree(); renderMessages(); renderDetail();
+        event.preventDefault(); const data = readDraftForm(); const response = await fetch("/api/publish", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) }); const result = await readJson(response, "/api/publish"); if (!result.success) throw new Error(result.error || "Publish failed."); selectedDraft.data = data; showToast(`Published ${result.eventId}`); renderTree(); renderMessages(); renderDetail();
       }
-      $("#refresh").addEventListener("click", refreshStatus); $("#edit-draft").addEventListener("click", openModal); $("#new-draft").addEventListener("click", () => { selectedDraft = { id:"new-" + Date.now(), name:"Untitled draft", folder:"New drafts", data:{ contactId:"", firstName:"", lastName:"", phone:"", email:"", hasInsurance:false, hasParksResorts:false, hasCarwashProduct:false } }; drafts.push(selectedDraft); renderTree(); renderMessages(); renderDetail(); openModal(); }); $("#close-modal").addEventListener("click", closeModal); $("#cancel-modal").addEventListener("click", closeModal); $("#save-draft").addEventListener("click", saveDraft); draftForm.addEventListener("submit", (event) => publishDraft(event).catch((error) => showToast(error.message, true))); $("#draft-modal").addEventListener("click", (event) => { if (event.target === $("#draft-modal")) closeModal(); });
-      renderTree(); renderMessages(); renderDetail(); refreshStatus(); setInterval(refreshStatus, 3000);
+      $("#refresh").addEventListener("click", refreshStatus); $("#new-draft").addEventListener("click", () => { selectedDraft = { id:"new-" + Date.now(), name:"Untitled draft", folder:"New drafts", data:{ contactId:"", firstName:"", lastName:"", phone:"", email:"", hasInsurance:false, hasParksResorts:false, hasCarwashProduct:false } }; drafts.push(selectedDraft); populateDraftForm(); renderTree(); renderMessages(); renderDetail(); }); $("#save-draft").addEventListener("click", saveDraft); draftForm.addEventListener("submit", (event) => publishDraft(event).catch((error) => showToast(error.message, true)));
+      populateDraftForm(); renderTree(); renderMessages(); renderDetail(); refreshStatus(); setInterval(refreshStatus, 3000);
     </script>
   </body>
 </html>

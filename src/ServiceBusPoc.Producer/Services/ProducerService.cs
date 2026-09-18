@@ -94,6 +94,27 @@ public sealed class ProducerService(
         try
         {
             await _publisher.PublishAsync(message, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await _dashboardReporter.ReportMessageAsync(
+                    new DashboardMessage
+                    {
+                        MessageId = message.MessageId,
+                        EventId = message.MessageId,
+                        ServiceName = "producer",
+                        Direction = "sent",
+                        Timestamp = _timeProvider.GetUtcNow(),
+                        Payload = message.Body.ToString()
+                    },
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Dashboard message report failed for event {EventId}; publish succeeded",
+                    message.MessageId);
+            }
             _logger.LogInformation(
                 "Published event {EventId} of type {EventType} for contact {ContactId} with correlation {CorrelationId}",
                 message.MessageId,

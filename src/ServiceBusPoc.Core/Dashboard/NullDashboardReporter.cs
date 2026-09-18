@@ -11,4 +11,8 @@ public sealed class NullDashboardReporter : IDashboardReporter
     /// <inheritdoc />
     public Task ReportAsync(ServiceHeartbeat heartbeat, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task ReportMessageAsync(DashboardMessage message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }

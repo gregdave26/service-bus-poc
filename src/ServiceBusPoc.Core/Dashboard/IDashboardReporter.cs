@@ -13,4 +13,9 @@ public interface IDashboardReporter
     /// <param name="heartbeat">The heartbeat to report.</param>
     /// <param name="cancellationToken">Token used to cancel the report.</param>
     Task ReportAsync(ServiceHeartbeat heartbeat, CancellationToken cancellationToken = default);
+
+    /// <summary>Reports a sent or received message.</summary>
+    /// <param name="message">The message observation to report.</param>
+    /// <param name="cancellationToken">Token used to cancel the report.</param>
+    Task ReportMessageAsync(DashboardMessage message, CancellationToken cancellationToken = default);
 }

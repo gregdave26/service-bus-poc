@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ServiceBusPoc.Core.Utilities;
 
@@ -58,6 +59,30 @@ public sealed class HttpDashboardReporter : IDashboardReporter, IDisposable
         }
     }
 
+    /// <inheritdoc />
+    public async Task ReportMessageAsync(DashboardMessage message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        try
+        {
+            using var response = await _httpClient.PostAsJsonAsync(
+                DashboardRoutes.Message,
+                message,
+                JsonSerializerOptionsHelper.DefaultOptions,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                RecordUnreachable(message.ServiceName, $"HTTP {(int)response.StatusCode}", exception: null);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            RecordUnreachable(message.ServiceName, "the dashboard message report was not delivered", ex);
+        }
+    }
+
     private void RecordReachable(ServiceHeartbeat heartbeat)
     {
         if (_dashboardWasReachable)
@@ -83,6 +108,21 @@ public sealed class HttpDashboardReporter : IDashboardReporter, IDisposable
             exception,
             "Heartbeat for service {ServiceName} was not delivered because {Reason}; messaging continues unaffected",
             heartbeat.ServiceName,
+            reason);
+    }
+
+    private void RecordUnreachable(string serviceName, string reason, Exception? exception)
+    {
+        if (!_dashboardWasReachable)
+        {
+            return;
+        }
+
+        _dashboardWasReachable = false;
+        _logger.LogWarning(
+            exception,
+            "Dashboard report for service {ServiceName} was not delivered because {Reason}; messaging continues unaffected",
+            serviceName,
             reason);
     }
 

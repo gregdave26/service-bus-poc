@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Contracts;
+using ServiceBusPoc.Core.Dashboard;
 using ServiceBusPoc.Core.Utilities;
 using ServiceBusPoc.Producer.Services;
 
@@ -75,6 +76,23 @@ public sealed class ProducerServiceTests
                     && message.ApplicationProperties["hasInsurance"].Equals(true)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task PublishAsync_SuccessfulPublishReportsOriginalMessage()
+    {
+        var publisher = new Mock<IServiceBusMessagePublisher>();
+        var reporter = new Mock<IDashboardReporter>();
+        var service = CreateService(publisher, dashboardReporter: reporter);
+
+        await service.PublishAsync(CreateContactEvent(), "crm", "correlation-123");
+
+        reporter.Verify(candidate => candidate.ReportMessageAsync(
+            It.Is<DashboardMessage>(message =>
+                message.Direction == "sent" &&
+                message.ServiceName == "producer" &&
+                message.Payload.Contains("\"contactId\":\"C001\"", StringComparison.Ordinal)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -376,13 +394,15 @@ public sealed class ProducerServiceTests
     private static ProducerService CreateService(
         Mock<IServiceBusMessagePublisher>? publisher = null,
         Mock<ILogger<ProducerService>>? logger = null,
-        ProducerSettings? settings = null)
+        ProducerSettings? settings = null,
+        Mock<IDashboardReporter>? dashboardReporter = null)
     {
         return new ProducerService(
             (logger ?? new Mock<ILogger<ProducerService>>()).Object,
             Options.Create(settings ?? CreateSettings()),
             (publisher ?? new Mock<IServiceBusMessagePublisher>()).Object,
-            new FixedTimeProvider(FixedTime));
+            new FixedTimeProvider(FixedTime),
+            dashboardReporter?.Object);
     }
 
     private static ProducerSettings CreateSettings() => new()

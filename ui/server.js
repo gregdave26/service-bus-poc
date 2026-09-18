@@ -11,6 +11,8 @@ const app = express();
 const port = Number.parseInt(process.env.PORT ?? "5080", 10);
 const heartbeatTimeoutMs = 15_000;
 const heartbeats = new Map();
+const messageHistory = [];
+const maxMessageHistory = 500;
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -25,6 +27,12 @@ function getServiceStatuses() {
         ? heartbeat.state
         : "Offline",
   }));
+}
+
+function getMessages(service, direction) {
+  return messageHistory.filter((message) =>
+    (!service || message.serviceName === service) &&
+    (!direction || message.direction === direction));
 }
 
 function getEmulatorStatus() {
@@ -61,6 +69,42 @@ function validatePublishRequest(body) {
   }
 
   return null;
+}
+
+function validateDashboardMessage(body) {
+  const requiredStrings = ["messageId", "eventId", "serviceName", "direction", "payload"];
+  const missingFields = requiredStrings.filter(
+    (field) => typeof body?.[field] !== "string" || body[field].trim() === "",
+  );
+  if (missingFields.length > 0) return `Missing required fields: ${missingFields.join(", ")}`;
+  if (!["sent", "received"].includes(body.direction)) return "direction must be sent or received";
+  if (typeof body.timestamp !== "string" || Number.isNaN(Date.parse(body.timestamp))) {
+    return "timestamp must be a valid ISO date";
+  }
+  try {
+    JSON.parse(body.payload);
+  } catch {
+    return "payload must be a JSON string";
+  }
+  if (body.subscriptionName !== undefined && body.subscriptionName !== null &&
+      (typeof body.subscriptionName !== "string" || body.subscriptionName.trim() === "")) {
+    return "subscriptionName must be a non-empty string or null";
+  }
+  return null;
+}
+
+function storeMessage(message) {
+  messageHistory.unshift({
+    messageId: message.messageId,
+    eventId: message.eventId,
+    serviceName: message.serviceName,
+    direction: message.direction,
+    timestamp: message.timestamp,
+    subscriptionName: message.subscriptionName ?? null,
+    payload: message.payload,
+  });
+  if (messageHistory.length > maxMessageHistory) messageHistory.length = maxMessageHistory;
+  return messageHistory[0];
 }
 
 async function publishContactEvent(request) {
@@ -102,7 +146,7 @@ async function publishContactEvent(request) {
 
   try {
     await sender.sendMessages({ body: event, contentType: "application/json" });
-    return event.id;
+    return event;
   } finally {
     await sender.close();
     await client.close();
@@ -142,8 +186,16 @@ app.post("/api/publish", async (request, response) => {
   }
 
   try {
-    const eventId = await publishContactEvent(request.body);
-    return response.json({ success: true, eventId });
+    const event = await publishContactEvent(request.body);
+    storeMessage({
+      messageId: event.id,
+      eventId: event.id,
+      serviceName: "Dashboard",
+      direction: "sent",
+      timestamp: event.timestamp,
+      payload: JSON.stringify(event),
+    });
+    return response.json({ success: true, eventId: event.id });
   } catch (error) {
     console.error("Failed to publish event from dashboard", error);
     return response.status(502).json({
@@ -153,7 +205,33 @@ app.post("/api/publish", async (request, response) => {
   }
 });
 
-export { app, getEmulatorStatus, getServiceStatuses, validatePublishRequest };
+app.post("/api/messages", (request, response) => {
+  const validationError = validateDashboardMessage(request.body);
+  if (validationError) {
+    return response.status(400).json({ error: validationError });
+  }
+  return response.status(201).json(storeMessage(request.body));
+});
+
+app.get("/api/messages", (request, response) => {
+  return response.json(getMessages(request.query.service, request.query.direction));
+});
+
+app.get("/api/messages/:id", (request, response) => {
+  const message = messageHistory.find((candidate) => candidate.messageId === request.params.id);
+  return message ? response.json(message) : response.status(404).json({ error: "Message not found" });
+});
+
+export {
+  app,
+  getEmulatorStatus,
+  getServiceStatuses,
+  validatePublishRequest,
+  validateDashboardMessage,
+  storeMessage,
+  getMessages,
+  messageHistory,
+};
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   app.listen(port, () => {

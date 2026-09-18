@@ -287,6 +287,25 @@ public sealed class SubscriptionConsumerRunner
 
         RecordDelivery(envelope.Id);
         LogDelivery(descriptor, subscriptionName, envelope, envelope.Data);
+        try
+        {
+            await _dashboardReporter.ReportMessageAsync(
+                new DashboardMessage
+                {
+                    MessageId = message.MessageId,
+                    EventId = envelope.Id ?? message.MessageId,
+                    ServiceName = descriptor.ServiceName,
+                    Direction = "received",
+                    Timestamp = _timeProvider.GetUtcNow(),
+                    SubscriptionName = subscriptionName,
+                    Payload = message.Body.ToString()
+                },
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dashboard message report failed for event {EventId}; message flow continues", envelope.Id);
+        }
 
         await CompleteAsync(descriptor, subscriptionName, message, cancellationToken);
     }

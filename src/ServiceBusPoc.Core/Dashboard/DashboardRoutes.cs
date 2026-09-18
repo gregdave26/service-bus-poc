@@ -9,6 +9,9 @@ public static class DashboardRoutes
     /// <summary>Route that accepts <see cref="ServiceHeartbeat"/> reports.</summary>
     public const string Heartbeat = "/api/heartbeat";
 
+    /// <summary>Route that accepts message history reports.</summary>
+    public const string Message = "/api/messages";
+
     /// <summary>Route that returns the aged status of every known service.</summary>
     public const string Status = "/api/status";
 

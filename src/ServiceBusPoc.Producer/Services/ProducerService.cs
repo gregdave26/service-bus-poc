@@ -5,24 +5,28 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Contracts;
+using ServiceBusPoc.Core.Dashboard;
 using ServiceBusPoc.Core.Utilities;
 
 namespace ServiceBusPoc.Producer.Services;
 
 /// <summary>
 /// Constructs and publishes canonical contact.updated events.
+/// Heartbeats are reported to the optional dashboard without affecting message flow.
 /// </summary>
 public sealed class ProducerService(
     ILogger<ProducerService> logger,
     IOptions<ProducerSettings> producerOptions,
     IServiceBusMessagePublisher publisher,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDashboardReporter? dashboardReporter = null)
 {
     private const string EventType = "contact.updated";
     private const string DataVersion = "1";
     private const string HasInsuranceProperty = "hasInsurance";
     private const string HasParksResortsProperty = "hasParksResorts";
     private const string HasCarwashProductProperty = "hasCarwashProduct";
+
     private readonly ILogger<ProducerService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly ProducerSettings _settings =
@@ -31,44 +35,54 @@ public sealed class ProducerService(
         publisher ?? throw new ArgumentNullException(nameof(publisher));
     private readonly TimeProvider _timeProvider =
         timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly IDashboardReporter _dashboardReporter =
+        dashboardReporter ?? NullDashboardReporter.Instance;
 
     /// <summary>
     /// Creates and publishes a contact event from configured producer input.
     /// </summary>
-    /// <param name="cancellationToken">A token that can cancel publishing.</param>
-    /// <returns>A task representing the publish operation.</returns>
-    public Task RunAsync(CancellationToken cancellationToken = default)
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        var contactEvent = new ContactUpdatedEvent
-        {
-            ContactId = _settings.ContactId,
-            FirstName = _settings.FirstName,
-            LastName = _settings.LastName,
-            Email = _settings.Email,
-            Phone = _settings.Phone,
-            Attributes = new ContactAttributes
-            {
-                HasInsurance = _settings.HasInsurance,
-                HasParksResorts = _settings.HasParksResorts,
-                HasCarwashProduct = _settings.HasCarwashProduct
-            }
-        };
+        await ReportHeartbeatAsync(ServiceState.Running, 0, null, null);
 
-        return PublishAsync(
-            contactEvent,
-            _settings.Source,
-            _settings.CorrelationId,
-            cancellationToken);
+        try
+        {
+            var contactEvent = new ContactUpdatedEvent
+            {
+                ContactId = _settings.ContactId,
+                FirstName = _settings.FirstName,
+                LastName = _settings.LastName,
+                Email = _settings.Email,
+                Phone = _settings.Phone,
+                Attributes = new ContactAttributes
+                {
+                    HasInsurance = _settings.HasInsurance,
+                    HasParksResorts = _settings.HasParksResorts,
+                    HasCarwashProduct = _settings.HasCarwashProduct
+                }
+            };
+
+            await PublishAsync(
+                contactEvent,
+                _settings.Source,
+                _settings.CorrelationId,
+                cancellationToken).ConfigureAwait(false);
+
+            await ReportHeartbeatAsync(
+                ServiceState.Online,
+                1,
+                _timeProvider.GetUtcNow(),
+                null);
+        }
+        finally
+        {
+            await ReportHeartbeatAsync(ServiceState.Stopped, 0, null, null);
+        }
     }
 
     /// <summary>
     /// Creates and publishes a canonical contact.updated message.
     /// </summary>
-    /// <param name="contactEvent">The contact event data.</param>
-    /// <param name="source">The originating system.</param>
-    /// <param name="correlationId">An optional correlation identifier.</param>
-    /// <param name="cancellationToken">A token that can cancel publishing.</param>
-    /// <returns>A task representing the publish operation.</returns>
     public async Task PublishAsync(
         ContactUpdatedEvent contactEvent,
         string source,
@@ -103,10 +117,6 @@ public sealed class ProducerService(
     /// <summary>
     /// Constructs a canonical contact.updated Service Bus message.
     /// </summary>
-    /// <param name="contactEvent">The contact event data.</param>
-    /// <param name="source">The originating system.</param>
-    /// <param name="correlationId">An optional correlation identifier.</param>
-    /// <returns>The constructed Service Bus message.</returns>
     public ServiceBusMessage CreateMessage(
         ContactUpdatedEvent contactEvent,
         string source,
@@ -150,5 +160,24 @@ public sealed class ProducerService(
         message.ApplicationProperties[HasCarwashProductProperty] = attributes.HasCarwashProduct;
 
         return message;
+    }
+
+    private async Task ReportHeartbeatAsync(
+        ServiceState state,
+        long messagesPublished,
+        DateTimeOffset? lastMessageAt,
+        string? lastEventId)
+    {
+        var heartbeat = new ServiceHeartbeat
+        {
+            ServiceName = "producer",
+            State = state,
+            SentAt = _timeProvider.GetUtcNow(),
+            MessagesHandled = messagesPublished,
+            LastMessageAt = lastMessageAt,
+            LastEventId = lastEventId
+        };
+
+        await _dashboardReporter.ReportAsync(heartbeat).ConfigureAwait(false);
     }
 }

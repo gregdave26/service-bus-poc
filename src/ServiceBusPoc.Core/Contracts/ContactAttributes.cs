@@ -19,4 +19,9 @@ public class ContactAttributes
     /// Gets or sets a value indicating whether the contact has Carwash products or memberships.
     /// </summary>
     public bool HasCarwashProduct { get; set; }
+
+    /// <summary>
+    /// Gets or sets the RAC (Roadside Assistance Company) ID for the contact.
+    /// </summary>
+    public string? RacId { get; set; }
 }

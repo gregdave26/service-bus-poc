@@ -34,12 +34,21 @@ var host = Host.CreateDefaultBuilder(args)
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
             .AddProducerConfiguration(context.Configuration)
+            .AddDashboardConfiguration(context.Configuration)
+            .AddDashboardReporting()
             .AddSingleton(TimeProvider.System)
             .AddTransient<IServiceBusMessagePublisher, ServiceBusMessagePublisher>()
             .AddTransient<ProducerService>();
     })
     .Build();
 
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 await using var scope = host.Services.CreateAsyncScope();
 var producer = scope.ServiceProvider.GetRequiredService<ProducerService>();
-await producer.RunAsync(CancellationToken.None);
+await producer.RunAsync(cts.Token);

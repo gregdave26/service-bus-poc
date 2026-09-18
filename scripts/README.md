@@ -11,7 +11,49 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 
 ## Available Scripts
 
-### 1. `debug-run.ps1` — Debug Start (Recommended for Development)
+### 1. `run-dashboard.ps1` — Interactive Dashboard + Services (Recommended for Development)
+
+**Purpose:** Start the Dashboard with all services for interactive development and testing.
+
+**Use this when:**
+- You want to see real-time service status and test filters interactively
+- You're demonstrating the system or testing manually
+- You want to publish events and watch consumers log them in real-time
+- You need the browser-based dashboard for visibility
+
+**Usage:**
+```powershell
+# Start everything with dashboard
+.\run-dashboard.ps1
+
+# Start without auto-opening browser
+.\run-dashboard.ps1 -NoBrowser
+
+# Use custom dashboard port
+.\run-dashboard.ps1 -DashboardPort 8080
+
+# Skip emulator (assume it's already running)
+.\run-dashboard.ps1 -NoEmulator
+```
+
+**Output:**
+- 🟢 Dashboard HTTP server on http://localhost:5100
+- 🔵 Producer publishing sample events every 3 seconds
+- 🟢 All 4 consumers listening and logging filtered messages
+- Browser opens automatically to dashboard
+- Press `Ctrl+C` to gracefully shutdown all
+
+**Services Started:**
+1. **Dashboard** — Real-time status & event publishing UI (http://localhost:5100)
+2. **Producer** — Publishes sample events every 3 seconds
+3. **DigitalChannels** — Receives all events (no filter)
+4. **Insurance** — Receives `hasInsurance=true`
+5. **ParksResorts** — Receives `hasParksResorts=true`
+6. **Carwash** — Receives `hasCarwashProduct=true`
+
+---
+
+### 2. `debug-run.ps1` — Debug Start (for Development Without Dashboard)
 
 **Purpose:** Start the entire POC in debug mode with all 7 applications running locally.
 
@@ -19,6 +61,7 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 - You're actively developing and want hot-reload capability
 - You need to debug a single consumer or producer
 - You want to see real-time logs from all applications
+- You prefer console-based testing over the browser dashboard
 
 **Usage:**
 ```powershell
@@ -51,7 +94,7 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 
 ---
 
-### 2. `run-local-poc.ps1` — Local POC Run (Recommended for Testing)
+### 3. `run-local-poc.ps1` — Local POC Run (for Verification & CI/CD)
 
 **Purpose:** Run the complete end-to-end POC with automatic scenario verification.
 
@@ -97,16 +140,22 @@ Both scripts set these automatically, but you can override:
 ```powershell
 # Service Bus configuration
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/..."
-$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__TopicName = "contact.events"
+$env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__SubscriptionName = "insurance" # Consumer-specific
+
+# Dashboard configuration (run-dashboard.ps1 only)
+$env:Dashboard__Enabled = "true"
+$env:Dashboard__Url = "http://localhost:5100"
+$env:Dashboard__Port = "5100"
+$env:Dashboard__HeartbeatIntervalSeconds = "5"
 
 # Logging
 $env:DOTNET_LOG_LEVEL = "Information"  # or "Debug" for verbose
 $env:DOTNET_Environment = "Development"
 
 # Carwash API
-$env:CarwashApiPort = "5000"
+$env:Carwash__ApiPort = "5000"
 ```
 
 ---
@@ -117,16 +166,17 @@ All scripts save logs to `logs/` folder:
 
 ```
 logs/
-├── debug-run-20260915-154201.log          # From debug-run.ps1
-├── poc-run-20260915-154300.log            # From run-local-poc.ps1
-├── poc-report-20260915-154300.txt         # Test results summary
-└── emulator-20260915-154300.log           # Docker Compose output (if saved)
+├── run-dashboard-20260916-155500.log   # From run-dashboard.ps1
+├── debug-run-20260915-154201.log       # From debug-run.ps1
+├── poc-run-20260915-154300.log         # From run-local-poc.ps1
+├── poc-report-20260915-154300.txt      # Test results summary
+└── emulator-20260915-154300.log        # Docker Compose output (if saved)
 ```
 
 **View logs in real-time:**
 ```powershell
 # PowerShell tail equivalent
-Get-Content -Path logs/debug-run-*.log -Wait
+Get-Content -Path logs/run-dashboard-*.log -Wait
 ```
 
 ---
@@ -143,11 +193,14 @@ Get-Content -Path logs/debug-run-*.log -Wait
 → Run from project root: `cd C:\Users\dg15938\development\service-bus-poc`
 
 ### "Build failed"
-→ Check `dotnet build` output in console; ensure all projects exist after Phase 1
+→ Check `dotnet build` output in console; ensure all projects exist
 
 ### Applications start but don't receive messages
 → Verify Service Bus emulator is running: `docker-compose ps`
 → Check environment variables are set: `$env:ServiceBus__ConnectionString`
+### Dashboard not opening in browser
+→ Manually navigate to `http://localhost:5100` or `http://localhost:{DashboardPort}`
+→ Check firewall is not blocking port 5100
 
 ### Emulator times out or doesn't start
 → Ensure Docker Desktop is running
@@ -158,13 +211,25 @@ Get-Content -Path logs/debug-run-*.log -Wait
 
 ## Development Workflow
 
-### For Local Testing:
+### For Interactive Testing with Dashboard (Recommended):
+```powershell
+# Single command starts everything with browser UI
+.\run-dashboard.ps1
+
+# Open dashboard in browser and:
+# 1. Watch service status update in real-time
+# 2. Click "Publish Event" and toggle capability flags
+# 3. Watch consumer consoles log only matching messages
+# 4. Press Ctrl+C here to stop all services
+```
+
+### For Local Console-Based Testing:
 ```powershell
 # Terminal 1: Start debug session (keeps running)
 .\debug-run.ps1
 
 # Terminal 2: Run producer to emit test events
-# (trigger via API once Carwash API is implemented)
+# (trigger via PowerShell or REST API)
 ```
 
 ### For CI/CD Validation:
@@ -191,19 +256,31 @@ $exitCode = $LASTEXITCODE
 
 | Setting | Impact | Usage |
 |---------|--------|-------|
+| `run-dashboard.ps1` (default) | Fast interactive testing | Best for development |
 | `-RunTime 60` | Longer setup (slower machines) | `run-local-poc.ps1 -RunTime 60` |
-| `-Verbose $true` | More logging (slower) | `debug-run.ps1 -Verbose` |
+| `-Verbose` | More logging (slower) | `debug-run.ps1 -Verbose` |
 | Single role | Faster startup | `debug-run.ps1 -Role insurance` |
 | `-NoCleanup` | Keep services running | Skip restart time for multiple runs |
+| `-NoEmulator` | Use external Service Bus | `run-dashboard.ps1 -NoEmulator` |
+
+---
+
+## Comparison: Which Script to Use?
+
+| Goal | Script | Start Time | Best For |
+|------|--------|-----------|----------|
+| Interactive testing & demos | `run-dashboard.ps1` | 30 sec | Development, demos, manual testing |
+| Console debugging | `debug-run.ps1` | 30 sec | Debugging, specific role testing |
+| Automated validation (CI/CD) | `run-local-poc.ps1` | 60 sec | PR validation, automated testing |
 
 ---
 
 ## Next Steps
 
-1. **Phase 1 Complete:** Run `.\debug-run.ps1` to verify all 7 projects build and start
-2. **Phase 2 Started:** Use `.\debug-run.ps1 -Role producer` to test producer implementation
-3. **Phase 3 Tests:** Use `.\run-local-poc.ps1` in CI/CD for automated scenario validation
-4. **Phase 4+ Cloud:** Scripts can be adapted for real Azure Service Bus (update connection string)
+1. **Start Interactive:** Run `.\run-dashboard.ps1` to see live dashboard
+2. **Manual Testing:** Publish events and watch filters work in real-time
+3. **Automated Validation:** Run `.\run-local-poc.ps1` in CI/CD for regression tests
+4. **Debugging:** Use `.\debug-run.ps1 -Verbose` for detailed troubleshooting
 
 ---
 
@@ -211,10 +288,10 @@ $exitCode = $LASTEXITCODE
 
 - [DEVELOPER.md](../DEVELOPER.md) — Development guide (forthcoming)
 - [docs/architecture/project-goal.md](../docs/architecture/project-goal.md) — System architecture
-- [PHASE_1_PLAN.md](../PHASE_1_PLAN.md) — Current phase details
 - [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) — Full timeline and phases
+- [docs/decisions/010-browser-dashboard.md](../docs/decisions/010-browser-dashboard.md) — Dashboard design decision
 
 ---
 
-**Last Updated:** 2026-09-15  
+**Last Updated:** 2026-09-16  
 **Maintained By:** Service Bus POC Team

@@ -10,16 +10,22 @@ public static class LoggingExtensions
 {
     /// <summary>
     /// Adds console logging with structured format suitable for development and debugging.
+    /// Includes ISO 8601 timestamps with timezone offset.
     /// </summary>
     /// <param name="builder">The logging builder.</param>
     /// <returns>The logging builder for chaining.</returns>
     public static ILoggingBuilder AddStructuredConsoleLogging(this ILoggingBuilder builder)
     {
         builder.ClearProviders();
+        
+        // Register the custom timestamped formatter
         builder.AddConsole(options =>
         {
-            options.FormatterName = "simple";
+            options.FormatterName = TimestampedConsoleFormatter.FormatterName;
         });
+        
+        // Add the formatter configuration
+        builder.AddConsoleFormatter<TimestampedConsoleFormatter, SimpleConsoleFormatterOptions>();
 
         return builder;
     }

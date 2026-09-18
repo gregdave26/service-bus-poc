@@ -20,7 +20,10 @@ var host = Host.CreateDefaultBuilder(args)
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
             .AddCarwashConfiguration(context.Configuration)
-            .AddScoped<CarwashConsumerService>()
+            .AddDashboardConfiguration(context.Configuration)
+            .AddContactEventConsuming()
+            .AddDashboardReporting()
+            .AddSingleton<CarwashConsumerService>()
             .AddSingleton<CarwashApiServer>();
     })
     .Build();
@@ -29,13 +32,19 @@ var host = Host.CreateDefaultBuilder(args)
 var apiServer = host.Services.GetRequiredService<CarwashApiServer>();
 var cts = new CancellationTokenSource();
 
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 var apiServerTask = Task.Run(() => apiServer.StartAsync(cts.Token), cts.Token);
 
 try
 {
     await using var scope = host.Services.CreateAsyncScope();
     var consumer = scope.ServiceProvider.GetRequiredService<CarwashConsumerService>();
-    await consumer.RunAsync();
+    await consumer.RunAsync(cts.Token);
 }
 finally
 {

@@ -14,12 +14,13 @@ Proof of concept demonstrating `contact.events` as an Azure Service Bus enterpri
 - Consumer routing to digital channels, Insurance, Parks & Resorts, and Carwash.
 - Subscription filters for Insurance (`hasInsurance = true`), Parks & Resorts (`hasParksResorts = true`), and Carwash (`hasCarwashProduct = true`).
 - Carwash member-verification API at `POST /carwash/v1/verify`, called by Pulse or mock Pulse.
+- Browser-based dashboard for real-time service status visibility and interactive event publishing (ADR-010).
 - Bicep IaC for the above, deployable to a real Azure subscription.
 - .NET 10 console harness that runs the same topology against the official Azure Service Bus emulator (Docker Compose) to deterministically prove filter routing without cloud credentials.
 
 **Out of scope**
 - Production sizing, private networking, custom domains, multi-region, and publisher authentication design.
-- Consumer-facing HTTP delivery/webhooks, UI, persistence, sagas, sessions, load testing.
+- Consumer-facing HTTP delivery/webhooks (dashboard is internal observability only), persistence, sagas, sessions, load testing.
 
 ## 3. Stack and Architecture
 
@@ -41,7 +42,8 @@ The architecture reference defines the project context:
 | Area | Path | Purpose |
 |---|---|---|
 | Event contract | `contracts/` | Canonical `contact.events` schemas used by producers and consumers |
-| App | `src/ServiceBusPoc.*/` | Producer, consumers, Carwash verification API, scenario verifier, settings |
+| App | `src/ServiceBusPoc.*/` | Producer, consumers, Carwash verification API, Dashboard (status + publish), scenario verifier, settings |
+| Dashboard | `src/ServiceBusPoc.Dashboard/` | Real-time service status visibility and interactive event publishing via browser UI (ADR-010) |
 | Tests | `tests/ServiceBusPoc.Tests/` | Schema, routing, settings, scenario tests |
 | Azure IaC | `infra/main.bicep`, `infra/modules/` | `contact.events` topology, filtered subscriptions, and least-privilege RBAC (planned, not yet implemented) |
 | Local infra | `infra/servicebus/compose.yaml`, `config.json` | Emulator topology equivalent to Bicep |
@@ -66,17 +68,20 @@ The architecture reference defines the project context:
 
 **Working**
 - Event contracts (`EventEnvelope<TData>`, `ContactUpdatedEvent`, product/holding-change, attributes) and matching JSON Schemas in `contracts/`.
-- .NET 10 solution scaffolded: Producer, DigitalChannels, Insurance, ParksResorts, Carwash, and Verifier console apps, plus a shared test project.
+- .NET 10 solution scaffolded: Producer, DigitalChannels, Insurance, ParksResorts, Carwash, Dashboard, and Verifier console apps, plus a shared Core and test project.
 - Local emulator configuration exists at `infra/servicebus/compose.yaml` and `infra/servicebus/config.json`.
 - Carwash HTTP member-verification API is implemented; its API test files exist. Pulse or mock Pulse calls this API.
+- Dashboard application: separate lightweight HTTP server (HttpListener-based) showing real-time service status and providing event publishing interface. Heartbeats are best-effort; dashboard unavailability does not interrupt messaging.
+- Producer and consumer messaging implementations: now send/receive real messages with broker-side subscription filtering; consumers log only messages delivered by their filter.
+- Core abstractions: `ContactEventPublisher`, `SubscriptionConsumerRunner`, `IDashboardReporter` (HTTP + null implementations), status aging/timeout logic in dashboard.
 
 **Known issues**
 - Bicep IaC for the Azure Service Bus topology (ADR-008) is approved but not yet implemented.
-- Producer and consumer messaging services remain stubs; no end-to-end Service Bus message flow is implemented yet.
 - No external/APIM ingress exists yet; producers publish directly. Not currently in scope (see `.github/copilot-instructions.md`).
+- Dashboard is local-only (emulator + internal network); not production-grade. Acceptable for POC observability (ADR-010).
 
 **Next**
-- Remaining plan items: emulator topology validation, messaging implementations, routing/schema/settings tests, local-script completion, Bicep infrastructure, and final end-to-end validation.
+- Remaining plan items: Bicep infrastructure deployment and final end-to-end validation on live Azure (if applicable for this workstream).
 
 ## 8. Team and Handoff
 

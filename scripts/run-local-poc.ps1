@@ -57,13 +57,14 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
 $infraPath = Join-Path $projectRoot 'infra'
 $logsPath = Join-Path $projectRoot 'logs'
+. (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Ensure logs directory exists
 if (-not (Test-Path $logsPath)) {
     New-Item -ItemType Directory -Path $logsPath | Out-Null
 }
 
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
 $logFile = Join-Path $logsPath "poc-run-$timestamp.log"
 
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -130,8 +131,7 @@ try {
     $null = docker-compose up -d
     Write-Host "  ✓ Emulator started"
     
-    Write-Host "  Waiting 15 seconds for emulator to be ready..."
-    Start-Sleep -Seconds 15
+    Wait-ServiceBusEmulatorReady -ComposePath $composePath
 }
 catch {
     Write-Error "❌ Failed to start emulator: $_"
@@ -163,8 +163,8 @@ Write-Host ""
 # Step 3: Set environment variables
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
-$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
-$env:ServiceBus__Namespace = "sbemulatorns"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+$env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = if ($Verbose) { "Debug" } else { "Information" }
@@ -188,21 +188,28 @@ foreach ($app in $apps) {
     $projectPath = Join-Path $srcPath $app.Project
     if (Test-Path $projectPath) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
-        $outputPath = Join-Path $logsPath "$($app.Name)-$timestamp.stdout.log"
-        $errorPath = Join-Path $logsPath "$($app.Name)-$timestamp.stderr.log"
+        $appNameLower = $app.Name.ToLower()
+        
+        $serviceTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+        $stdoutLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stdout.log"
+        $stderrLog = Join-Path $logsPath "$appNameLower-$serviceTimestamp-stderr.log"
+        
         $env:ServiceBus__SubscriptionName = $app.Subscription
         $process = Start-Process `
             -FilePath 'dotnet' `
             -ArgumentList @('run', '--configuration', 'Debug', '--project', $projectFile) `
             -WorkingDirectory $projectRoot `
-            -RedirectStandardOutput $outputPath `
-            -RedirectStandardError $errorPath `
+            -RedirectStandardOutput $stdoutLog `
+            -RedirectStandardError $stderrLog `
             -NoNewWindow `
             -PassThru
         $env:ServiceBus__SubscriptionName = $null
 
+        $pidNumber = $process.Id
+
         $processes += $process
-        Write-Host "  ➜ $($app.Name)"
+        Write-Host "  ➜ $($app.Name) [PID: $pidNumber]"
+        Write-Host "    📌 Logs: logs/$appNameLower-$serviceTimestamp-stdout.log | stderr.log" -ForegroundColor Gray
         Start-Sleep -Milliseconds 500
     }
 }

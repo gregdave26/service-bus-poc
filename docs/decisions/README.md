@@ -18,6 +18,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [007](007-separate-apps.md) | Application Architecture | ✅ Approved | Separate console app per role |
 | [008](008-bicep-iac.md) | Infrastructure as Code | ✅ Approved | Bicep templates for Azure deployment |
 | [009](009-carwash-integration-boundary.md) | Carwash Integration Boundary | ✅ Approved | Independent consumer and Pulse-called verification API |
+| [010](010-browser-dashboard.md) | Browser-Based Live Dashboard | ✅ Approved | Real-time service status and event publishing UI |
 
 ---
 

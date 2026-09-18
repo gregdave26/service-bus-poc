@@ -1,43 +1,65 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
+using ServiceBusPoc.Core.Dashboard;
+using ServiceBusPoc.Core.Messaging;
 
 namespace ServiceBusPoc.Carwash.Services;
 
 /// <summary>
-/// Carwash consumer service stub for Phase 2 implementation.
-/// Receives contact events filtered by hasCarwashProduct = true.
-/// Integrates with the Pulse Contact CRUD API to sync matching contacts.
+/// Consumes contact events from the <c>carwash</c> subscription.
+/// Only receives messages where <c>hasCarwashProduct = true</c> (filtering done by the broker).
+/// Logs each received message to the console and reports heartbeats to the dashboard.
 /// </summary>
-public class CarwashConsumerService
+public sealed class CarwashConsumerService
 {
+    private readonly SubscriptionConsumerRunner _consumerRunner;
     private readonly ILogger<CarwashConsumerService> _logger;
-    private readonly IOptions<ServiceBusSettings> _serviceBusSettings;
-    private readonly IOptions<Core.Configuration.CarwashSettings> _carwashSettings;
+    private readonly IOptions<CarwashSettings> _carwashSettings;
 
     public CarwashConsumerService(
+        SubscriptionConsumerRunner consumerRunner,
         ILogger<CarwashConsumerService> logger,
-        IOptions<ServiceBusSettings> serviceBusSettings,
-        IOptions<Core.Configuration.CarwashSettings> carwashSettings)
+        IOptions<CarwashSettings> carwashSettings)
     {
+        _consumerRunner = consumerRunner;
         _logger = logger;
-        _serviceBusSettings = serviceBusSettings;
         _carwashSettings = carwashSettings;
     }
 
     /// <summary>
-    /// Runs the consumer service.
+    /// Runs the consumer service, listening for messages on the carwash subscription.
     /// </summary>
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Carwash consumer service starting...");
-        _logger.LogInformation("Subscription: {SubscriptionName}", _serviceBusSettings.Value.SubscriptionName);
-        _logger.LogInformation("Filter: hasCarwashProduct = true");
+        var startTime = DateTimeOffset.UtcNow;
+
+        // Wait for the Service Bus subscription to be ready with exponential backoff
+        var connected = await _consumerRunner.WaitForReadyAsync(startTime, cancellationToken);
+        if (!connected)
+        {
+            _logger.LogError("Service Bus subscription did not become ready within timeout");
+            throw new InvalidOperationException("Service Bus subscription did not become ready within timeout");
+        }
+
         _logger.LogInformation("Pulse API URL: {ApiUrl}", _carwashSettings.Value.ApiUrl);
         _logger.LogInformation("Mock mode: {MockMode}", _carwashSettings.Value.MockMode);
 
-        // TODO: Implement consumer and Pulse API integration in Phase 2
-        _logger.LogInformation("Carwash consumer service ready for Phase 2 implementation");
-        await Task.CompletedTask;
+        var descriptor = new ConsumerDescriptor("carwash", "hasCarwashProduct = true");
+
+        try
+        {
+            await _consumerRunner.RunAsync(descriptor, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carwash consumer service cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Carwash consumer service encountered an error");
+            throw;
+        }
     }
 }

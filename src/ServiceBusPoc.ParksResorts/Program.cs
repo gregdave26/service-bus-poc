@@ -18,10 +18,20 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
-            .AddScoped<ParksResortsConsumerService>();
+            .AddDashboardConfiguration(context.Configuration)
+            .AddContactEventConsuming()
+            .AddDashboardReporting()
+            .AddSingleton<ParksResortsConsumerService>();
     })
     .Build();
 
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 await using var scope = host.Services.CreateAsyncScope();
 var consumer = scope.ServiceProvider.GetRequiredService<ParksResortsConsumerService>();
-await consumer.RunAsync();
+await consumer.RunAsync(cts.Token);

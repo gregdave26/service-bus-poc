@@ -186,6 +186,7 @@ Write-Host "Setting environment variables..." -ForegroundColor Yellow
 # Service Bus Configuration
 # These values should match your emulator setup
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+$env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = "Information"
@@ -195,6 +196,8 @@ Write-Host ""
 
 # Helper function to start an app without PowerShell remoting jobs.
 # Start-Job is unavailable in constrained-language sessions.
+# -NoNewWindow keeps everything in this console; output is tailed below instead
+# of being left to sit unlabeled in a separate window.
 function Start-App {
     param(
         [string]$AppName,
@@ -226,6 +229,56 @@ function Start-App {
     return $process
 }
 
+# Color palette so each app's tailed output is visually distinguishable.
+$appColors = @('Cyan', 'Magenta', 'Yellow', 'Green', 'Blue', 'DarkCyan')
+
+# Tracks the byte offset already read from each log file so the tail loop
+# only prints newly appended lines.
+$tailState = @{}
+
+function Initialize-Tail {
+    param([string]$AppName, [string]$OutputPath, [string]$ErrorPath, [string]$Color)
+
+    $tailState[$AppName] = [PSCustomObject]@{
+        OutputPath  = $OutputPath
+        ErrorPath   = $ErrorPath
+        Color       = $Color
+        OutPosition = 0
+        ErrPosition = 0
+    }
+}
+
+function Write-TailedOutput {
+    foreach ($appName in $tailState.Keys) {
+        $state = $tailState[$appName]
+
+        foreach ($stream in @(
+                @{ Path = $state.OutputPath; PosProp = 'OutPosition'; Label = '' }
+                @{ Path = $state.ErrorPath; PosProp = 'ErrPosition'; Label = 'ERR ' }
+            )) {
+            if (-not (Test-Path $stream.Path)) { continue }
+
+            $fileLength = (Get-Item $stream.Path).Length
+            $currentPos = $state.($stream.PosProp)
+            if ($fileLength -le $currentPos) { continue }
+
+            $streamReader = [System.IO.File]::Open($stream.Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+            try {
+                $streamReader.Seek($currentPos, [System.IO.SeekOrigin]::Begin) | Out-Null
+                $reader = New-Object System.IO.StreamReader($streamReader)
+                while (-not $reader.EndOfStream) {
+                    $line = $reader.ReadLine()
+                    Write-Host "[$appName] $($stream.Label)$line" -ForegroundColor $state.Color
+                }
+                $state.($stream.PosProp) = $streamReader.Position
+            }
+            finally {
+                $streamReader.Dispose()
+            }
+        }
+    }
+}
+
 # Start applications
 Write-Host "Starting applications in debug mode..." -ForegroundColor Yellow
 Write-Host ""
@@ -238,6 +291,12 @@ $appProjects = @{
     'Carwash'          = 'ServiceBusPoc.Carwash'
     'Producer'         = 'ServiceBusPoc.Producer'
     'Verifier'         = 'ServiceBusPoc.Verifier'
+}
+$appSubscriptions = @{
+    'DigitalChannels' = 'digital-channels'
+    'Insurance'       = 'insurance'
+    'ParksResorts'    = 'parks-resorts'
+    'Carwash'         = 'carwash'
 }
 
 foreach ($appName in $Role) {
@@ -253,7 +312,14 @@ foreach ($appName in $Role) {
         continue
     }
     
+    $outputPath = Join-Path $logsPath "$appName-$timestamp.stdout.log"
+    $errorPath = Join-Path $logsPath "$appName-$timestamp.stderr.log"
+    $color = $appColors[$processes.Count % $appColors.Count]
+    Initialize-Tail -AppName $appName -OutputPath $outputPath -ErrorPath $errorPath -Color $color
+
+    $env:ServiceBus__SubscriptionName = $appSubscriptions[$appName]
     $process = Start-App -AppName $appName -ProjectName $projectName
+    $env:ServiceBus__SubscriptionName = $null
     $processes += $process
     Start-Sleep -Milliseconds 500 # Stagger startup
 }
@@ -269,6 +335,7 @@ $processes | Select-Object Id, ProcessName | Format-Table
 
 Write-Host ""
 Write-Host "Log file: $LogPath" -ForegroundColor Cyan
+Write-Host "Live output below is tagged per app: [AppName] message" -ForegroundColor Cyan
 Write-Host "Press Ctrl+C to stop all applications" -ForegroundColor Yellow
 Write-Host ""
 
@@ -285,13 +352,15 @@ try {
             break
         }
 
-        Start-Sleep -Seconds 1
+        Write-TailedOutput
+        Start-Sleep -Milliseconds 500
     }
 }
 catch [System.OperationCanceledException] {
     # Ctrl+C pressed
 }
 finally {
+    Write-TailedOutput  # flush any output written just before shutdown
     Write-Host ""
     Write-Host "Shutting down..." -ForegroundColor Yellow
     

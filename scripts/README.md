@@ -141,6 +141,8 @@ Both scripts set these automatically, but you can override:
 # Service Bus configuration
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/..."
 $env:ServiceBus__TopicName = "contact.events"
+$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__SubscriptionName = "insurance" # Consumer-specific
 
 # Dashboard configuration (run-dashboard.ps1 only)
 $env:Dashboard__Enabled = "true"
@@ -196,7 +198,6 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 ### Applications start but don't receive messages
 → Verify Service Bus emulator is running: `docker-compose ps`
 → Check environment variables are set: `$env:ServiceBus__ConnectionString`
-
 ### Dashboard not opening in browser
 → Manually navigate to `http://localhost:5100` or `http://localhost:{DashboardPort}`
 → Check firewall is not blocking port 5100

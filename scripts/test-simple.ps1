@@ -81,7 +81,7 @@ Write-Host ""
 
 # Step 3: Configure environment
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
-$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
 $env:Dashboard__Enabled = "false"

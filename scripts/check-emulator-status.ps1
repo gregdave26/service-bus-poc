@@ -20,7 +20,7 @@ Write-Host ""
 # Check 1: Docker is running
 Write-Host "CHECK 1: Docker Status" -ForegroundColor Yellow
 try {
-    $version = docker version 2>&1
+    docker version 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  ✓ Docker is running"
     } else {

@@ -67,6 +67,7 @@ $VerbosePreference = 'Continue'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
 $logsPath = Join-Path $projectRoot 'logs'
+. (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Default log path if not provided
 if (-not $LogPath) {
@@ -154,10 +155,7 @@ if ($Emulator) {
             $null = docker-compose up -d
             Write-Host "  ✓ Emulator containers started"
             
-            # Wait for emulator to be ready
-            Write-Host "  ⏳ Waiting $WaitSeconds seconds for emulator to be ready..." -ForegroundColor Gray
-            Start-Sleep -Seconds $WaitSeconds
-            Write-Host "  ✓ Emulator ready"
+            Wait-ServiceBusEmulatorReady -ComposePath $composePath -InitialDelaySeconds $WaitSeconds
         }
         catch {
             Write-Error "❌ Failed to start emulator: $_"
@@ -187,8 +185,8 @@ Write-Host "Setting environment variables..." -ForegroundColor Yellow
 
 # Service Bus Configuration
 # These values should match your emulator setup
-$env:ServiceBusConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
-$env:ServiceBusTopicName = "contact.events"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+$env:ServiceBus__TopicName = "contact.events"
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = "Information"
 
@@ -219,6 +217,7 @@ function Start-App {
         -WorkingDirectory $projectRoot `
         -RedirectStandardOutput $stdoutLog `
         -RedirectStandardError $stderrLog `
+        -NoNewWindow `
         -PassThru
     
     $pidNumber = $process.Id

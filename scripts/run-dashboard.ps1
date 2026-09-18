@@ -32,14 +32,15 @@
     Don't start the emulator (assumes it's already running). Default: $false
 
 .PARAMETER Terminals
-    Launch each service in a separate terminal window. Default: $true
+    Retained for command-line compatibility. Services are launched with
+    redirected output so they remain captured in the logs/ folder.
 
 .EXAMPLE
     # Start everything with separate terminals (default)
     .\scripts\run-dashboard.ps1
 
 .EXAMPLE
-    # Start with inline output in single terminal
+    # Start with output redirected to logs/
     .\scripts\run-dashboard.ps1 -Terminals $false
 
 .EXAMPLE
@@ -68,11 +69,26 @@ $ErrorActionPreference = 'Stop'
 # Store all processes for cleanup on exit
 $script:allProcesses = @()
 $script:shutdownInProgress = $false
+$script:transcriptActive = $false
+$script:previousTreatControlCAsInput = [Console]::TreatControlCAsInput
+[Console]::TreatControlCAsInput = $true
+
+function Stop-OrchestrationTranscript {
+    if ($script:transcriptActive) {
+        Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+        $script:transcriptActive = $false
+    }
+
+    function Restore-ControlCHandling {
+        [Console]::TreatControlCAsInput = $script:previousTreatControlCAsInput
+    }
+}
 
 # Helper function to perform cleanup
 function Invoke-Cleanup {
     if ($script:shutdownInProgress) { return }
     $script:shutdownInProgress = $true
+    Restore-ControlCHandling
     
     Write-Host ""
     Write-Host "⚠️  Shutting down services gracefully..." -ForegroundColor Yellow
@@ -145,21 +161,27 @@ function Invoke-Cleanup {
     
     Write-Host ""
     Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                    ✓ Cleanup complete. Goodbye!                           ║" -ForegroundColor Green
+    Write-Host "║                    ✓ Cleanup complete. Goodbye!                            ║" -ForegroundColor Green
     Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
     Write-Host ""
-    
+    Stop-OrchestrationTranscript
 }
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
 $infraPath = Join-Path $projectRoot 'infra'
 $logsPath = Join-Path $projectRoot 'logs'
+. (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Ensure logs directory exists
 if (-not (Test-Path $logsPath)) {
     New-Item -ItemType Directory -Path $logsPath | Out-Null
 }
+
+$orchestrationTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+$orchestrationLog = Join-Path $logsPath "run-dashboard-$orchestrationTimestamp-transcript.log"
+Start-Transcript -Path $orchestrationLog -Force | Out-Null
+$script:transcriptActive = $true
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -172,7 +194,7 @@ Write-Host "  Dashboard port: $DashboardPort"
 Write-Host "  Dashboard URL: http://localhost:$DashboardPort"
 Write-Host "  Auto-open browser: $(if ($NoBrowser) { 'No' } else { 'Yes' })"
 Write-Host "  Start emulator: $(if ($NoEmulator) { 'No (assumed running)' } else { 'Yes' })"
-Write-Host "  Launch mode: $(if ($Terminals) { 'Separate terminals' } else { 'Inline (single console)' })"
+Write-Host "  Output: Redirected to logs/ (stdout and stderr)"
 Write-Host ""
 
 # Prerequisites check
@@ -228,57 +250,23 @@ if (-not $NoEmulator) {
         $null = docker-compose up -d
         Write-Host "  ✓ Emulator started"
         
-        # Wait for AMQP port - SIMPLE AND ROBUST approach
-        # The emulator needs: SQL Edge (15-30s) + Service Bus (10-20s) + AMQP ready (5-10s) = 45-60s minimum
-        Write-Host "  Waiting for emulator AMQP port (5672) to become available..."
-        
-        # Start with a guaranteed fixed wait for initial startup
-        Write-Host "    Phase 1: Initial startup (30 seconds guaranteed)..."
-        Start-Sleep -Seconds 30
-        
-        # Then actively poll with timeout
-        Write-Host "    Phase 2: Polling for AMQP readiness (up to 90 more seconds)..."
-        $maxPollingSeconds = 90
-        $found = $false
-        
-        for ($i = 1; $i -le $maxPollingSeconds; $i++) {
-            $socket = $null
-            try {
-                $socket = New-Object System.Net.Sockets.TcpClient
-                $socket.ConnectAsync('localhost', 5672) | Wait-Job -Timeout 2 | Out-Null
-                
-                if ($socket.Connected) {
-                    Write-Host "  ✓ AMQP port 5672 is ready (after $((30 + $i))s total)" -ForegroundColor Green
-                    $found = $true
-                    $socket.Close()
-                    break
+        Wait-ServiceBusEmulatorReady `
+            -ComposePath $composePath `
+            -CancellationCheck {
+                if ($Host.UI.RawUI.KeyAvailable) {
+                    $key = $Host.UI.RawUI.ReadKey('AllowCtrlC,NoEcho,IncludeKeyDown')
+                    return ([int]$key.Character -eq 3)
                 }
-            } catch {
-                # Connection attempt failed - expected for first 20-40 seconds
-            } finally {
-                if ($socket) {
-                    $socket.Dispose()
-                }
+                return $false
             }
-            
-            # Show progress every 10 seconds
-            if (-not $found -and $i % 10 -eq 0) {
-                Write-Host "    [$($i)/$maxPollingSeconds seconds of polling] Still waiting for port to respond..."
-            }
-            
-            Start-Sleep -Seconds 1
-        }
-        
-        # If polling succeeded, great! If not, we've still waited 60 seconds minimum
-        if ($found) {
-            Write-Host "  ✓ Port confirmed ready"
-        } else {
-            Write-Host "  ⚠️  Port not responding after polling, but proceeding anyway (emulator may still be initializing)"
-        }
     }
     catch {
+        if ($_.Exception -is [System.OperationCanceledException]) {
+            Write-Host "Ctrl+C detected. Stopping all services and containers..." -ForegroundColor Yellow
+        }
         Write-Error "❌ Failed to start emulator: $_"
-        exit 1
+        Invoke-Cleanup
+        return
     }
     finally {
         Pop-Location
@@ -293,13 +281,15 @@ try {
     $output = dotnet build $solutionPath --configuration Debug --verbosity quiet 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "❌ Build failed`n$output"
-        exit 1
+        Invoke-Cleanup
+        return
     }
     Write-Host "  ✓ Build successful"
 }
 catch {
     Write-Error "❌ Build failed: $_"
-    exit 1
+    Invoke-Cleanup
+    return
 }
 
 Write-Host ""
@@ -307,7 +297,7 @@ Write-Host ""
 # Step 3: Set environment variables
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
-$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
 $env:Dashboard__Port = $DashboardPort
@@ -329,8 +319,6 @@ Write-Host ""
 # Step 4: Start applications
 Write-Host "STEP 4: Starting applications..." -ForegroundColor Yellow
 Write-Host ""
-
-$processes = @()
 
 # Define the applications to start in order
 $apps = @(
@@ -360,35 +348,34 @@ function Start-AppWithLogging {
         $appNameLower = $Name.ToLower()
         $timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
         
-        # Use a timestamp in the log name so each service run is easy to identify.
-        $launchArguments = @(
-            '-NoProfile',
-            '-Command',
-            "& dotnet run --configuration Debug --project '$ProjectFile' 1> '$logsPath\$appNameLower-$timestamp-stdout.log' 2> '$logsPath\$appNameLower-$timestamp-stderr.log'"
-        )
-
+        # Redirect the dotnet process directly so the files are owned by the
+        # service process and are created before the process starts.
+        $stdoutLog = Join-Path $logsPath "$appNameLower-$timestamp-stdout.log"
+        $stderrLog = Join-Path $logsPath "$appNameLower-$timestamp-stderr.log"
         $startOptions = @{
-            FilePath = 'powershell'
-            ArgumentList = $launchArguments
+            FilePath = 'dotnet'
+            ArgumentList = @('run', '--configuration', 'Debug', '--project', $ProjectFile)
             WorkingDirectory = $projectRoot
             PassThru = $true
-        }
-        if (-not $Terminals) {
-            $startOptions.NoNewWindow = $true
+            NoNewWindow = $true
+            RedirectStandardOutput = $stdoutLog
+            RedirectStandardError = $stderrLog
         }
         $process = Start-Process @startOptions
 
         $pidNumber = $process.Id
-        $finalStdoutLog = Join-Path $logsPath "$appNameLower-$timestamp-stdout.log"
-        $finalStderrLog = Join-Path $logsPath "$appNameLower-$timestamp-stderr.log"
+        Start-Sleep -Milliseconds 100
+        if (-not (Test-Path $stdoutLog) -or -not (Test-Path $stderrLog)) {
+            throw "Log redirection failed for $Name. Expected files: $stdoutLog and $stderrLog"
+        }
         
         Write-Host "  ✓ $Name ($Description) [PID: $pidNumber]" -ForegroundColor Green
         Write-Host "    📌 Logs: logs/$appNameLower-$timestamp-stdout.log | stderr.log" -ForegroundColor Gray
         
         # Store the log file paths on the process object for later reference
         $process | Add-Member -NotePropertyName LogFiles -NotePropertyValue @{
-            StdOut = $finalStdoutLog
-            StdErr = $finalStderrLog
+            StdOut = $stdoutLog
+            StdErr = $stderrLog
             Name = $appNameLower
         } -Force
         
@@ -484,6 +471,7 @@ Write-Host "  2. Click 'Publish Event' and toggle capability flags"
 Write-Host "  3. Watch the consumer consoles log filtered messages"
 Write-Host "  4. See dashboard status update in real-time"
 Write-Host "  5. Stop services: Press Ctrl+C here"
+Write-Host "  Orchestration transcript: $orchestrationLog"
 Write-Host ""
 
 # Keep the script running and listen for Ctrl+C
@@ -491,11 +479,6 @@ Write-Host "Press Ctrl+C to stop all services..."
 Write-Host ""
 
 # Main monitoring loop.
-# Treat Ctrl+C as a console key so PowerShell does not terminate the script
-# before the application cleanup runs.
-$previousTreatControlCAsInput = [Console]::TreatControlCAsInput
-[Console]::TreatControlCAsInput = $true
-
 try {
     while ($true) {
         if ($Host.UI.RawUI.KeyAvailable) {
@@ -532,5 +515,6 @@ catch {
     }
 }
 finally {
-    [Console]::TreatControlCAsInput = $previousTreatControlCAsInput
+    Restore-ControlCHandling
+    Stop-OrchestrationTranscript
 }

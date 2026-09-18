@@ -6,6 +6,7 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 
 - PowerShell 7+ (cross-platform)
 - .NET 10 SDK
+- Node.js 20+
 - Docker Desktop (for emulator)
 - 4 GB free disk space (for emulator container)
 
@@ -44,7 +45,7 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 - Press `Ctrl+C` to gracefully shutdown all
 
 **Services Started:**
-1. **Dashboard** — Real-time status & event publishing UI (http://localhost:5100)
+1. **Dashboard** — Node.js real-time status & event publishing UI (http://localhost:5100)
 2. **Producer** — Publishes sample events every 3 seconds
 3. **DigitalChannels** — Receives all events (no filter)
 4. **Insurance** — Receives `hasInsurance=true`

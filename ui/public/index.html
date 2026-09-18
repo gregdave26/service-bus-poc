@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Bus POC Dashboard</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 70rem; padding: 0 1rem; color: #17202a; }
+      form, .service, .status-card { border: 1px solid #d5d8dc; border-radius: .5rem; padding: 1rem; margin: 1rem 0; }
+      label { display: block; margin: .6rem 0; } input { box-sizing: border-box; padding: .45rem; width: 100%; }
+      fieldset { border: 0; padding: 0; } button { cursor: pointer; padding: .55rem .9rem; }
+      .flags { display: flex; gap: 1rem; flex-wrap: wrap; } .flags label { display: inline-flex; gap: .3rem; align-items: center; }
+      .flags input { width: auto; } .online { color: #18794e; } .offline { color: #b42318; }
+      #message { min-height: 1.5rem; } .status-card { display: inline-block; min-width: 13rem; margin-right: .75rem; }
+      .status-label { color: #5f6b76; font-size: .9rem; } .status-value { font-size: 1.2rem; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Service Bus POC Dashboard</h1>
+    <section>
+      <h2>Infrastructure</h2>
+      <article class="status-card">
+        <div class="status-label">Service Bus emulator</div>
+        <div id="emulator-status" class="status-value">Checking...</div>
+        <small id="emulator-detail"></small>
+      </article>
+    </section>
+    <section>
+      <h2>Services</h2>
+      <div id="services">Loading...</div>
+    </section>
+    <section>
+      <h2>Publish contact event</h2>
+      <form id="publish-form">
+        <label>Contact ID <input name="contactId" required></label>
+        <label>First name <input name="firstName" required></label>
+        <label>Last name <input name="lastName" required></label>
+        <label>Phone <input name="phone" required></label>
+        <label>Email <input name="email" type="email" required></label>
+        <fieldset class="flags">
+          <label><input type="checkbox" name="hasInsurance"> Insurance</label>
+          <label><input type="checkbox" name="hasParksResorts"> Parks &amp; Resorts</label>
+          <label><input type="checkbox" name="hasCarwashProduct"> Carwash</label>
+        </fieldset>
+        <button type="submit">Publish event</button>
+        <p id="message" role="status"></p>
+      </form>
+    </section>
+    <script>
+      const services = document.querySelector("#services");
+      const emulatorStatus = document.querySelector("#emulator-status");
+      const emulatorDetail = document.querySelector("#emulator-detail");
+      const message = document.querySelector("#message");
+      const form = document.querySelector("#publish-form");
+
+      function renderEmulatorStatus(status) {
+        emulatorStatus.textContent = status.running ? "Running" : "Not running";
+        emulatorStatus.className = `status-value ${status.running ? "online" : "offline"}`;
+        emulatorDetail.textContent = status.running
+          ? `AMQP listener ${status.host}:${status.port}`
+          : (status.error || `AMQP listener ${status.host}:${status.port} unavailable`);
+      }
+
+      function renderServiceStatuses(statuses) {
+        services.replaceChildren(...statuses.length ? statuses.map((service) => {
+          const item = document.createElement("article");
+          item.className = "service";
+          const title = document.createElement("strong");
+          title.textContent = service.serviceName;
+          const connection = document.createElement("span");
+          const connected = service.state.toLowerCase() !== "offline";
+          connection.className = connected ? "online" : "offline";
+          connection.textContent = connected ? " Connected" : " Disconnected";
+          const details = document.createElement("small");
+          details.textContent = ` (${service.state}) - Messages handled: ${service.messagesHandled}`;
+          item.append(title, connection, document.createElement("br"), details);
+          return item;
+        }) : [document.createTextNode("No service heartbeats received.")]);
+      }
+
+      async function readJson(response, endpoint) {
+        const contentType = response.headers.get("content-type") || "";
+        if (!response.ok || !contentType.includes("application/json")) {
+          throw new Error(`${endpoint} returned HTTP ${response.status} instead of JSON. Restart the dashboard if it is running an older version.`);
+        }
+
+        return response.json();
+      }
+
+      async function refreshStatus() {
+        try {
+          const [emulatorResponse, serviceResponse] = await Promise.all([
+            fetch("/api/emulator-status"),
+            fetch("/api/status"),
+          ]);
+          renderEmulatorStatus(await readJson(emulatorResponse, "/api/emulator-status"));
+          renderServiceStatuses(await readJson(serviceResponse, "/api/status"));
+        } catch (error) {
+          emulatorStatus.textContent = "Unavailable";
+          emulatorStatus.className = "status-value offline";
+          emulatorDetail.textContent = error.message;
+          services.replaceChildren(document.createTextNode("Unable to load service connection status."));
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(form));
+        for (const name of ["hasInsurance", "hasParksResorts", "hasCarwashProduct"]) values[name] = form.elements[name].checked;
+        const response = await fetch("/api/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
+        const result = await response.json();
+        message.textContent = result.success ? `Published ${result.eventId}` : result.error;
+        message.className = result.success ? "online" : "offline";
+      });
+
+      refreshStatus();
+      setInterval(refreshStatus, 3000);
+    </script>
+  </body>
+</html>

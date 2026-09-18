@@ -23,6 +23,7 @@ service-bus-poc/
 │   ├── ServiceBusPoc.ParksResorts/         # Consumer app (parks & resorts filter)
 │   ├── ServiceBusPoc.Carwash/              # Consumer app (carwash filter + Pulse integration)
 │   └── ServiceBusPoc.Verifier/             # Scenario verification app
+├── ui/                                      # Node.js dashboard and event publisher
 ├── tests/
 │   └── ServiceBusPoc.Tests/                # Shared test project
 ├── contracts/                               # JSON Schema event contracts
@@ -34,7 +35,7 @@ service-bus-poc/
 
 ## Prerequisites
 
-- **Runtime:** .NET 10.0 SDK or later ([download](https://dotnet.microsoft.com/download))
+- **Runtime:** .NET 10.0 SDK and Node.js 20+ ([download](https://nodejs.org/))
 - **Container runtime:** Docker Desktop (for Service Bus emulator)
 - **CLI tools:** Azure CLI 2.65+, Bicep, PowerShell 7+
 - **Editor:** VS Code with C# Dev Kit recommended
@@ -47,6 +48,19 @@ service-bus-poc/
 cd src
 dotnet build
 ```
+
+### Run the dashboard
+
+```powershell
+cd ui
+npm install
+npm start
+```
+
+Open <http://localhost:5080>. The dashboard uses the same `ServiceBus__ConnectionString`,
+`ServiceBus__Namespace`, and `ServiceBus__TopicName` environment variables as the .NET
+applications. A connection string is convenient for the local emulator; an Azure namespace
+uses `DefaultAzureCredential`.
 
 ### Verify No Secrets in Code
 
@@ -82,6 +96,7 @@ See [docs/architecture/project-goal.md](docs/architecture/project-goal.md) for d
 | Layer | Technology |
 |-------|------------|
 | **Runtime** | .NET 10 / C# 12 (nullable reference types enabled) |
+| **Dashboard** | Node.js 20+ / Express |
 | **Messaging** | Azure Service Bus SDK 7.18.0 |
 | **Configuration** | Microsoft.Extensions.Configuration (environment variables) |
 | **Dependency Injection** | Microsoft.Extensions.DependencyInjection |

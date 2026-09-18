@@ -49,7 +49,7 @@
 
 .NOTES
     Author: Service Bus POC Team
-    Requires: PowerShell 7+, .NET 10 SDK, Docker Desktop
+    Requires: PowerShell 7+, .NET 10 SDK, Node.js 20+, Docker Desktop
     Environment: Local development only
     
     To stop: Press Ctrl+C in the terminal running this script.
@@ -94,9 +94,9 @@ function Invoke-Cleanup {
     Write-Host ""
     Write-Host "⚠️  Shutting down services gracefully..." -ForegroundColor Yellow
     
-    # Kill all tracked .NET processes and close their windows
+    # Kill all tracked application processes and close their windows
     Write-Host ""
-    Write-Host "Stopping .NET services:" -ForegroundColor Cyan
+    Write-Host "Stopping services:" -ForegroundColor Cyan
     foreach ($process in $script:allProcesses) {
         if ($null -ne $process -and -not $process.HasExited) {
             try {
@@ -120,7 +120,7 @@ function Invoke-Cleanup {
         }
     }
     
-    # Force-kill any remaining dotnet processes
+    # Force-kill any remaining .NET processes
     Write-Host ""
     Write-Host "Cleaning up remaining processes:" -ForegroundColor Cyan
     try {
@@ -214,6 +214,15 @@ catch {
     exit 1
 }
 
+try {
+    $null = node --version
+    Write-Host "  ✓ Node.js available"
+}
+catch {
+    Write-Error "❌ Node.js 20+ not found"
+    exit 1
+}
+
 if (-not $NoEmulator) {
     try {
         $null = docker --version
@@ -224,6 +233,9 @@ if (-not $NoEmulator) {
         exit 1
     }
 }
+
+# The local emulator requires explicit EULA acceptance before Compose starts.
+$env:ACCEPT_EULA = "Y"
 
 $solutionPath = Join-Path $srcPath 'ServiceBusPoc.slnx'
 if (-not (Test-Path $solutionPath)) {
@@ -328,10 +340,11 @@ Write-Host ""
 # Step 3: Set environment variables
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
-$env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+$env:ServiceBus__ConnectionString = "Endpoint=sb://127.0.0.1;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
 $env:Dashboard__Port = $DashboardPort
+$env:PORT = $DashboardPort
 $env:Dashboard__Enabled = "true"
 $env:Dashboard__Url = "http://localhost:$DashboardPort"
 $env:Dashboard__HeartbeatIntervalSeconds = "5"
@@ -353,13 +366,58 @@ Write-Host ""
 
 # Define the applications to start in order
 $apps = @(
-    @{ Name = 'Dashboard'; Project = 'ServiceBusPoc.Dashboard'; Description = 'Status & Event Publishing' }
     @{ Name = 'Producer'; Project = 'ServiceBusPoc.Producer'; Description = 'Event Publisher'; SubscriptionName = '' }
     @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.DigitalChannels'; Description = 'Receives all events'; SubscriptionName = 'digital-channels' }
     @{ Name = 'Insurance'; Project = 'ServiceBusPoc.Insurance'; Description = 'Receives hasInsurance=true'; SubscriptionName = 'insurance' }
     @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ParksResorts'; Description = 'Receives hasParksResorts=true'; SubscriptionName = 'parks-resorts' }
     @{ Name = 'Carwash'; Project = 'ServiceBusPoc.Carwash'; Description = 'Receives hasCarwashProduct=true'; SubscriptionName = 'carwash' }
 )
+
+function Start-NodeDashboardWithLogging {
+        $appNameLower = 'dashboard'
+        $timestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+        $stdoutLog = Join-Path $logsPath "$appNameLower-$timestamp-stdout.log"
+        $stderrLog = Join-Path $logsPath "$appNameLower-$timestamp-stderr.log"
+        $uiPath = Join-Path $projectRoot 'ui'
+        $serverPath = Join-Path $uiPath 'server.js'
+
+        try {
+            if (-not (Test-Path $serverPath)) {
+                throw "Node.js dashboard entry point not found: $serverPath"
+            }
+
+            $startOptions = @{
+                FilePath = 'node'
+                ArgumentList = @($serverPath)
+                WorkingDirectory = $uiPath
+                PassThru = $true
+                NoNewWindow = $true
+                RedirectStandardOutput = $stdoutLog
+                RedirectStandardError = $stderrLog
+            }
+            $process = Start-Process @startOptions
+
+            Start-Sleep -Milliseconds 100
+            if (-not (Test-Path $stdoutLog) -or -not (Test-Path $stderrLog)) {
+                throw "Log redirection failed for Dashboard. Expected files: $stdoutLog and $stderrLog"
+            }
+
+            Write-Host "  ✓ Dashboard (Node.js UI and event publishing) [PID: $($process.Id)]" -ForegroundColor Green
+            Write-Host "    📌 Logs: logs/$appNameLower-$timestamp-stdout.log | stderr.log" -ForegroundColor Gray
+
+            $process | Add-Member -NotePropertyName LogFiles -NotePropertyValue @{
+                StdOut = $stdoutLog
+                StdErr = $stderrLog
+                Name = $appNameLower
+            } -Force
+
+            return $process
+        }
+        catch {
+            Write-Host "  ✗ Dashboard failed to start: $_" -ForegroundColor Red
+            return $null
+        }
+}
 
 function Start-AppWithLogging {
     param(
@@ -420,6 +478,13 @@ function Start-AppWithLogging {
 
 # Store the set of all started processes for cleanup (uses $script:allProcesses from trap)
 $script:allProcesses = @()
+
+# Start the Node.js dashboard independently from the .NET services.
+$dashboardProcess = Start-NodeDashboardWithLogging
+if ($null -ne $dashboardProcess) {
+    $script:allProcesses += $dashboardProcess
+}
+Start-Sleep -Seconds 2
 
 # Start each application
 foreach ($app in $apps) {
@@ -546,6 +611,11 @@ catch {
     }
 }
 finally {
+    if (-not $script:shutdownInProgress) {
+        Write-Host "Finalizing shutdown and cleaning up services..." -ForegroundColor Yellow
+        Invoke-Cleanup
+    }
+
     Restore-ControlCHandling
     Stop-OrchestrationTranscript
 }

@@ -1,0 +1,19 @@
+{
+  "name": "service-bus-poc-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js dashboard for the Service Bus POC",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.10.0",
+    "@azure/service-bus": "^7.9.5",
+    "express": "^5.1.0"
+  }
+}

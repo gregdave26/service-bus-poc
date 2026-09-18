@@ -24,6 +24,7 @@ coverage/
 
 # NuGet and package-manager output
 packages/
+**/node_modules/
 *.nupkg
 *.snupkg
 
@@ -57,4 +58,3 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 Desktop.ini
-

@@ -104,7 +104,7 @@
         { id:"new-member", name:"New member welcome", folder:"Contact events", data:{ contactId:"contact-1088", firstName:"Grace", lastName:"Hopper", phone:"0400000011", email:"grace@example.com", hasInsurance:false, hasParksResorts:true, hasCarwashProduct:false } },
         { id:"regression", name:"Routing regression", folder:"Regression checks", data:{ contactId:"contact-test", firstName:"Test", lastName:"Contact", phone:"0400000099", email:"test@example.com", hasInsurance:true, hasParksResorts:true, hasCarwashProduct:true } },
       ];
-      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = "Dashboard", selectedMessage = null, statusCache = [], emulatorCache = { running:false };
+      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = null, selectedMessage = null, statusCache = [], emulatorCache = { running:false };
       const $ = (selector) => document.querySelector(selector);
       const draftForm = $("#draft-form");
 
@@ -125,8 +125,12 @@
       function renderMessages() {
         const related = messages.filter((message) => message.serviceName === selectedService && messageMatchesDraft(message, selectedDraft));
         selectedMessage = related.find((message) => message.messageId === selectedMessage?.messageId) || related[0] || null;
-        $("#message-heading").textContent = `${selectedService} messages`;
-        $("#message-count").textContent = messagesLoading ? "Loading live activity…" : `${related.length} ${related.length === 1 ? "activity item" : "activity items"} · ${selectedDraft.name}`;
+        $("#message-heading").textContent = selectedService ? `${selectedService} messages` : "Select a service";
+        $("#message-count").textContent = messagesLoading
+          ? "Loading live activity…"
+          : selectedService
+            ? `${related.length} ${related.length === 1 ? "activity item" : "activity items"} · ${selectedDraft.name}`
+            : "Choose a service tile to inspect activity";
         if (!related.length) { const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = messagesLoading ? "Loading live messages…" : "No live activity for this draft yet."; $("#message-list").replaceChildren(empty); return; }
         $("#message-list").replaceChildren(...related.map((message) => {
           const row = document.createElement("button"); row.className = "message-row" + (selectedMessage?.messageId === message.messageId ? " selected" : "");
@@ -145,9 +149,12 @@
       function renderStatusTiles(statuses, emulator) {
         const reportedServices = Array.isArray(statuses) ? statuses : [];
         const serviceNames = reportedServices.map((service) => service.serviceName);
-        if (reportedServices.length && !serviceNames.includes(selectedService)) selectedService = serviceNames[0];
         const liveServices = [...new Set(messages.map((message) => message.serviceName))].filter((serviceName) => !serviceNames.includes(serviceName) && serviceName !== "Dashboard").map((serviceName) => ({ serviceName, state:"Live", messagesHandled:messages.filter((message) => message.serviceName === serviceName).length, icon:"◎", selectable:true }));
-        const serviceTiles = [{ serviceName:"Service Bus emulator", state:emulator.running ? "Running" : "Offline", messagesHandled:null, icon:"◈", selectable:false }, { serviceName:"Dashboard", state:"Ready", messagesHandled:messages.filter((message) => message.serviceName === "Dashboard").length, icon:"⌁", selectable:true }, ...reportedServices.filter((service) => service.serviceName !== "Dashboard"), ...liveServices];
+        const selectableServices = [...reportedServices.filter((service) => service.serviceName !== "Dashboard"), ...liveServices];
+        if (!selectedService || !selectableServices.some((service) => service.serviceName === selectedService)) {
+          selectedService = selectableServices[0]?.serviceName ?? null;
+        }
+        const serviceTiles = [{ serviceName:"Service Bus emulator", state:emulator.running ? "Running" : "Offline", messagesHandled:null, icon:"◈", selectable:false }, ...selectableServices];
         $("#status-tiles").replaceChildren(...serviceTiles.map((service) => { const connected = String(service.state).toLowerCase() !== "offline"; const selected = service.selectable !== false && selectedService === service.serviceName; const tile = document.createElement("button"); tile.type = "button"; tile.className = "tile" + (connected ? "" : " offline") + (selected ? " selected" : ""); tile.disabled = service.selectable === false; tile.setAttribute("aria-pressed", selected ? "true" : "false"); tile.setAttribute("aria-label", `Filter messages for ${service.serviceName}`); const top = document.createElement("div"); top.className = "tile-top"; const category = document.createElement("span"); category.textContent = service.serviceName === "Service Bus emulator" ? "Infrastructure" : "Service"; const icon = document.createElement("span"); icon.className = "tile-icon"; icon.textContent = service.icon || "◎"; top.append(category, icon); const name = document.createElement("div"); name.className = "tile-name"; const dot = document.createElement("span"); dot.className = "dot"; name.append(dot, document.createTextNode(service.serviceName)); const state = document.createElement("div"); state.className = "tile-state"; state.textContent = `${connected ? "Connected" : "Offline"}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} handled`}`; tile.append(top, name, state); if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); }); return tile; }));
       }
       async function readJson(response, endpoint) {

@@ -15,7 +15,9 @@ const messageHistory = [];
 const maxMessageHistory = 500;
 
 app.use(express.json({ limit: "32kb" }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  setHeaders: (response) => response.setHeader("Cache-Control", "no-store"),
+}));
 
 function getServiceStatuses() {
   const now = Date.now();

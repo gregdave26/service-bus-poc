@@ -276,11 +276,16 @@ if (-not $NoEmulator) {
         Wait-ServiceBusEmulatorReady `
             -ComposePath $composePath `
             -CancellationCheck {
-                if ($Host.UI.RawUI.KeyAvailable) {
-                    $key = $Host.UI.RawUI.ReadKey('AllowCtrlC,NoEcho,IncludeKeyDown')
-                    return ([int]$key.Character -eq 3)
-                }
-                return $false
+           if ([Console]::IsInputRedirected) {
+               return $false
+           }
+
+           if ([Console]::KeyAvailable) {
+               $key = [Console]::ReadKey($true)
+               return ([int]$key.KeyChar -eq 3)
+           }
+
+           return $false
             }
     }
     catch {

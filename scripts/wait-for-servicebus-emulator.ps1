@@ -4,19 +4,29 @@ function Wait-ServiceBusEmulatorReady {
         [Parameter(Mandatory)]
         [string]$ComposePath,
 
-        [int]$InitialDelaySeconds = 30,
+        [int]$InitialDelaySeconds = 0,
 
         [int]$PollingSeconds = 90,
 
         [scriptblock]$CancellationCheck
     )
 
-    Write-Host "  Waiting $InitialDelaySeconds seconds for emulator startup..."
-    for ($delay = 0; $delay -lt ($InitialDelaySeconds * 10); $delay++) {
-        if ($CancellationCheck -and (& $CancellationCheck)) {
-            throw [System.OperationCanceledException]::new('Ctrl+C requested during emulator startup.')
+    if ($InitialDelaySeconds -gt 0) {
+        Write-Host "  Waiting up to $InitialDelaySeconds seconds for emulator startup..."
+        for ($delay = 0; $delay -lt ($InitialDelaySeconds * 10); $delay++) {
+            if ($CancellationCheck -and (& $CancellationCheck)) {
+                throw [System.OperationCanceledException]::new('Ctrl+C requested during emulator startup.')
+            }
+
+            if ($delay -gt 0 -and $delay % 50 -eq 0) {
+                Write-Host "    Emulator startup wait: $([int]($delay / 10))/$InitialDelaySeconds seconds..."
+            }
+
+            Start-Sleep -Milliseconds 100
         }
-        Start-Sleep -Milliseconds 100
+    }
+    else {
+        Write-Host "  Checking emulator readiness..."
     }
 
     for ($attempt = 1; $attempt -le $PollingSeconds; $attempt++) {
@@ -25,13 +35,15 @@ function Wait-ServiceBusEmulatorReady {
         }
 
         $socket = $null
+        $probeStatus = 'TCP connection refused or timed out'
         try {
             $socket = [System.Net.Sockets.TcpClient]::new()
             $socket.ReceiveTimeout = 2000
             $socket.SendTimeout = 2000
-            $connectTask = $socket.ConnectAsync('localhost', 5672)
+            $connectTask = $socket.ConnectAsync('127.0.0.1', 5672)
 
             if ($connectTask.Wait(2000) -and $socket.Connected) {
+                $probeStatus = 'TCP connected; waiting for AMQP protocol response'
                 $stream = $socket.GetStream()
                 $stream.ReadTimeout = 2000
                 $stream.WriteTimeout = 2000
@@ -40,10 +52,16 @@ function Wait-ServiceBusEmulatorReady {
                 $stream.Flush()
 
                 $response = [byte[]]::new(8)
-                $bytesRead = $stream.Read($response, 0, $response.Length)
-                if ($bytesRead -gt 0) {
-                    Write-Host "  ✓ AMQP handshake completed on localhost:5672" -ForegroundColor Green
-                    return
+                for ($readWait = 0; $readWait -lt 20; $readWait++) {
+                    if ($stream.DataAvailable) {
+                        $bytesRead = $stream.Read($response, 0, $response.Length)
+                        if ($bytesRead -gt 0) {
+                            Write-Host "  ✓ AMQP handshake completed on 127.0.0.1:5672" -ForegroundColor Green
+                            return
+                        }
+                    }
+
+                    Start-Sleep -Milliseconds 100
                 }
             }
         }
@@ -51,7 +69,7 @@ function Wait-ServiceBusEmulatorReady {
             throw
         }
         catch {
-            # The emulator can refuse connections while SQL Edge and AMQP initialize.
+            $probeStatus = $_.Exception.Message
         }
         finally {
             if ($socket) {
@@ -59,8 +77,8 @@ function Wait-ServiceBusEmulatorReady {
             }
         }
 
-        if ($attempt % 10 -eq 0) {
-            Write-Host "    [$attempt/$PollingSeconds seconds of polling] AMQP handshake not ready..."
+        if ($attempt % 5 -eq 0) {
+            Write-Host "    [$attempt/$PollingSeconds seconds of polling] AMQP handshake not ready: $probeStatus"
         }
         Start-Sleep -Seconds 1
     }

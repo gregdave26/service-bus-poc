@@ -131,7 +131,7 @@ try {
     $null = docker-compose up -d
     Write-Host "  ✓ Emulator started"
     
-    Wait-ServiceBusEmulatorReady -ComposePath $composePath -InitialDelaySeconds 30
+    Wait-ServiceBusEmulatorReady -ComposePath $composePath
 }
 catch {
     Write-Error "❌ Failed to start emulator: $_"

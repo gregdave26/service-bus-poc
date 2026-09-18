@@ -73,6 +73,45 @@ function validatePublishRequest(body) {
   return null;
 }
 
+function createPublishMessage(request) {
+  const hasInsurance = request.hasInsurance === true;
+  const hasParksResorts = request.hasParksResorts === true;
+  const hasCarwashProduct = request.hasCarwashProduct === true;
+  const event = {
+    id: randomUUID(),
+    type: "ContactUpdated",
+    source: "dashboard",
+    timestamp: new Date().toISOString(),
+    dataVersion: "1.0",
+    correlationId: randomUUID(),
+    data: {
+      contactId: request.contactId.trim(),
+      firstName: request.firstName.trim(),
+      lastName: request.lastName.trim(),
+      phone: request.phone.trim(),
+      email: request.email.trim(),
+      attributes: {
+        hasInsurance,
+        hasParksResorts,
+        hasCarwashProduct,
+      },
+    },
+  };
+
+  return {
+    body: event,
+    contentType: "application/json",
+    messageId: event.id,
+    correlationId: event.correlationId,
+    subject: event.type,
+    applicationProperties: {
+      hasInsurance,
+      hasParksResorts,
+      hasCarwashProduct,
+    },
+  };
+}
+
 function validateDashboardMessage(body) {
   const requiredStrings = ["messageId", "eventId", "serviceName", "direction", "payload"];
   const missingFields = requiredStrings.filter(
@@ -125,29 +164,11 @@ async function publishContactEvent(request) {
     : new ServiceBusClient(namespace, new DefaultAzureCredential());
 
   const sender = client.createSender(topicName);
-  const event = {
-    id: randomUUID(),
-    type: "ContactUpdated",
-    source: "dashboard",
-    timestamp: new Date().toISOString(),
-    dataVersion: "1.0",
-    correlationId: randomUUID(),
-    data: {
-      contactId: request.contactId.trim(),
-      firstName: request.firstName.trim(),
-      lastName: request.lastName.trim(),
-      phone: request.phone.trim(),
-      email: request.email.trim(),
-      attributes: {
-        hasInsurance: Boolean(request.hasInsurance),
-        hasParksResorts: Boolean(request.hasParksResorts),
-        hasCarwashProduct: Boolean(request.hasCarwashProduct),
-      },
-    },
-  };
+  const message = createPublishMessage(request);
+  const event = message.body;
 
   try {
-    await sender.sendMessages({ body: event, contentType: "application/json" });
+    await sender.sendMessages(message);
     return event;
   } finally {
     await sender.close();
@@ -229,6 +250,7 @@ export {
   getEmulatorStatus,
   getServiceStatuses,
   validatePublishRequest,
+  createPublishMessage,
   validateDashboardMessage,
   storeMessage,
   getMessages,

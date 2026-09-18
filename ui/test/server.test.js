@@ -6,6 +6,7 @@ import {
   getServiceStatuses,
   messageHistory,
   storeMessage,
+  createPublishMessage,
   validateDashboardMessage,
   validatePublishRequest,
 } from "../server.js";
@@ -22,6 +23,26 @@ test("validates all required publish fields", () => {
     }),
     null,
   );
+});
+
+test("promotes capability flags to Service Bus application properties", () => {
+  const message = createPublishMessage({
+    contactId: "c-1",
+    firstName: "Ada",
+    lastName: "Lovelace",
+    phone: "0400000000",
+    email: "ada@example.com",
+    hasInsurance: true,
+    hasParksResorts: false,
+    hasCarwashProduct: true,
+  });
+
+  assert.deepEqual(message.applicationProperties, {
+    hasInsurance: true,
+    hasParksResorts: false,
+    hasCarwashProduct: true,
+  });
+  assert.deepEqual(message.body.data.attributes, message.applicationProperties);
 });
 
 test("returns an empty status list when no heartbeats have been received", () => {

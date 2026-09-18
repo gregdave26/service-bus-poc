@@ -21,7 +21,7 @@
       .refresh-button:hover, .icon-button:hover { border-color:#b8c7e6; color:var(--primary); } button:disabled { cursor:not-allowed; opacity:.5; }
       .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:28px; }
       .tile { position:relative; overflow:hidden; min-height:142px; width:100%; padding:20px; border:0; border-radius:22px; color:#fff; box-shadow:var(--shadow); background:linear-gradient(145deg,#2e63dc,#244bb4); text-align:left; transition:transform .18s, box-shadow .18s; }
-      .tile:not(:disabled) { cursor:pointer; } .tile:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(30,55,95,.14); } .tile.selected { outline:3px solid #17233c; outline-offset:3px; }
+      .tile:not(:disabled) { cursor:pointer; } button.tile:not(:disabled):hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(30,55,95,.14); } .tile.infrastructure { cursor:default; } .tile.selected { outline:3px solid #17233c; outline-offset:3px; }
       .tile:focus-visible { outline:3px solid #17233c; outline-offset:3px; }
       .tile:nth-child(2n) { background:linear-gradient(145deg,#138f84,#087166); } .tile:nth-child(3n) { background:linear-gradient(145deg,#e79a27,#c9780c); }
       .tile.offline { background:linear-gradient(145deg,#6d7890,#4d596e); }
@@ -203,13 +203,40 @@
       function renderStatusTiles(statuses, emulator) {
         const reportedServices = Array.isArray(statuses) ? statuses : [];
         const serviceNames = reportedServices.map((service) => service.serviceName);
-        const liveServices = [...new Set(messages.map((message) => message.serviceName))].filter((serviceName) => !serviceNames.includes(serviceName) && serviceName !== "Dashboard").map((serviceName) => ({ serviceName, state:"Live", messagesHandled:messages.filter((message) => message.serviceName === serviceName).length, icon:"◎", selectable:true }));
-        const selectableServices = [...reportedServices.filter((service) => service.serviceName !== "Dashboard"), ...liveServices];
+        const liveServices = [...new Set(messages.map((message) => message.serviceName))].filter((serviceName) => !serviceNames.includes(serviceName) && !["Dashboard", "producer"].includes(serviceName)).map((serviceName) => ({ serviceName, state:"Live", messagesHandled:messages.filter((message) => message.serviceName === serviceName).length, icon:"◎", selectable:true }));
+        const producerStatus = reportedServices.find((service) => service.serviceName === "producer") || { serviceName:"producer", state:"Ready", messagesHandled:messages.filter((message) => message.serviceName === "producer").length, icon:"◉", selectable:false };
+        const selectableServices = [...reportedServices.filter((service) => !["Dashboard", "producer"].includes(service.serviceName)), ...liveServices];
         if (!selectedService || !selectableServices.some((service) => service.serviceName === selectedService)) {
           selectedService = selectableServices[0]?.serviceName ?? null;
         }
-        const serviceTiles = [{ serviceName:"Service Bus emulator", state:emulator.running ? "Running" : "Offline", messagesHandled:null, icon:"◈", selectable:false }, ...selectableServices];
-        $("#status-tiles").replaceChildren(...serviceTiles.map((service) => { const connected = String(service.state).toLowerCase() !== "offline"; const selected = service.selectable !== false && selectedService === service.serviceName; const tile = document.createElement("button"); tile.type = "button"; tile.className = "tile" + (connected ? "" : " offline") + (selected ? " selected" : ""); tile.disabled = service.selectable === false; tile.setAttribute("aria-pressed", selected ? "true" : "false"); tile.setAttribute("aria-label", `Filter messages for ${service.serviceName}`); const top = document.createElement("div"); top.className = "tile-top"; const category = document.createElement("span"); category.textContent = service.serviceName === "Service Bus emulator" ? "Infrastructure" : "Service"; const icon = document.createElement("span"); icon.className = "tile-icon"; icon.textContent = service.icon || "◎"; top.append(category, icon); const name = document.createElement("div"); name.className = "tile-name"; const dot = document.createElement("span"); dot.className = "dot"; name.append(dot, document.createTextNode(service.serviceName)); const state = document.createElement("div"); state.className = "tile-state"; state.textContent = `${connected ? "Connected" : "Offline"}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} handled`}`; tile.append(top, name, state); if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); }); return tile; }));
+        const serviceTiles = [
+          { serviceName:"Service Bus emulator", state:emulator.running ? "Running" : "Offline", messagesHandled:null, icon:"◈", selectable:false, infrastructure:true },
+          { ...producerStatus, icon:"◉", selectable:false, infrastructure:true },
+          ...selectableServices,
+        ];
+        $("#status-tiles").replaceChildren(...serviceTiles.map((service) => {
+          const connected = String(service.state).toLowerCase() !== "offline";
+          const selected = service.selectable !== false && selectedService === service.serviceName;
+          const tile = document.createElement(service.selectable === false ? "div" : "button");
+          if (service.selectable !== false) {
+            tile.type = "button";
+            tile.setAttribute("aria-pressed", selected ? "true" : "false");
+            tile.setAttribute("aria-label", `Filter messages for ${service.serviceName}`);
+          }
+          tile.className = "tile" + (service.infrastructure ? " infrastructure" : "") + (connected ? "" : " offline") + (selected ? " selected" : "");
+          const top = document.createElement("div"); top.className = "tile-top";
+          const category = document.createElement("span"); category.textContent = service.infrastructure ? "Infrastructure" : "Service";
+          const icon = document.createElement("span"); icon.className = "tile-icon"; icon.textContent = service.icon || "◎";
+          top.append(category, icon);
+          const name = document.createElement("div"); name.className = "tile-name";
+          const dot = document.createElement("span"); dot.className = "dot";
+          name.append(dot, document.createTextNode(service.serviceName === "producer" ? "Producer" : service.serviceName));
+          const state = document.createElement("div"); state.className = "tile-state";
+          state.textContent = `${connected ? "Connected" : "Offline"}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} handled`}`;
+          tile.append(top, name, state);
+          if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); });
+          return tile;
+        }));
       }
       async function readJson(response, endpoint) {
         const type = response.headers.get("content-type") || ""; if (!response.ok || !type.includes("application/json")) throw new Error(`${endpoint} returned HTTP ${response.status}.`); return response.json();

@@ -4,7 +4,7 @@
 
 This document proposes a phased implementation approach for the Azure Service Bus contact events POC. The plan prioritizes validating the core messaging backbone, filter routing, and Carwash integration in the fastest, leanest way possible. The MVP delivers end-to-end event flow with local emulator testing before moving to cloud deployment.
 
-**Current status (2026-09-16):** Phase 1 (foundation, contracts, scaffolding) is complete. `infra/servicebus/compose.yaml` and `config.json` exist. The Carwash HTTP verification API is implemented and its API test files exist; the producer and consumer messaging services remain stubs, and the emulator topology has not yet been validated end to end.
+**Current status (2026-09-21):** The solution builds with 0 warnings/errors and `dotnet test` passes 100 tests. Local emulator files exist under `infra/servicebus/`. ProducerService, ServiceBusMessagePublisher, ContactEventPublisher, the shared `IServiceBusSender`/`IServiceBusReceiver` adapters, SubscriptionConsumerRunner, all four consumer wrappers, dashboard reporting, and TopologyValidator are implemented. VerifierService remains a stub with a TODO and currently performs topology validation only. Emulator routing has not been claimed as end-to-end proven.
 
 ---
 
@@ -58,7 +58,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 }
 ```
 
-**Deliverable:** JSON Schema files with validation tests; C# DTOs generated or hand-coded from schemas
+**Deliverable:** JSON Schema files with matching C# DTOs. Dedicated schema tests remain outstanding.
 
 ---
 
@@ -66,12 +66,12 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 
 **Goal:** Implement end-to-end producer → Service Bus → consumer routing with local Azure Service Bus emulator (Docker Compose).
 
-**Status:** ⏳ In progress — the 2.4 Carwash HTTP verification API is implemented and its API test files exist, but the actual Service Bus messaging (2.1–2.3) is not. Producer, DigitalChannels, Insurance, ParksResorts, and Carwash consumer services are all stubs that log settings and return immediately (see `TODO: Implement ... in Phase 2` in `ProducerService.cs` and `CarwashConsumerService.cs`).
+**Status:** ⏳ In progress — the producer, shared messaging adapters/publisher, consumer runner, four consumer wrappers, dashboard reporting, and topology validator are implemented. The Carwash HTTP verification API is also implemented. VerifierService remains a stub with a TODO and only validates topology; local emulator routing is not yet end-to-end proven.
 
 ### 2.1 Azure Service Bus Emulator Topology (Docker Compose)
 **File:** `infra/servicebus/compose.yaml` and `config.json`
 
-**Status:** ⏳ Configuration exists — `infra/servicebus/compose.yaml` and `config.json` define the local emulator setup; topology startup and end-to-end validation remain outstanding.
+**Status:** ⏳ Configuration exists — `infra/servicebus/compose.yaml` and `config.json` define the local emulator setup and filtered subscriptions. End-to-end routing validation remains outstanding.
 
 **Topology:**
 - Service Bus namespace (emulator)
@@ -87,7 +87,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 ### 2.2 .NET Console Producer
 **File:** `src/ServiceBusPoc.Producer/Services/ProducerService.cs`
 
-**Status:** ⏳ Stub only — logs configured namespace/topic and returns; no publish logic yet.
+**Status:** ✅ Implemented — `ProducerService`, `ServiceBusMessagePublisher`, and `ContactEventPublisher` publish envelope-wrapped events through the shared sender adapter.
 
 **Responsibilities:**
 - Parse event from JSON or CLI args
@@ -119,7 +119,7 @@ dotnet run -- --producer \
 - `src/ServiceBusPoc.ParksResorts/`
 - `src/ServiceBusPoc.Carwash/`
 
-**Status:** ⏳ Console app scaffolds exist for all four; each has a stub service that logs its configured filter/settings but does not yet subscribe or process messages.
+**Status:** ✅ Implemented — `SubscriptionConsumerRunner`, shared receiver adapter, and all four consumer wrappers are implemented. Dashboard reporting is an implemented supporting surface. Dedicated consumer tests and end-to-end emulator routing proof remain outstanding.
 
 **Shared Consumer Base:**
 - Listen to subscription
@@ -135,6 +135,8 @@ dotnet run -- --producer \
 
 **Deliverable:** Runnable consumers for all 4 subscriptions; async message handling
 
+**Supporting surface:** Dashboard reporting is implemented for service state, heartbeats, and published/received event reporting.
+
 ### 2.4 Carwash Verification API
 **File:** `src/ServiceBusPoc.Carwash/Api/CarwashApiServer.cs`
 
@@ -149,7 +151,7 @@ dotnet run -- --producer \
 ### 2.5 Scenario Verifier & Test Harness
 **File:** `src/ServiceBusPoc.Verifier/Services/VerifierService.cs`
 
-**Status:** ⏳ Scaffold exists; scenario logic not yet implemented.
+**Status:** ⏳ Stub only — `VerifierService` contains a TODO and currently performs topology validation only; routing scenarios and schema/error scenarios are not implemented.
 
 **Purpose:** Run deterministic end-to-end scenarios locally without real cloud infrastructure.
 
@@ -176,7 +178,7 @@ dotnet run -- --producer \
 
 **Goal:** Prove filter routing and integration logic with automated tests.
 
-**Status:** ⏳ Partial — Carwash HTTP API test files cover the API surface (constructor, JSON parsing, validation, start/stop, and request/response contracts). Schema, filter-routing, Service-Bus consumer, and settings test work remains.
+**Status:** ✅ Partial — the solution build passes with 0 warnings/errors and `dotnet test` passes 100 tests. Tests are present for the Carwash API, ProducerService, ProducerConfiguration, ProducerIntegration, ServiceBusMessagePublisher, and TopologyValidator. No dedicated consumer, schema, or settings tests are present.
 
 ### 3.1 Schema Tests
 **File:** `tests/ServiceBusPoc.Tests/SchemaTests.cs`
@@ -202,7 +204,7 @@ dotnet run -- --producer \
 ### 3.3 Carwash API and Consumer Tests
 **File:** `tests/ServiceBusPoc.Tests/CarwashIntegrationTests.cs`
 
-**Status:** ✅ Partially covered — `CarwashApiServer*Tests.cs`, `VerifyMemberRequestTests.cs`, `VerifyMemberResponseTests.cs`, and `ErrorResponseTests.cs` cover the HTTP API contract and validation. Service Bus consumer tests are not started; they must remain independent of the verification API.
+**Status:** ✅ Carwash API coverage is present. Dedicated Service Bus consumer tests are not present; they must remain independent of the verification API.
 
 - Test verification API request validation and responses.
 - Test Carwash consumer routing separately from the HTTP API.
@@ -216,7 +218,7 @@ dotnet run -- --producer \
 - Test missing/invalid connection string handling
 - Test environment variable override
 
-**Target Coverage:** ≥80% meaningful code coverage (focus on business logic and routing)
+**Coverage:** No coverage measurement or ≥80% result is asserted by this plan; coverage remains a gap to measure.
 
 ---
 
@@ -255,7 +257,7 @@ dotnet run -- --producer \
 ### 4.4 ADR: Cloud vs. Local Strategy
 **File:** `docs/decisions/001-emulator-first-validation.md`
 
-**Status:** ✅ Done — ADR-001 through ADR-008 are approved and recorded under `docs/decisions/`.
+**Status:** ✅ Done — ADR-001 through ADR-009 are recorded under `docs/decisions/`; ADR-009 defines the independent Carwash consumer and verification API boundary.
 
 Document the decision to validate with local emulator before cloud deployment, including:
 - Rationale: faster iteration, no cost, deterministic testing
@@ -270,12 +272,12 @@ Document the decision to validate with local emulator before cloud deployment, i
 
 **Goal:** Automate local emulator and Azure cloud deployment.
 
-**Status:** ⏳ Partial — `scripts/debug-run.ps1`, `scripts/test-carwash-api.ps1`, and `run-local-poc.ps1` exist. The local script depends on Phase 2 emulator topology and producer/consumer messaging, which are not implemented end to end. `deploy-azure.ps1` is not started.
+**Status:** ⏳ Partial — `scripts/run-local-poc.ps1` exists and starts consumers and the verifier. Its presence does not prove end-to-end emulator routing. `deploy-azure.ps1` is not started.
 
 ### 5.1 Local POC Script
 **File:** `scripts/run-local-poc.ps1`
 
-**Status:** ⏳ Script scaffold exists (see `scripts/README.md`); blocked on Phase 2 emulator topology and messaging.
+**Status:** ⏳ Exists and starts consumers/verifier; end-to-end completion and routing results are not yet proven.
 
 **Steps:**
 1. Spin up Docker Compose (Service Bus emulator)
@@ -361,15 +363,15 @@ Document the decision to validate with local emulator before cloud deployment, i
 
 **MVP = Phases 1–3 + Phase 5.1 (Local Scripts)**
 
-**Status:** ⏳ In progress — Phase 1 is complete; Phase 2 messaging, most of Phase 3 tests, and Phase 5.1's end-to-end script are outstanding. The independent Carwash verification API in 2.4 is implemented, with API test files present.
+**Status:** ⏳ In progress — core producer/consumer messaging, dashboard reporting, and topology validation are implemented, and the solution build/tests pass. The verifier scenarios, dedicated consumer/schema/settings tests, measured coverage, and end-to-end emulator routing proof remain outstanding. Bicep is not implemented.
 
 The MVP aims to demonstrate:
-1. ⏳ End-to-end event flow: producer → topic → subscriptions → consumers
+1. ⏳ End-to-end event flow: producer → topic → subscriptions → consumers (implemented surfaces exist; emulator routing is not yet proven)
 2. ⏳ Filter routing validation (all 8 scenarios)
 3. ✅ Carwash exposes the verification API that Pulse or mock Pulse calls; its mock verification rule is implemented
-4. ⏳ Comprehensive unit & integration tests — Carwash API tests done; schema/routing/settings tests outstanding
+4. ⏳ Test coverage — 100 tests pass, including Carwash API, ProducerService, ProducerConfiguration, ProducerIntegration, ServiceBusMessagePublisher, and TopologyValidator; dedicated consumer/schema/settings tests are outstanding
 5. ⏳ Reproducible local execution via Docker + script
-6. ⏳ Schema validation and error handling — contracts and DTOs exist; end-to-end validation not yet wired up
+6. ⏳ Schema validation and error handling — contracts and DTOs exist; dedicated schema tests and verifier scenarios are not implemented
 
 **MVP Does NOT Include:**
 - Cloud deployment to real Azure subscription
@@ -428,7 +430,7 @@ Phase 6: Documentation (parallel with others)
 1. **Emulator First:** Validate with local Azure Service Bus emulator before cloud (faster, cheaper, deterministic)
 2. **Mock Verification Rule in MVP:** Carwash exposes a verification API for Pulse or mock Pulse to call; live integration is deferred.
 3. **Independent Carwash Paths:** The `hasCarwashProduct=true` consumer and the verification API have no runtime dependency on each other.
-4. **Dependency Injection:** Use `IServiceProvider` + `Microsoft.Extensions.DependencyInjection` for all consumers and producers
+4. **Dependency Injection:** Use constructor injection with `Microsoft.Extensions.DependencyInjection` for all consumers and producers
 5. **Structured Logging:** Use `ILogger` with JSON-structured output for machine-parseable logs
 6. **Schema Validation:** Use JSON Schema for event contracts; C# DTO validation via FluentValidation or data annotations
 7. **Configuration:** No hardcoded secrets; all via `IConfiguration` (appsettings.json, environment variables, Key Vault)
@@ -499,8 +501,8 @@ Phase 6: Documentation (parallel with others)
 
 ## Next Steps
 
-1. Validate the existing emulator Compose topology in 2.1.
-2. Implement the producer in 2.2 using tests from Phase 3.
-3. Implement the four consumers in 2.3 using tests from Phase 3.
-4. Implement the verifier in 2.5 for all 8 routing combinations.
-5. Complete Phase 5.1 and request independent QA for the end-to-end MVP.
+1. Prove local emulator startup and filtered routing for the implemented producer and four consumers; do not treat script startup as end-to-end proof.
+2. Implement VerifierService scenarios in 2.5, including routing and schema/error checks.
+3. Add dedicated consumer, schema, and settings tests; measure meaningful coverage rather than assuming an 80% result.
+4. Validate the dashboard reporting surface alongside the local run.
+5. Implement Phase 4 Bicep modules and deployment templates after MVP validation.

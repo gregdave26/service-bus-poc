@@ -16,8 +16,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/ServiceBusPoc.Core/ServiceBusPoc.Core.csproj" />
     <ProjectReference Include="../../src/ServiceBusPoc.Carwash/ServiceBusPoc.Carwash.csproj" />
+    <ProjectReference Include="../../src/ServiceBusPoc.Dashboard/ServiceBusPoc.Dashboard.csproj" />
+    <ProjectReference Include="../../src/ServiceBusPoc.DigitalChannels/ServiceBusPoc.DigitalChannels.csproj" />
+    <ProjectReference Include="../../src/ServiceBusPoc.Insurance/ServiceBusPoc.Insurance.csproj" />
+    <ProjectReference Include="../../src/ServiceBusPoc.ParksResorts/ServiceBusPoc.ParksResorts.csproj" />
     <ProjectReference Include="../../src/ServiceBusPoc.Producer/ServiceBusPoc.Producer.csproj" />
+    <ProjectReference Include="../../src/ServiceBusPoc.Verifier/ServiceBusPoc.Verifier.csproj" />
   </ItemGroup>
 
   <ItemGroup>

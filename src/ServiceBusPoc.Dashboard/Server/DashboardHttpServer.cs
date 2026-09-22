@@ -75,7 +75,7 @@ public sealed class DashboardHttpServer : IDisposable
             HttpListenerContext? context = null;
             try
             {
-                context = _httpListener.GetContext();
+                context = await _httpListener.GetContextAsync().WaitAsync(cancellationToken);
                 var request = context.Request;
                 var response = context.Response;
 
@@ -101,6 +101,10 @@ public sealed class DashboardHttpServer : IDisposable
                 {
                     SendResponse(response, 404, "Not found");
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {

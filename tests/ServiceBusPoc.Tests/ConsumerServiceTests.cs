@@ -109,6 +109,21 @@ public class ConsumerServiceTests
     }
 
     [Fact]
+    public async Task Insurance_WhenRunnerFails_RethrowsOriginalException()
+    {
+        var (runner, runnerMock) = CreateRunner();
+        var expected = new InvalidOperationException("receiver failed");
+        runnerMock.Setup(r => r.WaitForReadyAsync(It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        runnerMock.Setup(r => r.RunAsync(It.IsAny<ConsumerDescriptor>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(expected);
+
+        var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new InsuranceConsumerService(runner, Mock.Of<ILogger<InsuranceConsumerService>>()).RunAsync());
+
+        Assert.Same(expected, actual);
+    }
+
+    [Fact]
     public async Task ParksResorts_WhenNotReady_Throws()
     {
         var (runner, runnerMock) = CreateRunner();

@@ -13,12 +13,12 @@ public class VerifierService
 {
     private readonly ILogger<VerifierService> _logger;
     private readonly IOptions<ServiceBusSettings> _serviceBusSettings;
-    private readonly TopologyValidator _topologyValidator;
+    private readonly ITopologyValidator _topologyValidator;
 
     public VerifierService(
         ILogger<VerifierService> logger,
         IOptions<ServiceBusSettings> serviceBusSettings,
-        TopologyValidator topologyValidator)
+        ITopologyValidator topologyValidator)
     {
         _logger = logger;
         _serviceBusSettings = serviceBusSettings;

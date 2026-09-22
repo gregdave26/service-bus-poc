@@ -19,7 +19,7 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
-            .AddScoped<TopologyValidator>()
+            .AddScoped<ITopologyValidator, TopologyValidator>()
             .AddScoped<VerifierService>();
     })
     .Build();

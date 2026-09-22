@@ -1,0 +1,19 @@
+name: Unit coverage
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore tests/ServiceBusPoc.Tests/ServiceBusPoc.Tests.csproj
+      - name: Test and enforce meaningful coverage
+        shell: pwsh
+        run: ./scripts/test-coverage.ps1

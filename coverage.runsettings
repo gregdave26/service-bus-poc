@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Executable top-level entry points contain host wiring only; service behavior
+               is covered through unit-testable classes. Meaningful coverage interpretation
+               otherwise excludes only trivial accessors and assignment-only constructors. -->
+          <Exclude>[ServiceBusPoc.*]Program</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

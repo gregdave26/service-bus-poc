@@ -8,7 +8,7 @@ namespace ServiceBusPoc.Core.Utilities;
 /// <summary>
 /// Validates the Service Bus topology (topic, subscriptions, and filters).
 /// </summary>
-public class TopologyValidator
+public class TopologyValidator : ITopologyValidator
 {
     private readonly ServiceBusSettings _settings;
     private readonly ILogger<TopologyValidator> _logger;

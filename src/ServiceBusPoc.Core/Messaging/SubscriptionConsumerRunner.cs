@@ -15,7 +15,7 @@ namespace ServiceBusPoc.Core.Messaging;
 /// subscription filter, so what a consumer logs is exactly what its filter let through.
 /// One instance drives one subscription and is not re-entrant.
 /// </summary>
-public sealed class SubscriptionConsumerRunner
+public class SubscriptionConsumerRunner
 {
     private static readonly TimeSpan ReceiveWaitTime = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DelayAfterReceiveFailure = TimeSpan.FromSeconds(2);
@@ -55,7 +55,7 @@ public sealed class SubscriptionConsumerRunner
     /// <param name="startTime">Time when the wait started.</param>
     /// <param name="cancellationToken">Token used to cancel the wait.</param>
     /// <returns>True if subscription is ready, false if timeout occurs.</returns>
-    public async Task<bool> WaitForReadyAsync(DateTimeOffset startTime, CancellationToken cancellationToken)
+    public virtual async Task<bool> WaitForReadyAsync(DateTimeOffset startTime, CancellationToken cancellationToken)
     {
         var maxWaitDuration = TimeSpan.FromSeconds(120);
         var initialDelay = TimeSpan.FromMilliseconds(100);
@@ -160,7 +160,7 @@ public sealed class SubscriptionConsumerRunner
     /// <param name="descriptor">Identity of the consuming application.</param>
     /// <param name="cancellationToken">Token used to stop the loop.</param>
     /// <exception cref="InvalidOperationException">The subscription name is not configured.</exception>
-    public async Task RunAsync(ConsumerDescriptor descriptor, CancellationToken cancellationToken)
+    public virtual async Task RunAsync(ConsumerDescriptor descriptor, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
 

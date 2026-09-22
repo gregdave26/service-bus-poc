@@ -12,6 +12,22 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 
 ## Available Scripts
 
+### `test-all.ps1` — All Automated Tests
+
+**Purpose:** Run every xUnit test in the repository.
+
+**Usage:**
+```powershell
+.\test-all.ps1
+```
+
+This runs the complete test project without coverage collection. To run the same
+suite with coverage enforcement, use `test-coverage.ps1`:
+
+```powershell
+.\test-coverage.ps1
+```
+
 ### 1. `run-dashboard.ps1` — Interactive Dashboard + Services (Recommended for Development)
 
 **Purpose:** Start the Dashboard with all services for interactive development and testing.

@@ -1,6 +1,7 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Azure.Messaging.ServiceBus.Administration;
 using ServiceBusPoc.Core.Configuration;
 
 namespace ServiceBusPoc.Core.Utilities;
@@ -32,12 +33,59 @@ public class TopologyValidator : ITopologyValidator
 
         try
         {
-            await using var client = new ServiceBusClient(_settings.ConnectionString);
+            var client = new ServiceBusAdministrationClient(_settings.ConnectionString);
+            if (!await client.TopicExistsAsync(_settings.TopicName))
+            {
+                throw new InvalidOperationException($"Topic '{_settings.TopicName}' does not exist.");
+            }
 
-            // Test basic connectivity
-            _logger.LogInformation("Testing connectivity...");
-            await TestConnectivityAsync(client);
-            _logger.LogInformation("✓ Connectivity test passed");
+            var expectedFilters = new Dictionary<string, string?>
+            {
+                ["digital-channels"] = null,
+                ["insurance"] = "hasInsurance = true",
+                ["parks-resorts"] = "hasParksResorts = true",
+                ["carwash"] = "hasCarwashProduct = true"
+            };
+
+            foreach (var expected in expectedFilters)
+            {
+                if (!await client.SubscriptionExistsAsync(_settings.TopicName, expected.Key))
+                {
+                    throw new InvalidOperationException(
+                        $"Subscription '{expected.Key}' does not exist on topic '{_settings.TopicName}'.");
+                }
+
+                var rules = new List<RuleProperties>();
+                await foreach (var rule in client.GetRulesAsync(_settings.TopicName, expected.Key))
+                {
+                    rules.Add(rule);
+                }
+
+                var matchingFilter = rules.Any(rule =>
+                    expected.Value is not null &&
+                    rule.Filter is SqlRuleFilter sqlFilter &&
+                    string.Equals(
+                        NormalizeFilter(sqlFilter.SqlExpression),
+                        NormalizeFilter(expected.Value),
+                        StringComparison.OrdinalIgnoreCase));
+
+                var hasUnexpectedCustomFilter = expected.Value is null &&
+                    rules.Any(rule => rule.Filter is not TrueRuleFilter);
+
+                if (expected.Value is not null && !matchingFilter)
+                {
+                    throw new InvalidOperationException(
+                        $"Subscription '{expected.Key}' does not have filter '{expected.Value}'.");
+                }
+
+                if (hasUnexpectedCustomFilter)
+                {
+                    throw new InvalidOperationException(
+                        $"Subscription '{expected.Key}' has an unexpected custom filter.");
+                }
+
+                _logger.LogInformation("Validated subscription {Subscription}", expected.Key);
+            }
 
             _logger.LogInformation("Topology validation completed successfully");
             return true;
@@ -49,24 +97,8 @@ public class TopologyValidator : ITopologyValidator
         }
     }
 
-    /// <summary>
-    /// Tests basic connectivity to the Service Bus.
-    /// </summary>
-    private async Task TestConnectivityAsync(ServiceBusClient client)
-    {
-        // Create a test message
-        var testMessage = new ServiceBusMessage("topology-validation-test")
-        {
-            CorrelationId = Guid.NewGuid().ToString()
-        };
-
-        // Note: Full topology validation requires Administration SDK
-        // This basic test ensures we can instantiate the client
-        _logger.LogDebug("Connectivity test message prepared with correlation ID: {CorrelationId}", testMessage.CorrelationId);
-
-        // Placeholder for future detailed topology checks
-        await Task.CompletedTask;
-    }
+    private static string NormalizeFilter(string filter) =>
+        string.Join(' ', filter.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
     /// Masks the connection string for safe logging.

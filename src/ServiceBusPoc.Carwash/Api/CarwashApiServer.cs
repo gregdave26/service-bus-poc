@@ -58,8 +58,22 @@ public class CarwashApiServer
         }
         finally
         {
-            _httpListener?.Stop();
-            _httpListener?.Close();
+            try
+            {
+                _httpListener.Stop();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            try
+            {
+                _httpListener.Close();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
             _logger.LogInformation("Carwash API server stopped");
         }
     }

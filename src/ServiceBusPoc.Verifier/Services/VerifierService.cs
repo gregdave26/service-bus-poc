@@ -38,7 +38,7 @@ public class VerifierService
         if (!topologyValid)
         {
             _logger.LogError("Topology validation failed");
-            return;
+            throw new InvalidOperationException("Topology validation failed.");
         }
 
         // TODO: Implement verification logic in Phase 2

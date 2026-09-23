@@ -21,13 +21,13 @@ public sealed class VerifierServiceTests
     }
 
     [Fact]
-    public async Task RunAsync_WhenTopologyIsInvalid_ReturnsWithoutReadiness()
+    public async Task RunAsync_WhenTopologyIsInvalid_Throws()
     {
         var validator = new Mock<ITopologyValidator>();
         validator.Setup(x => x.ValidateAsync()).ReturnsAsync(false);
         var service = CreateService(validator.Object);
 
-        await service.RunAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync());
 
         validator.Verify(x => x.ValidateAsync(), Times.Once);
     }

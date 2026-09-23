@@ -25,7 +25,7 @@ if (-not (Test-Path -LiteralPath $testProject -PathType Leaf)) {
 }
 
 Write-Host "Running all automated tests..." -ForegroundColor Cyan
-& dotnet test $testProject --configuration Debug
+& dotnet test $testProject --configuration Debug --no-restore -m:1
 
 if ($LASTEXITCODE -ne 0) {
     throw "Automated tests failed with exit code $LASTEXITCODE."

@@ -7,9 +7,14 @@ if (Test-Path $resultsDirectory) {
 
 dotnet test "$PSScriptRoot\..\tests\ServiceBusPoc.Tests\ServiceBusPoc.Tests.csproj" `
     --no-restore `
+    -m:1 `
     --settings "$PSScriptRoot\..\coverage.runsettings" `
     --collect:"XPlat Code Coverage" `
     --results-directory $resultsDirectory
+
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet test failed with exit code $LASTEXITCODE. Coverage output is not valid for a failed test run."
+}
 
 $coverageFile = Get-ChildItem $resultsDirectory -Recurse -Filter coverage.cobertura.xml |
     Sort-Object LastWriteTime -Descending |

@@ -1,6 +1,8 @@
 # Service Bus POC - Scripts
 
-This folder contains PowerShell scripts for running and debugging the Service Bus POC application.
+This folder contains the supported PowerShell entry points for running, testing, and
+debugging the Service Bus POC application. Run them from the repository root or from
+the `scripts` directory; each script resolves paths relative to its own location.
 
 ## Prerequisites
 
@@ -9,6 +11,10 @@ This folder contains PowerShell scripts for running and debugging the Service Bu
 - Node.js 20+
 - Docker Desktop (for emulator)
 - 4 GB free disk space (for emulator container)
+- For emulator checks, Docker Desktop must be running with Linux containers and the
+  emulator EULA accepted in `infra/servicebus/.env`.
+- SDK-based checks use the local emulator connection string by default. Set
+  `ServiceBus__ConnectionString` to override it; no credentials are committed.
 
 ## Available Scripts
 
@@ -27,6 +33,59 @@ suite with coverage enforcement, use `test-coverage.ps1`:
 ```powershell
 .\test-coverage.ps1
 ```
+
+### `test-coverage.ps1` — Tests with Coverage Enforcement
+
+Runs the unit tests, stops immediately when `dotnet test` fails, and then requires
+a Cobertura report with at least 80% line coverage.
+
+### `validate-emulator-topology.ps1` — Emulator Topology Validation
+
+Checks the emulator management endpoint, then runs the repository Verifier with
+the Azure Service Bus administration SDK. It validates `contact.events`, all four
+subscriptions, and their SQL filters. It exits nonzero when the emulator is
+unavailable, an entity is missing, or a filter is wrong.
+
+### `test-emulator-connectivity.ps1` — SDK Connectivity Probe
+
+Checks Docker before starting the compose services, then runs the Verifier's SDK
+probe. The probe creates a sender and message batch without publishing a message.
+It uses no temporary project, downloaded package, or generated source file.
+
+### `check-emulator-status.ps1` — Diagnostics
+
+Reports Docker, container, TCP, AMQP, and recent log status. It is diagnostic only
+and does not prove that the configured topic topology is correct.
+
+### `wait-for-servicebus-emulator.ps1` — Readiness Helper
+
+Defines `Wait-ServiceBusEmulatorReady` for scripts that need to wait for the AMQP
+handshake. Dot-source it from another script; it does not start or stop containers.
+
+### `producer-smoke-test.ps1` — Producer Smoke Test
+
+Builds and runs the producer against a configured endpoint and publishes sample
+messages. This is separate from the non-publishing SDK connectivity probe.
+
+### Other supported lifecycle scripts
+
+`run-local-poc.ps1`, `run-dashboard.ps1`, `debug-run.ps1`, `test-carwash-api.ps1`,
+and `stop-service-bus-poc.ps1` cover application lifecycle, dashboard, API, and
+cleanup workflows. Read each script's help before use; lifecycle scripts can start
+processes or containers and may write to `logs/`.
+
+## Archived scripts
+
+The following legacy or duplicate experiments are preserved under `scripts/archive`
+and are not part of the supported workflow:
+
+- `test-emulator-startup.ps1`
+- `measure-emulator-readiness.ps1`
+- `test-simple.ps1`
+- `test-ctrlc.ps1`
+- `CTRLC_TEST.ps1`
+
+They may contain obsolete assumptions and should not be used for validation.
 
 ### 1. `run-dashboard.ps1` — Interactive Dashboard + Services (Recommended for Development)
 

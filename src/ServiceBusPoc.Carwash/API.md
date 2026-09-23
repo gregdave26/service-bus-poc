@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Carwash service exposes a member verification HTTP API endpoint that validates whether a RAC member ID is associated with an active carwash product subscription. Pulse or mock Pulse calls this endpoint to verify membership eligibility before contact sync operations.
+The Carwash service exposes a member verification HTTP API endpoint that validates whether a membership number is associated with an active carwash product subscription. Pulse or mock Pulse calls this endpoint to verify membership eligibility before contact sync operations.
 
 ## Endpoint Specification
 
 ### POST `/carwash/v1/verify`
 
-Verifies whether a RAC member ID has an active carwash product subscription.
+Verifies whether a membership number has an active carwash product subscription.
 
 #### Request
 
@@ -19,13 +19,13 @@ Verifies whether a RAC member ID has an active carwash product subscription.
 **Body:**
 ```json
 {
-  "RacId": "12345678"
+  "membershipNumber": "12345678"
 }
 ```
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `RacId` | string | Yes | RAC member ID to verify |
+| `membershipNumber` | string | Yes | Membership number to verify |
 
 #### Response
 
@@ -44,14 +44,14 @@ Verifies whether a RAC member ID has an active carwash product subscription.
 ```json
 {
   "Errors": [
-    "'Rac Id' must not be empty."
+    "'Membership number' must not be empty."
   ]
 }
 ```
 
 | Status | Condition | Response |
 |--------|-----------|----------|
-| **400** | RacId is empty or missing | `{"Errors": ["'Rac Id' must not be empty."]}` |
+| **400** | membershipNumber is empty or missing | `{"Errors": ["'Membership number' must not be empty."]}` |
 
 #### Example Usage
 
@@ -59,7 +59,7 @@ Verifies whether a RAC member ID has an active carwash product subscription.
 ```bash
 curl -X POST http://localhost:5000/carwash/v1/verify \
   -H "Content-Type: application/json" \
-  -d '{"RacId": "VALID-123456"}'
+  -d '{"membershipNumber": "VALID-123456"}'
 ```
 
 **Response:**
@@ -73,7 +73,7 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 ```bash
 curl -X POST http://localhost:5000/carwash/v1/verify \
   -H "Content-Type: application/json" \
-  -d '{"RacId": "INVALID-999999"}'
+  -d '{"membershipNumber": "INVALID-999999"}'
 ```
 
 **Response:**
@@ -83,7 +83,7 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 }
 ```
 
-**Curl - Missing RacId:**
+**Curl - Missing membership number:**
 ```bash
 curl -X POST http://localhost:5000/carwash/v1/verify \
   -H "Content-Type: application/json" \
@@ -94,7 +94,7 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 ```json
 {
   "Errors": [
-    "'Rac Id' must not be empty."
+    "'Membership number' must not be empty."
   ]
 }
 ```
@@ -102,9 +102,9 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 ## Implementation Details
 
 - **Server:** Runs on `http://localhost:5000` alongside the Service Bus consumer
-- **Mock Validation Logic:** RAC IDs starting with "VALID" (case-insensitive) are considered valid members; all others are invalid
+- **Mock Validation Logic:** The injected mock membership verifier treats membership numbers starting with "VALID" (case-insensitive) as valid; all others are invalid
 - **Error Handling:**
-  - Empty or missing `RacId`: Returns 400 Bad Request
+  - Empty or missing `membershipNumber`: Returns 400 Bad Request
   - Invalid JSON: Returns 400 Bad Request
   - Unhandled exceptions: Returns 500 Internal Server Error
 - **Lifecycle:** API server is started as a background task in Carwash Program.cs and stopped when the application shuts down
@@ -115,6 +115,8 @@ curl -X POST http://localhost:5000/carwash/v1/verify \
 2. **Service Bus consumer:** Independently processes contact events filtered by `hasCarwashProduct=true`.
 
 The API and consumer are separate integration points: the consumer does not call this API, and this API does not consume Service Bus messages or call Pulse.
+
+The API delegates membership checks to `IMembershipVerifier`. The MVP registers `MockMembershipVerifier`; a future implementation can query the authoritative membership system without changing this HTTP contract.
 
 ## Future Enhancements
 

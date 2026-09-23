@@ -9,15 +9,15 @@ namespace ServiceBusPoc.Tests;
 public class CarwashApiServerJsonParsingTests
 {
     [Fact]
-    public void Deserialize_ValidRequest_SetsRacId()
+    public void Deserialize_ValidRequest_SetsMembershipNumber()
     {
-        const string json = """{"RacId":"TEST-123"}""";
+        const string json = """{"membershipNumber":"TEST-123"}""";
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         var request = JsonSerializer.Deserialize<VerifyMemberRequest>(json, options);
 
         Assert.NotNull(request);
-        Assert.Equal("TEST-123", request.RacId);
+        Assert.Equal("TEST-123", request.MembershipNumber);
     }
 
     [Fact]
@@ -32,17 +32,17 @@ public class CarwashApiServerJsonParsingTests
     [Fact]
     public void Deserialize_RequestWithExtraFields_IgnoresUnknownFields()
     {
-        const string json = """{"RacId":"TEST-456","ExtraField":"ignored"}""";
+        const string json = """{"membershipNumber":"TEST-456","ExtraField":"ignored"}""";
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         var request = JsonSerializer.Deserialize<VerifyMemberRequest>(json, options);
 
         Assert.NotNull(request);
-        Assert.Equal("TEST-456", request.RacId);
+        Assert.Equal("TEST-456", request.MembershipNumber);
     }
 
     [Fact]
-    public void Deserialize_RequestWithoutRacId_UsesDefaultValue()
+    public void Deserialize_RequestWithoutMembershipNumber_UsesDefaultValue()
     {
         const string json = """{}""";
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -50,6 +50,6 @@ public class CarwashApiServerJsonParsingTests
         var request = JsonSerializer.Deserialize<VerifyMemberRequest>(json, options);
 
         Assert.NotNull(request);
-        Assert.Equal(string.Empty, request.RacId);
+        Assert.Equal(string.Empty, request.MembershipNumber);
     }
 }

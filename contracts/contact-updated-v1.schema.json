@@ -28,6 +28,11 @@
       "type": "string",
       "description": "Contact's phone number (optional)"
     },
+    "membershipNumber": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Membership identifier used to correlate the contact with the membership system (optional)"
+    },
     "attributes": {
       "$ref": "attributes.schema.json",
       "description": "Contact capability and product flags"

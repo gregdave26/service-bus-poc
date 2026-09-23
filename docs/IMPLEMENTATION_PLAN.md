@@ -27,7 +27,7 @@ This document proposes a phased implementation approach for the Azure Service Bu
 ### 1.2 Event Contracts (JSON Schema)
 Define canonical event schemas in `contracts/` as JSON Schema:
 
-**Status:** ✅ Done — `contracts/envelope.schema.json`, `contracts/contact-updated-v1.schema.json`, `contracts/product-holding-change-v1.schema.json`, and `contracts/attributes.schema.json` exist, with matching C# DTOs in `src/ServiceBusPoc.Core/Contracts/` (`EventEnvelope<TData>`, `ContactUpdatedEvent`, etc.).
+**Status:** ✅ Done — `contracts/envelope.schema.json`, `contracts/contact-updated-v1.schema.json`, `contracts/product-holding-change-v1.schema.json`, and `contracts/attributes.schema.json` exist, with matching C# DTOs in `src/ServiceBusPoc.Core/Contracts/` (`EventEnvelope<TData>`, `ContactUpdatedEvent`, etc.). `membershipNumber` is now represented in the contact schema and DTO.
 
 **Files:**
 - `contacts/contact-updated-v1.schema.json` — Core contract for contact property changes
@@ -60,7 +60,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 ```
 
 **Membership identifier rules:**
-- Add `membershipNumber` to `ContactData` and `contact-updated-v1.schema.json` as an optional contact-level identifier.
+- `membershipNumber` is implemented in `ContactData` and `contact-updated-v1.schema.json` as an optional contact-level identifier.
 - Carwash must validate that a membership number is present when `hasCarwashProduct=true`.
 - Do not publish `validMember` in `contact.updated`; membership validity is determined by the verification provider at request time.
 - Mask membership numbers in logs and test output, and treat them as sensitive data.
@@ -146,7 +146,7 @@ dotnet run -- --producer \
 ### 2.4 Carwash Verification API
 **File:** `src/ServiceBusPoc.Carwash/Api/CarwashApiServer.cs`
 
-**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, and Carwash API test files are present. The current `VALID` prefix rule is a local mock provider and must be replaced behind a provider abstraction before live integration. This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
+**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, provider abstraction, deterministic mock provider, and tests are present. A future authoritative membership adapter can replace the mock through dependency injection. This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
 
 **Responsibilities:**
 - Accept a membership number and return the verification result.

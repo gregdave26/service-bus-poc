@@ -24,6 +24,7 @@ var host = Host.CreateDefaultBuilder(args)
             .AddContactEventConsuming()
             .AddDashboardReporting()
             .AddSingleton<CarwashConsumerService>()
+            .AddSingleton<IMembershipVerifier, MockMembershipVerifier>()
             .AddSingleton<CarwashApiServer>();
     })
     .Build();

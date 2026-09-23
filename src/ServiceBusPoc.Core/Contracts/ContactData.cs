@@ -41,6 +41,12 @@ public class ContactData
     public string? Phone { get; set; }
 
     /// <summary>
+    /// Gets or sets the membership identifier used to correlate the contact with the membership system.
+    /// </summary>
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "MembershipNumber must be between 1 and 255 characters")]
+    public string? MembershipNumber { get; set; }
+
+    /// <summary>
     /// Gets or sets the contact's capability and product attributes.
     /// </summary>
     public ContactAttributes? Attributes { get; set; }

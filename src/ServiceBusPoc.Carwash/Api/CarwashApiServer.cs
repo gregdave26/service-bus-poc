@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ServiceBusPoc.Carwash.Services;
 using System.Net;
 using System.Text.Json;
 
@@ -12,13 +13,23 @@ public class CarwashApiServer
 {
     private readonly HttpListener _httpListener;
     private readonly ILogger<CarwashApiServer> _logger;
+    private readonly IMembershipVerifier _membershipVerifier;
     private CancellationToken _cancellationToken;
 
-    public CarwashApiServer(ILogger<CarwashApiServer> logger, int port = 5000)
+    public CarwashApiServer(
+        ILogger<CarwashApiServer> logger,
+        IMembershipVerifier membershipVerifier,
+        int port = 5000)
     {
         _logger = logger;
+        _membershipVerifier = membershipVerifier;
         _httpListener = new HttpListener();
         _httpListener.Prefixes.Add($"http://localhost:{port}/");
+    }
+
+    public CarwashApiServer(ILogger<CarwashApiServer> logger, int port = 5000)
+        : this(logger, new MockMembershipVerifier(), port)
+    {
     }
 
     /// <summary>
@@ -92,7 +103,7 @@ public class CarwashApiServer
 
             if (string.IsNullOrWhiteSpace(body))
             {
-                RespondWithBadRequest(response, "'Rac Id' must not be empty.");
+                RespondWithBadRequest(response, "'Membership number' must not be empty.");
                 return;
             }
 
@@ -109,15 +120,15 @@ public class CarwashApiServer
                 return;
             }
 
-            // Validate RacId
-            if (verifyRequest is null || string.IsNullOrWhiteSpace(verifyRequest.RacId))
+            if (verifyRequest is null || string.IsNullOrWhiteSpace(verifyRequest.MembershipNumber))
             {
-                RespondWithBadRequest(response, "'Rac Id' must not be empty.");
+                RespondWithBadRequest(response, "'Membership number' must not be empty.");
                 return;
             }
 
-            // Mock validation: RAC IDs starting with "VALID" are valid members
-            var isValidMember = verifyRequest.RacId.StartsWith("VALID", StringComparison.OrdinalIgnoreCase);
+            var isValidMember = await _membershipVerifier.VerifyAsync(
+                verifyRequest.MembershipNumber,
+                _cancellationToken);
 
             response.StatusCode = (int)HttpStatusCode.OK;
             response.ContentType = "application/json";
@@ -130,7 +141,10 @@ public class CarwashApiServer
             var responseJson = JsonSerializer.Serialize(successResponse);
             await WriteResponseAsync(response, responseJson);
 
-            _logger.LogInformation("Verified member {RacId}: ValidMember={ValidMember}", verifyRequest.RacId, isValidMember);
+            _logger.LogInformation(
+                "Verified membership number {MembershipNumber}: ValidMember={ValidMember}",
+                verifyRequest.MembershipNumber,
+                isValidMember);
         }
         catch (Exception ex)
         {

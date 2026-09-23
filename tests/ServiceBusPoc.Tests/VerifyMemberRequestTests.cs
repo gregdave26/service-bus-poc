@@ -9,46 +9,46 @@ namespace ServiceBusPoc.Tests;
 public class VerifyMemberRequestTests
 {
     [Fact]
-    public void Constructor_SetsRacIdToEmptyString()
+    public void Constructor_SetsMembershipNumberToEmptyString()
     {
         var request = new VerifyMemberRequest();
 
-        Assert.Equal(string.Empty, request.RacId);
+        Assert.Equal(string.Empty, request.MembershipNumber);
     }
 
     [Theory]
     [InlineData("12345678")]
     [InlineData("VALID-ABC123")]
     [InlineData("INVALID-XYZ")]
-    public void RacId_CanBeSet(string racId)
+    public void MembershipNumber_CanBeSet(string membershipNumber)
     {
-        var request = new VerifyMemberRequest { RacId = racId };
+        var request = new VerifyMemberRequest { MembershipNumber = membershipNumber };
 
-        Assert.Equal(racId, request.RacId);
+        Assert.Equal(membershipNumber, request.MembershipNumber);
     }
 
     [Fact]
-    public void Deserialize_WithCaseInsensitivePropertyName_SetsRacId()
+    public void Deserialize_WithCaseInsensitivePropertyName_SetsMembershipNumber()
     {
-        const string json = """{"racid":"CASE-TEST"}""";
+        const string json = """{"MEMBERSHIPNUMBER":"CASE-TEST"}""";
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         var request = JsonSerializer.Deserialize<VerifyMemberRequest>(json, options);
 
         Assert.NotNull(request);
-        Assert.Equal("CASE-TEST", request.RacId);
+        Assert.Equal("CASE-TEST", request.MembershipNumber);
     }
 
     [Fact]
-    public void SerializeAndDeserialize_PreservesRacId()
+    public void SerializeAndDeserialize_PreservesMembershipNumber()
     {
-        var original = new VerifyMemberRequest { RacId = "ROUNDTRIP-123" };
+        var original = new VerifyMemberRequest { MembershipNumber = "ROUNDTRIP-123" };
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         var json = JsonSerializer.Serialize(original);
         var deserialized = JsonSerializer.Deserialize<VerifyMemberRequest>(json, options);
 
         Assert.NotNull(deserialized);
-        Assert.Equal(original.RacId, deserialized.RacId);
+        Assert.Equal(original.MembershipNumber, deserialized.MembershipNumber);
     }
 }

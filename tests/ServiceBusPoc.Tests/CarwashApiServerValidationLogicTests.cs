@@ -10,9 +10,9 @@ public class CarwashApiServerValidationLogicTests
     [InlineData("VALID-ABC")]
     [InlineData("valid-xyz")]
     [InlineData("VALID")]
-    public void RacIdStartingWithValid_IsAccepted(string racId)
+    public void MembershipNumberStartingWithValid_IsAccepted(string membershipNumber)
     {
-        var isValid = racId.StartsWith("VALID", StringComparison.OrdinalIgnoreCase);
+        var isValid = membershipNumber.StartsWith("VALID", StringComparison.OrdinalIgnoreCase);
 
         Assert.True(isValid);
     }
@@ -22,9 +22,9 @@ public class CarwashApiServerValidationLogicTests
     [InlineData("INVALID-12345")]
     [InlineData("X-VALID-12345")]
     [InlineData("NOTVALID")]
-    public void RacIdNotStartingWithValid_IsRejected(string racId)
+    public void MembershipNumberNotStartingWithValid_IsRejected(string membershipNumber)
     {
-        var isValid = racId.StartsWith("VALID", StringComparison.OrdinalIgnoreCase);
+        var isValid = membershipNumber.StartsWith("VALID", StringComparison.OrdinalIgnoreCase);
 
         Assert.False(isValid);
     }
@@ -33,8 +33,8 @@ public class CarwashApiServerValidationLogicTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData("   ")]
-    public void EmptyRacId_IsDetected(string? racId)
+    public void EmptyMembershipNumber_IsDetected(string? membershipNumber)
     {
-        Assert.True(string.IsNullOrWhiteSpace(racId));
+        Assert.True(string.IsNullOrWhiteSpace(membershipNumber));
     }
 }

@@ -32,7 +32,7 @@ public class ErrorResponseTests
     {
         var original = new ErrorResponse
         {
-            Errors = ["'Rac Id' must not be empty.", "Additional error"]
+            Errors = ["'Membership number' must not be empty.", "Additional error"]
         };
 
         var json = JsonSerializer.Serialize(original);

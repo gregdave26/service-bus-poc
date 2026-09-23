@@ -1,6 +1,6 @@
 # Technical Decisions Summary
 
-**Date:** 2026-09-16  
+**Date:** 2026-09-23
 **Status:** Current decisions recorded  
 **Document:** Reference for team during implementation
 
@@ -18,7 +18,8 @@
 | 6 | Configuration & secrets | ✅ Environment variables | Simple, zero friction, no risk of secret leakage | [ADR-006](006-configuration-env-vars.md) |
 | 7 | Application architecture | ✅ Separate console apps | Clear separation of concerns, independent testing | [ADR-007](007-separate-apps.md) |
 | 8 | Infrastructure as Code | ✅ Bicep templates | Azure-native, clean syntax, purpose-built | [ADR-008](008-bicep-iac.md) |
-| 9 | Carwash integration boundary | ✅ Independent paths | Pulse calls verification API; Carwash separately consumes Service Bus | [ADR-009](009-carwash-integration-boundary.md) |
+| 9 | Carwash integration boundary | Refined by ADR-011 | Pulse calls verification API; Carwash no longer requires contact-event consumption | [ADR-009](009-carwash-integration-boundary.md) |
+| 11 | Carwash membership and events | ✅ MemberCentral + producer | MemberCentral is authoritative; Carwash publishes completed-wash events | [ADR-011](011-carwash-membercentral-and-events.md) |
 
 ---
 
@@ -39,7 +40,7 @@
 - **Pulse Integration:** Mock Pulse calls Carwash in the MVP; live Pulse integration is post-MVP
 
 ### Data & Storage
-- **Carwash Verification:** Mock RAC ID rule; no Service Bus-backed contact store in the MVP
+- **Carwash Verification:** MemberCentral-backed provider boundary; deterministic mock provider for MVP; no Service Bus-backed contact store
 - **Event Serialization:** JSON with data annotations validation
 - **Schema Definition:** JSON Schema + C# DTOs with `[Required]`, `[EmailAddress]`, etc.
 
@@ -70,14 +71,14 @@ Phase 2: Core MVP (3-5 days)
 ├─ Docker Compose emulator topology
 ├─ Producer (publishes events)
 ├─ 4 Consumers (route by subscription)
-├─ Independent Carwash consumer
 ├─ Carwash verification API (complete)
+├─ Carwash completed-wash event publisher
 └─ Scenario verifier (end-to-end testing)
 
 Phase 3: Tests (2-3 days, parallel with Phase 2)
 ├─ Schema validation tests
 ├─ Filter routing tests (all 8 scenarios)
-├─ Carwash API and independent consumer tests
+├─ Carwash API and membership-verifier tests
 └─ Configuration tests
 
 Phase 5.1: Local Scripts (1 day)

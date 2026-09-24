@@ -161,10 +161,9 @@
 
         const list = document.createElement("div");
         list.className = "received-list";
-        received.forEach((message, index) => {
+        received.forEach((message) => {
           const item = document.createElement("details");
           item.className = "received-item";
-          item.open = index === 0 || message.messageId === selectedMessage?.messageId;
 
           const summary = document.createElement("summary");
           summary.className = "received-summary";

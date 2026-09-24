@@ -95,7 +95,7 @@
       <div id="service-modal" class="modal-backdrop" role="presentation" hidden>
         <section class="modal" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
           <div class="modal-header">
-            <div><h2 id="service-modal-title"></h2><p id="service-modal-subtitle"></p></div>
+            <div><h2 id="service-modal-title"></h2></div>
             <button class="icon-button" id="close-service-modal" type="button" title="Close service details" aria-label="Close service details">×</button>
           </div>
           <div id="service-modal-content" class="modal-message-list"></div>
@@ -283,7 +283,6 @@
         detail.append(messagesContainer);
         modalContent.append(detail);
         $("#service-modal-title").textContent = subscriberDisplayName(activeService);
-        $("#service-modal-subtitle").textContent = direction === "sent" ? "Published messages" : "Received messages";
       }
       function openServiceModal(service) {
         activeService = service;

@@ -43,7 +43,7 @@
                       "FilterType": "Sql",
                       "SqlFilter": {
                         "SqlExpression": "hasInsurance = true"
-                      }
+                        }
                     }
                   }
                 ]
@@ -101,6 +101,40 @@
     ],
     "Logging": {
       "Type": "File"
+    }
+  },
+  "Dashboard": {
+    "SubscriberLabels": {
+      "digital-channels": {
+        "DisplayName": "Digital Channels",
+        "ConnectedLabel": "Connected",
+        "OfflineLabel": "Offline",
+        "MessagesHandledLabel": "handled"
+      },
+      "insurance": {
+        "DisplayName": "Insurance",
+        "ConnectedLabel": "Connected",
+        "OfflineLabel": "Offline",
+        "MessagesHandledLabel": "handled"
+      },
+      "parks-resorts": {
+        "DisplayName": "Parks & Resorts",
+        "ConnectedLabel": "Connected",
+        "OfflineLabel": "Offline",
+        "MessagesHandledLabel": "handled"
+      },
+      "carwash": {
+        "DisplayName": "Carwash",
+        "ConnectedLabel": "Connected",
+        "OfflineLabel": "Offline",
+        "MessagesHandledLabel": "handled"
+      }
+    },
+    "ProducerLabels": {
+      "DisplayName": "Message Publisher",
+      "ConnectedLabel": "Ready",
+      "OfflineLabel": "Offline",
+      "MessagesHandledLabel": "published"
     }
   }
 }

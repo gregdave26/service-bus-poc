@@ -1,6 +1,7 @@
 import express from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient } from "@azure/service-bus";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -13,6 +14,10 @@ const heartbeatTimeoutMs = 15_000;
 const heartbeats = new Map();
 const messageHistory = [];
 const maxMessageHistory = 500;
+const serviceBusConfigPath = path.resolve(__dirname, "..", "infra", "servicebus", "config.json");
+const serviceBusConfig = JSON.parse(readFileSync(serviceBusConfigPath, "utf8"));
+const subscriberLabels = serviceBusConfig.Dashboard?.SubscriberLabels ?? {};
+const producerLabels = serviceBusConfig.Dashboard?.ProducerLabels ?? {};
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public"), {
@@ -197,6 +202,8 @@ app.post("/api/heartbeat", (request, response) => {
 });
 
 app.get("/api/status", (_request, response) => response.json(getServiceStatuses()));
+
+app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels }));
 
 app.get("/api/emulator-status", async (_request, response) => {
   response.json(await getEmulatorStatus());

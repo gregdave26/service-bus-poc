@@ -98,7 +98,7 @@
         { id:"new-member", name:"New member welcome", folder:"Contact events", data:{ contactId:"contact-1088", firstName:"Grace", lastName:"Hopper", phone:"0400000011", email:"grace@example.com", hasInsurance:false, hasParksResorts:true, hasCarwashProduct:false } },
         { id:"regression", name:"Routing regression", folder:"Regression checks", data:{ contactId:"contact-test", firstName:"Test", lastName:"Contact", phone:"0400000099", email:"test@example.com", hasInsurance:true, hasParksResorts:true, hasCarwashProduct:true } },
       ];
-      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = null, statusCache = [], emulatorCache = { running:false };
+      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = null, statusCache = [], emulatorCache = { running:false }, dashboardConfig = { subscriberLabels:{}, producerLabels:{} };
       const $ = (selector) => document.querySelector(selector);
       const draftForm = $("#draft-form");
 
@@ -106,6 +106,14 @@
       function draftById(id) { return drafts.find((draft) => draft.id === id) || drafts[0]; }
       function messagePayload(message) { try { return JSON.parse(message.payload); } catch { return null; } }
       function messageMatchesDraft(message, draft) { const payload = messagePayload(message); return !draft || payload?.data?.contactId === draft.data.contactId; }
+      function subscriberLabelsFor(service) {
+        return service.serviceName === "producer"
+          ? dashboardConfig.producerLabels
+          : dashboardConfig.subscriberLabels[service.subscriptionName] || {};
+      }
+      function subscriberDisplayName(service) {
+        return subscriberLabelsFor(service).DisplayName || service.serviceName;
+      }
       function populateDraftForm() {
         const data = selectedDraft.data;
         for (const field of ["contactId", "firstName", "lastName", "phone", "email"]) draftForm.elements[field].value = data[field] || "";
@@ -201,7 +209,7 @@
           if (service.selectable !== false) {
             tile.type = "button";
             tile.setAttribute("aria-pressed", selected ? "true" : "false");
-            tile.setAttribute("aria-label", `Filter messages for ${service.serviceName}`);
+            tile.setAttribute("aria-label", `Filter messages for ${subscriberDisplayName(service)}`);
           }
           tile.className = "tile" + (service.infrastructure ? " infrastructure" : "") + (connected ? "" : " offline") + (selected ? " selected" : "");
           const top = document.createElement("div"); top.className = "tile-top";
@@ -210,9 +218,12 @@
           top.append(category, icon);
           const name = document.createElement("div"); name.className = "tile-name";
           const dot = document.createElement("span"); dot.className = "dot";
-          name.append(dot, document.createTextNode(service.serviceName === "producer" ? "Producer" : service.serviceName));
+          name.append(dot, document.createTextNode(subscriberDisplayName(service)));
           const state = document.createElement("div"); state.className = "tile-state";
-          state.textContent = `${connected ? "Connected" : "Offline"}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} handled`}`;
+          const labels = subscriberLabelsFor(service);
+          const stateLabel = connected ? (labels.ConnectedLabel || "Connected") : (labels.OfflineLabel || "Offline");
+          const handledLabel = labels.MessagesHandledLabel || "handled";
+          state.textContent = `${stateLabel}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} ${handledLabel}`}`;
           tile.append(top, name, state);
           if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderDetail(); });
           return tile;
@@ -223,8 +234,8 @@
       }
       async function refreshStatus() {
         try {
-          const [emulatorResponse, serviceResponse, messagesResponse] = await Promise.all([fetch("/api/emulator-status"), fetch("/api/status"), fetch("/api/messages")]);
-          const emulator = await readJson(emulatorResponse, "/api/emulator-status"); statusCache = await readJson(serviceResponse, "/api/status"); messages = await readJson(messagesResponse, "/api/messages"); messagesLoading = false; emulatorCache = emulator; renderStatusTiles(statusCache, emulator); renderDetail(); $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
+          const [configResponse, emulatorResponse, serviceResponse, messagesResponse] = await Promise.all([fetch("/api/config"), fetch("/api/emulator-status"), fetch("/api/status"), fetch("/api/messages")]);
+          dashboardConfig = await readJson(configResponse, "/api/config"); const emulator = await readJson(emulatorResponse, "/api/emulator-status"); statusCache = await readJson(serviceResponse, "/api/status"); messages = await readJson(messagesResponse, "/api/messages"); messagesLoading = false; emulatorCache = emulator; renderStatusTiles(statusCache, emulator); renderDetail(); $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
         } catch (error) {
           messagesLoading = false; emulatorCache = { running:false }; renderStatusTiles(statusCache, emulatorCache); renderDetail(); $("#last-updated").textContent = "Status unavailable"; showToast(`Could not refresh status: ${error.message}`, true);
         }

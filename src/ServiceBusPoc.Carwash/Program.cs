@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ServiceBusPoc.Core.ConsumerModules;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.DependencyInjection;
 using ServiceBusPoc.Core.Logging;
@@ -24,12 +25,12 @@ var host = Host.CreateDefaultBuilder(args)
             .AddContactEventConsuming()
             .AddDashboardReporting()
             .AddSingleton<CarwashConsumerService>()
-            .AddSingleton<CarwashApiServer>();
+            .AddSingleton<CarwashApiServer>()
+            .AddSingleton<IConsumerModule, CarwashApiModule>();
     })
     .Build();
 
-// Start the Carwash verification API server in a background task
-var apiServer = host.Services.GetRequiredService<CarwashApiServer>();
+var apiModule = host.Services.GetRequiredService<IConsumerModule>();
 var cts = new CancellationTokenSource();
 
 Console.CancelKeyPress += (_, e) =>
@@ -38,10 +39,9 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-var apiServerTask = Task.Run(() => apiServer.StartAsync(cts.Token), cts.Token);
-
 try
 {
+    await apiModule.StartAsync(cts.Token);
     await using var scope = host.Services.CreateAsyncScope();
     var consumer = scope.ServiceProvider.GetRequiredService<CarwashConsumerService>();
     await consumer.RunAsync(cts.Token);
@@ -49,13 +49,5 @@ try
 finally
 {
     cts.Cancel();
-    apiServer.Stop();
-    try
-    {
-        await apiServerTask;
-    }
-    catch (OperationCanceledException)
-    {
-        // Expected when cancellation is requested
-    }
+    await apiModule.StopAsync(CancellationToken.None);
 }

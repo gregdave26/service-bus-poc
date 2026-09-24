@@ -40,10 +40,6 @@
       .tree ul { margin:0 0 8px; padding:0 8px 0 27px; list-style:none; } .tree li { margin:3px 0; }
       .tree-item { display:flex; align-items:center; gap:8px; width:100%; padding:9px 10px; border-radius:9px; text-align:left; color:var(--muted); background:transparent; }
       .tree-item:hover, .tree-item.selected { color:var(--primary-dark); background:#e7efff; font-weight:700; } .tree-badge { margin-left:auto; color:#7d8aa0; font-size:11px; }
-      .message-list { max-height:600px; overflow:auto; padding:10px; }
-      .message-row { display:block; width:100%; padding:14px; margin-bottom:6px; border:1px solid transparent; border-radius:14px; background:transparent; color:var(--ink); text-align:left; }
-      .message-row:hover { background:#f5f8ff; } .message-row.selected { border-color:#b9ccfa; background:#eef4ff; }
-      .message-meta { display:flex; justify-content:space-between; gap:8px; color:var(--muted); font-size:11px; } .message-title { margin:5px 0 3px; font-weight:700; } .message-preview { overflow:hidden; color:var(--muted); white-space:nowrap; text-overflow:ellipsis; }
       .pill { display:inline-flex; align-items:center; padding:3px 8px; border-radius:20px; font-size:11px; font-weight:700; } .pill.sent { color:#2454c9; background:#dce8ff; } .pill.received { color:#087166; background:#d9f5ef; }
       .detail-body { padding:20px; } .detail-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; } .detail-heading p { color:var(--muted); font-size:12px; } .draft-editor { padding:20px; border-top:1px solid var(--line); } .draft-editor h3 { margin-bottom:4px; } .draft-editor p { margin-bottom:16px; color:var(--muted); font-size:12px; }
       .received-list { display:grid; gap:10px; } .received-item { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#fbfcfe; } .received-item[open] { border-color:#b9ccfa; background:#fff; } .received-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 14px; cursor:pointer; list-style:none; } .received-summary::-webkit-details-marker { display:none; } .received-summary::before { content:"›"; color:var(--muted); transition:transform .2s; } .received-item[open] .received-summary::before { transform:rotate(90deg); } .received-summary-main { min-width:0; flex:1; } .received-summary-title { overflow:hidden; font-weight:700; text-overflow:ellipsis; white-space:nowrap; } .received-summary-meta { margin-top:3px; color:var(--muted); font-size:11px; } .received-content { padding:0 14px 14px; } .received-content pre { max-height:280px; }
@@ -59,7 +55,7 @@
       .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; } .button { padding:10px 15px; border-radius:10px; font-weight:700; } .button.secondary { color:var(--ink); background:#edf1f7; } .button.primary { color:#fff; background:var(--primary); } .button.primary:hover { background:var(--primary-dark); }
       #toast { position:fixed; right:24px; bottom:24px; z-index:8; max-width:360px; padding:13px 16px; border-radius:12px; color:#fff; background:#20304e; box-shadow:var(--shadow); } #toast[hidden] { display:none; } #toast.error { background:var(--danger); }
       @media (max-width:1050px) { .workspace { grid-template-columns:220px minmax(300px,1fr); } .detail-panel { grid-column:1/-1; } }
-      @media (max-width:680px) { .shell { padding:20px 14px 28px; } .topbar { align-items:flex-start; } .top-actions span { display:none; } .workspace { display:flex; flex-direction:column; } .panel { width:100%; } .message-list { max-height:360px; } .form-grid { grid-template-columns:1fr; } label.full, .checks { grid-column:auto; } }
+      @media (max-width:680px) { .shell { padding:20px 14px 28px; } .topbar { align-items:flex-start; } .top-actions span { display:none; } .workspace { display:flex; flex-direction:column; } .panel { width:100%; } .form-grid { grid-template-columns:1fr; } label.full, .checks { grid-column:auto; } }
     </style>
   </head>
   <body>
@@ -77,10 +73,8 @@
           <nav id="draft-tree" class="tree" aria-label="Draft folders"></nav>
         </aside>
         <section class="panel">
-          <div class="panel-header"><div><h2 id="message-heading">Messages</h2></div></div>
-          <div id="message-list" class="message-list"></div>
+          <div class="panel-header"><div><h2 id="message-heading">Message Editor</h2></div></div>
           <form id="draft-form" class="draft-editor" aria-labelledby="draft-editor-title">
-            <h3 id="draft-editor-title">Message draft</h3>
             <p>Edit the selected draft, then save it or publish it through the Producer.</p>
             <div class="form-grid">
               <label>Contact ID<input name="contactId" required></label><label>First name<input name="firstName" required></label><label>Last name<input name="lastName" required></label><label>Phone<input name="phone" required></label><label class="full">Email<input name="email" type="email" required></label>
@@ -104,7 +98,7 @@
         { id:"new-member", name:"New member welcome", folder:"Contact events", data:{ contactId:"contact-1088", firstName:"Grace", lastName:"Hopper", phone:"0400000011", email:"grace@example.com", hasInsurance:false, hasParksResorts:true, hasCarwashProduct:false } },
         { id:"regression", name:"Routing regression", folder:"Regression checks", data:{ contactId:"contact-test", firstName:"Test", lastName:"Contact", phone:"0400000099", email:"test@example.com", hasInsurance:true, hasParksResorts:true, hasCarwashProduct:true } },
       ];
-      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = null, selectedMessage = null, statusCache = [], emulatorCache = { running:false };
+      let messages = [], messagesLoading = true, selectedDraft = drafts[0], selectedService = null, statusCache = [], emulatorCache = { running:false };
       const $ = (selector) => document.querySelector(selector);
       const draftForm = $("#draft-form");
 
@@ -124,20 +118,7 @@
           const details = document.createElement("details"); details.open = true;
           const summary = document.createElement("summary"); summary.textContent = folder; details.append(summary);
           const list = document.createElement("ul");
-          drafts.filter((draft) => draft.folder === folder).forEach((draft) => { const item = document.createElement("li"); const button = document.createElement("button"); button.className = "tree-item" + (draft.id === selectedDraft.id ? " selected" : ""); button.textContent = `▱ ${draft.name} ⋯`; button.addEventListener("click", () => { selectedDraft = draft; selectedMessage = messages.find((message) => messageMatchesDraft(message, draft)) || null; populateDraftForm(); renderTree(); renderMessages(); renderDetail(); }); item.append(button); list.append(item); }); details.append(list); return details;
-        }));
-      }
-      function renderMessages() {
-        const related = messages.filter((message) => message.serviceName === selectedService && messageMatchesDraft(message, selectedDraft));
-        selectedMessage = related.find((message) => message.messageId === selectedMessage?.messageId) || related[0] || null;
-        $("#message-heading").textContent = "Messages";
-        if (!related.length) { const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = messagesLoading ? "Loading live messages…" : "No live activity for this draft yet."; $("#message-list").replaceChildren(empty); return; }
-        $("#message-list").replaceChildren(...related.map((message) => {
-          const row = document.createElement("button"); row.className = "message-row" + (selectedMessage?.messageId === message.messageId ? " selected" : "");
-          const meta = document.createElement("div"); meta.className = "message-meta"; const pill = document.createElement("span"); pill.className = `pill ${message.direction}`; pill.textContent = message.direction; const time = document.createElement("span"); time.textContent = new Date(message.timestamp).toLocaleTimeString(); meta.append(pill, time);
-          const title = document.createElement("div"); title.className = "message-title"; title.textContent = `${message.eventId} ${message.direction}`;
-          const preview = document.createElement("div"); preview.className = "message-preview"; preview.textContent = message.subscriptionName ? `${message.serviceName} · ${message.subscriptionName}` : message.serviceName;
-          row.append(meta, title, preview); row.addEventListener("click", () => { selectedMessage = message; renderMessages(); renderDetail(); }); return row;
+          drafts.filter((draft) => draft.folder === folder).forEach((draft) => { const item = document.createElement("li"); const button = document.createElement("button"); button.className = "tree-item" + (draft.id === selectedDraft.id ? " selected" : ""); button.textContent = `▱ ${draft.name} ⋯`; button.addEventListener("click", () => { selectedDraft = draft; populateDraftForm(); renderTree(); renderDetail(); }); item.append(button); list.append(item); }); details.append(list); return details;
         }));
       }
       function renderDetail() {
@@ -233,7 +214,7 @@
           const state = document.createElement("div"); state.className = "tile-state";
           state.textContent = `${connected ? "Connected" : "Offline"}${service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} handled`}`;
           tile.append(top, name, state);
-          if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); });
+          if (service.selectable !== false) tile.addEventListener("click", () => { selectedService = service.serviceName; renderStatusTiles(statusCache, emulatorCache); renderDetail(); });
           return tile;
         }));
       }
@@ -243,18 +224,18 @@
       async function refreshStatus() {
         try {
           const [emulatorResponse, serviceResponse, messagesResponse] = await Promise.all([fetch("/api/emulator-status"), fetch("/api/status"), fetch("/api/messages")]);
-          const emulator = await readJson(emulatorResponse, "/api/emulator-status"); statusCache = await readJson(serviceResponse, "/api/status"); messages = await readJson(messagesResponse, "/api/messages"); messagesLoading = false; emulatorCache = emulator; renderStatusTiles(statusCache, emulator); renderMessages(); renderDetail(); $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
+          const emulator = await readJson(emulatorResponse, "/api/emulator-status"); statusCache = await readJson(serviceResponse, "/api/status"); messages = await readJson(messagesResponse, "/api/messages"); messagesLoading = false; emulatorCache = emulator; renderStatusTiles(statusCache, emulator); renderDetail(); $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
         } catch (error) {
-          messagesLoading = false; emulatorCache = { running:false }; renderStatusTiles(statusCache, emulatorCache); renderMessages(); renderDetail(); $("#last-updated").textContent = "Status unavailable"; showToast(`Could not refresh status: ${error.message}`, true);
+          messagesLoading = false; emulatorCache = { running:false }; renderStatusTiles(statusCache, emulatorCache); renderDetail(); $("#last-updated").textContent = "Status unavailable"; showToast(`Could not refresh status: ${error.message}`, true);
         }
       }
       function readDraftForm() { const data = Object.fromEntries(new FormData(draftForm)); for (const field of ["hasInsurance","hasParksResorts","hasCarwashProduct"]) data[field] = draftForm.elements[field].checked; return data; }
-      function saveDraft() { selectedDraft.data = readDraftForm(); renderTree(); renderMessages(); renderDetail(); showToast("Draft saved locally."); }
+      function saveDraft() { selectedDraft.data = readDraftForm(); renderTree(); renderDetail(); showToast("Draft saved locally."); }
       async function publishDraft(event) {
-        event.preventDefault(); const data = readDraftForm(); const response = await fetch("/api/publish", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) }); const result = await readJson(response, "/api/publish"); if (!result.success) throw new Error(result.error || "Publish failed."); selectedDraft.data = data; showToast(`Published ${result.eventId}`); renderTree(); renderMessages(); renderDetail();
+        event.preventDefault(); const data = readDraftForm(); const response = await fetch("/api/publish", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) }); const result = await readJson(response, "/api/publish"); if (!result.success) throw new Error(result.error || "Publish failed."); selectedDraft.data = data; showToast(`Published ${result.eventId}`); renderTree(); renderDetail();
       }
-      $("#refresh").addEventListener("click", refreshStatus); $("#new-draft").addEventListener("click", () => { selectedDraft = { id:"new-" + Date.now(), name:"Untitled draft", folder:"New drafts", data:{ contactId:"", firstName:"", lastName:"", phone:"", email:"", hasInsurance:false, hasParksResorts:false, hasCarwashProduct:false } }; drafts.push(selectedDraft); populateDraftForm(); renderTree(); renderMessages(); renderDetail(); }); $("#save-draft").addEventListener("click", saveDraft); draftForm.addEventListener("submit", (event) => publishDraft(event).catch((error) => showToast(error.message, true)));
-      populateDraftForm(); renderTree(); renderMessages(); renderDetail(); refreshStatus(); setInterval(refreshStatus, 3000);
+      $("#refresh").addEventListener("click", refreshStatus); $("#new-draft").addEventListener("click", () => { selectedDraft = { id:"new-" + Date.now(), name:"Untitled draft", folder:"New drafts", data:{ contactId:"", firstName:"", lastName:"", phone:"", email:"", hasInsurance:false, hasParksResorts:false, hasCarwashProduct:false } }; drafts.push(selectedDraft); populateDraftForm(); renderTree(); renderDetail(); }); $("#save-draft").addEventListener("click", saveDraft); draftForm.addEventListener("submit", (event) => publishDraft(event).catch((error) => showToast(error.message, true)));
+      populateDraftForm(); renderTree(); renderDetail(); refreshStatus(); setInterval(refreshStatus, 3000);
     </script>
   </body>
 </html>

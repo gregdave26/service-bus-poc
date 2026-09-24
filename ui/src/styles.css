@@ -1,0 +1,7 @@
+html, body, #root { min-height: 100%; }
+body { margin: 0; background: #f7f2fa; }
+.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #6750a4; color: #fff; font-weight: 800; font-size: 18px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.status-dot.connected { background: #2e7d32; box-shadow: 0 0 0 4px rgba(46, 125, 50, .14); }
+.status-dot.offline { background: #625f66; box-shadow: 0 0 0 4px rgba(98, 95, 102, .14); }
+@media (max-width: 900px) { .MuiTable-root { min-width: 680px; } }

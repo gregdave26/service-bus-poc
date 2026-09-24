@@ -20,6 +20,9 @@ const subscriberLabels = serviceBusConfig.Dashboard?.SubscriberLabels ?? {};
 const producerLabels = serviceBusConfig.Dashboard?.ProducerLabels ?? {};
 
 app.use(express.json({ limit: "32kb" }));
+app.use(express.static(path.join(__dirname, "public", "dist"), {
+  setHeaders: (response) => response.setHeader("Cache-Control", "no-store"),
+}));
 app.use(express.static(path.join(__dirname, "public"), {
   setHeaders: (response) => response.setHeader("Cache-Control", "no-store"),
 }));

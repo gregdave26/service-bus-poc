@@ -8,12 +8,24 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test"
+    "start": "npm run build && node server.js",
+    "test": "node --test",
+    "dev": "vite",
+    "build": "vite build"
   },
   "dependencies": {
     "@azure/identity": "^4.10.0",
     "@azure/service-bus": "^7.9.5",
-    "express": "^5.1.0"
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.3.1",
+    "@mui/material": "^7.3.1",
+    "express": "^5.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "vite": "^7.1.5"
   }
 }

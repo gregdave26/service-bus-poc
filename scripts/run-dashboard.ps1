@@ -72,6 +72,7 @@ $script:shutdownInProgress = $false
 $script:transcriptActive = $false
 $script:emulatorLogProcess = $null
 $script:previousTreatControlCAsInput = [Console]::TreatControlCAsInput
+$script:cancelRequested = $false
 [Console]::TreatControlCAsInput = $true
 
 function Stop-OrchestrationTranscript {
@@ -83,6 +84,22 @@ function Stop-OrchestrationTranscript {
 
 function Restore-ControlCHandling {
     [Console]::TreatControlCAsInput = $script:previousTreatControlCAsInput
+}
+
+function Test-ControlCRequested {
+    if ($script:cancelRequested) {
+        return $true
+    }
+
+    if (-not [Console]::IsInputRedirected -and [Console]::KeyAvailable) {
+        $key = [Console]::ReadKey($true)
+        if ([int]$key.KeyChar -eq 3) {
+            $script:cancelRequested = $true
+            return $true
+        }
+    }
+
+    return $false
 }
 
 # Helper function to perform cleanup
@@ -288,16 +305,7 @@ if (-not $NoEmulator) {
         Wait-ServiceBusEmulatorReady `
             -ComposePath $composePath `
             -CancellationCheck {
-           if ([Console]::IsInputRedirected) {
-               return $false
-           }
-
-           if ([Console]::KeyAvailable) {
-               $key = [Console]::ReadKey($true)
-               return ([int]$key.KeyChar -eq 3)
-           }
-
-           return $false
+               return (Test-ControlCRequested)
             }
     }
     catch {
@@ -548,7 +556,7 @@ if (-not $NoBrowser) {
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                            ✓ All services running                         ║" -ForegroundColor Green
+Write-Host "║                            ✓ All services running                          ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 Write-Host "Dashboard:" -ForegroundColor Cyan
@@ -577,14 +585,11 @@ Write-Host ""
 # Main monitoring loop.
 try {
     while ($true) {
-        if ($Host.UI.RawUI.KeyAvailable) {
-            $key = $Host.UI.RawUI.ReadKey('AllowCtrlC,NoEcho,IncludeKeyDown')
-            if ([int]$key.Character -eq 3) {
-                Write-Host ""
-                Write-Host "Ctrl+C detected. Stopping all services..." -ForegroundColor Yellow
-                Invoke-Cleanup
-                break
-            }
+        if (Test-ControlCRequested) {
+            Write-Host ""
+            Write-Host "Ctrl+C detected. Stopping all services..." -ForegroundColor Yellow
+            Invoke-Cleanup
+            break
         }
 
         # Check if any process has exited unexpectedly

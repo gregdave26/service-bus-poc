@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import {
   Alert,
   AppBar,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Card,
@@ -145,6 +148,7 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
 }
 
 function MessageEditorDialog({ open, draft, form, fields, config, messageName, duplicateName, onNameChange, onChange, onSave, onPublish, onClose }) {
+    const preview = JSON.stringify({ type: draft.type, data: form }, null, 2);
     return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="message-editor-dialog-title">
       <Box component="form" onSubmit={onPublish}>
         <DialogTitle id="message-editor-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -159,6 +163,23 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
             <Typography variant="subtitle2">{config.messageTypes?.[draft.type]?.DisplayName || draft.type}</Typography>
             {fields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} name={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={form[field.Name] ?? ""} onChange={onChange} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
             <Stack direction="row" flexWrap="wrap">{fields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox name={field.Name} checked={Boolean(form[field.Name])} onChange={onChange} />} label={field.Label || field.Name} />)}</Stack>
+            <Accordion defaultExpanded disableGutters variant="outlined">
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="message-preview-content" id="message-preview-header">
+                <Typography fontWeight={600}>Preview</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <TextField
+                  aria-label="Message JSON preview"
+                  value={preview}
+                  fullWidth
+                  multiline
+                  minRows={8}
+                  maxRows={18}
+                  InputProps={{ readOnly: true }}
+                  sx={{ "& textarea": { fontFamily: "monospace", fontSize: 12 } }}
+                />
+              </AccordionDetails>
+            </Accordion>
           </Stack>
         </DialogContent>
         <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>

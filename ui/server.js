@@ -18,6 +18,7 @@ const serviceBusConfigPath = path.resolve(__dirname, "..", "infra", "servicebus"
 const serviceBusConfig = JSON.parse(readFileSync(serviceBusConfigPath, "utf8"));
 const subscriberLabels = serviceBusConfig.Dashboard?.SubscriberLabels ?? {};
 const producerLabels = serviceBusConfig.Dashboard?.ProducerLabels ?? {};
+const messageTypes = serviceBusConfig.Dashboard?.MessageTypes ?? {};
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public", "dist"), {
@@ -69,9 +70,17 @@ function getEmulatorStatus() {
 }
 
 function validatePublishRequest(body) {
-  const requiredFields = ["contactId", "firstName", "lastName", "phone", "email"];
+  const type = body?.type ?? "ContactUpdated";
+  const configuredType = messageTypes[type];
+  if (!configuredType) return `Unsupported message type: ${type}`;
+  const requiredFields = (configuredType.Fields ?? [])
+    .filter((field) => field.Required)
+    .map((field) => field.Name);
   const missingFields = requiredFields.filter(
-    (field) => typeof body?.[field] !== "string" || body[field].trim() === "",
+    (field) => {
+      const value = body?.[field];
+      return typeof value !== "string" || value.trim() === "";
+    },
   );
 
   if (missingFields.length > 0) {
@@ -82,27 +91,28 @@ function validatePublishRequest(body) {
 }
 
 function createPublishMessage(request) {
-  const hasInsurance = request.hasInsurance === true;
-  const hasParksResorts = request.hasParksResorts === true;
-  const hasCarwashProduct = request.hasCarwashProduct === true;
+  const type = request.type ?? "ContactUpdated";
+  const configuredType = messageTypes[type];
+  const data = {};
+  for (const field of configuredType?.Fields ?? []) {
+    if (field.Type === "boolean") data[field.Name] = request[field.Name] === true;
+    else if (request[field.Name] !== undefined) data[field.Name] = String(request[field.Name]).trim();
+  }
+  const applicationProperties = Object.fromEntries(
+    (configuredType?.Fields ?? [])
+      .filter((field) => field.Type === "boolean")
+      .map((field) => [field.Name, data[field.Name] === true]),
+  );
+  if (type === "ContactUpdated") data.attributes = { ...applicationProperties };
   const event = {
     id: randomUUID(),
-    type: "ContactUpdated",
+    type,
     source: "dashboard",
     timestamp: new Date().toISOString(),
     dataVersion: "1.0",
     correlationId: randomUUID(),
     data: {
-      contactId: request.contactId.trim(),
-      firstName: request.firstName.trim(),
-      lastName: request.lastName.trim(),
-      phone: request.phone.trim(),
-      email: request.email.trim(),
-      attributes: {
-        hasInsurance,
-        hasParksResorts,
-        hasCarwashProduct,
-      },
+      ...data,
     },
   };
 
@@ -112,11 +122,7 @@ function createPublishMessage(request) {
     messageId: event.id,
     correlationId: event.correlationId,
     subject: event.type,
-    applicationProperties: {
-      hasInsurance,
-      hasParksResorts,
-      hasCarwashProduct,
-    },
+    applicationProperties,
   };
 }
 
@@ -206,7 +212,7 @@ app.post("/api/heartbeat", (request, response) => {
 
 app.get("/api/status", (_request, response) => response.json(getServiceStatuses()));
 
-app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels }));
+app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes }));
 
 app.get("/api/emulator-status", async (_request, response) => {
   response.json(await getEmulatorStatus());

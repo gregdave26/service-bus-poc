@@ -135,6 +135,30 @@
       "ConnectedLabel": "Ready",
       "OfflineLabel": "Offline",
       "MessagesHandledLabel": "published"
+    },
+    "MessageTypes": {
+      "ContactUpdated": {
+        "DisplayName": "Contact updated",
+        "Fields": [
+          { "Name": "contactId", "Label": "Contact ID", "Type": "text", "Required": true },
+          { "Name": "firstName", "Label": "First name", "Type": "text", "Required": true },
+          { "Name": "lastName", "Label": "Last name", "Type": "text", "Required": true },
+          { "Name": "phone", "Label": "Phone", "Type": "text", "Required": true },
+          { "Name": "email", "Label": "Email", "Type": "email", "Required": true },
+          { "Name": "hasInsurance", "Label": "Insurance", "Type": "boolean" },
+          { "Name": "hasParksResorts", "Label": "Parks & Resorts", "Type": "boolean" },
+          { "Name": "hasCarwashProduct", "Label": "Carwash", "Type": "boolean" }
+        ]
+      },
+      "ProductHoldingChange": {
+        "DisplayName": "Product holding change",
+        "Fields": [
+          { "Name": "contactId", "Label": "Contact ID", "Type": "text", "Required": true },
+          { "Name": "holdingId", "Label": "Holding ID", "Type": "text", "Required": true },
+          { "Name": "productType", "Label": "Product type", "Type": "text", "Options": ["insurance", "parks-resorts", "carwash", "other"], "Required": true },
+          { "Name": "action", "Label": "Action", "Type": "text", "Options": ["created", "modified", "removed"], "Required": true }
+        ]
+      }
     }
   }
 }

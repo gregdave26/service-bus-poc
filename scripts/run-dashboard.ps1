@@ -193,6 +193,7 @@ function Invoke-Cleanup {
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
 $infraPath = Join-Path $projectRoot 'infra'
+$uiPath = Join-Path $projectRoot 'ui'
 $logsPath = Join-Path $projectRoot 'logs'
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
@@ -486,6 +487,20 @@ function Start-AppWithLogging {
 
 # Store the set of all started processes for cleanup (uses $script:allProcesses from trap)
 $script:allProcesses = @()
+
+# Build the active React dashboard before starting Express. Without this step,
+# Express falls back to the legacy vanilla dashboard in ui/public/index.html.
+Write-Host "Building dashboard frontend..." -ForegroundColor Yellow
+Push-Location $uiPath
+try {
+    npm run build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Dashboard frontend build failed with exit code $LASTEXITCODE"
+    }
+}
+finally {
+    Pop-Location
+}
 
 # Start the Node.js dashboard independently from the .NET services.
 $dashboardProcess = Start-NodeDashboardWithLogging

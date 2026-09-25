@@ -54,13 +54,15 @@ const theme = createTheme({
 });
 
 const drafts = [
-  { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "contact-1042", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
-  { id: "product-holding-change", name: "Product holding change", type: "ProductHoldingChange", folder: "Contact events", data: { contactId: "contact-1088", holdingId: "holding-1088", productType: "insurance", action: "created" } },
-  { id: "regression", name: "Routing regression", type: "ContactUpdated", folder: "Regression checks", data: { contactId: "contact-test", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
+  { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
+  { id: "product-holding-change", name: "Product holding change", type: "ProductHoldingChange", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
+  { id: "regression", name: "Routing regression", type: "ContactUpdated", folder: "Regression checks", data: { contactId: "c0ffee00-0000-4000-8000-000000000099", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
 ];
 
 function fieldsFor(type, config) { return config.messageTypes?.[type]?.Fields ?? []; }
 function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, field.Type === "boolean" ? false : ""])); }
+function createUuid() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+function normalizedName(name) { return name.trim().toLowerCase(); }
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
@@ -110,13 +112,13 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
   const [type, setType] = useState(types[0]?.[0] ?? "ContactUpdated");
   const [values, setValues] = useState({});
   const selectedFields = fieldsFor(type, config);
-  const duplicate = existingNames.some((existingName) => existingName.toLowerCase() === name.trim().toLowerCase());
+  const duplicate = existingNames.some((existingName) => normalizedName(existingName) === normalizedName(name));
   useEffect(() => {
     if (open) {
       const base = "Untitled draft";
       let candidate = base;
       let suffix = 2;
-      while (existingNames.some((existingName) => existingName.trim().toLowerCase() === candidate.toLowerCase())) candidate = `${base} ${suffix++}`;
+      while (existingNames.some((existingName) => normalizedName(existingName) === normalizedName(candidate))) candidate = `${base} ${suffix++}`;
       setName(candidate);
       setType(types[0]?.[0] ?? "ContactUpdated");
       setValues(emptyData(fieldsFor(types[0]?.[0] ?? "ContactUpdated", config)));
@@ -131,7 +133,7 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
     <Box component="form" onSubmit={submit}>
       <DialogTitle id="new-message-dialog-title">New message</DialogTitle>
       <DialogContent dividers><Stack spacing={2}>
-        <TextField autoFocus label="Draft name" value={name} onChange={(event) => setName(event.target.value)} error={duplicate} helperText={duplicate ? "A draft with this name already exists." : "Choose a unique name for this draft."} required />
+        <TextField autoFocus label="Message name" value={name} onChange={(event) => setName(event.target.value)} error={duplicate} helperText={duplicate ? "A message with this name already exists." : "Choose a unique name for this message."} required />
         <TextField select label="Message type" value={type} onChange={(event) => { setType(event.target.value); setValues(emptyData(fieldsFor(event.target.value, config))); }}>{types.map(([key, value]) => <MenuItem key={key} value={key}>{value.DisplayName || key}</MenuItem>)}</TextField>
         <Typography variant="subtitle2">{types.find(([key]) => key === type)?.[1]?.DisplayName || type} fields</Typography>
         {selectedFields.filter((field) => field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
@@ -142,7 +144,7 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
   </Dialog>;
 }
 
-function MessageEditorDialog({ open, draft, form, fields, config, onChange, onSave, onPublish, onClose }) {
+function MessageEditorDialog({ open, draft, form, fields, config, messageName, duplicateName, onNameChange, onChange, onSave, onPublish, onClose }) {
     return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="message-editor-dialog-title">
       <Box component="form" onSubmit={onPublish}>
         <DialogTitle id="message-editor-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -152,15 +154,17 @@ function MessageEditorDialog({ open, draft, form, fields, config, onChange, onSa
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Edit the selected draft, then save it or publish it through the Producer.</Typography>
           <Stack spacing={2}>
+            <TextField label="Message name" value={messageName} onChange={(event) => onNameChange(event.target.value)} error={duplicateName} helperText={duplicateName ? "A message with this name already exists." : "Choose a unique name for this message."} required fullWidth />
+            <TextField label="Contact ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
             <Typography variant="subtitle2">{config.messageTypes?.[draft.type]?.DisplayName || draft.type}</Typography>
-            {fields.filter((field) => field.Type !== "boolean").map((field) => <TextField key={field.Name} name={field.Name} label={field.Label || field.Name} value={form[field.Name] ?? ""} onChange={onChange} required={field.Required} fullWidth size="small" type={field.Type || "text"} />)}
+            {fields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} name={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={form[field.Name] ?? ""} onChange={onChange} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
             <Stack direction="row" flexWrap="wrap">{fields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox name={field.Name} checked={Boolean(form[field.Name])} onChange={onChange} />} label={field.Label || field.Name} />)}</Stack>
           </Stack>
         </DialogContent>
         <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="outlined" onClick={onSave}>Save draft</Button>
-          <Button type="submit" variant="contained">Publish</Button>
+          <Button variant="outlined" onClick={onSave} disabled={!messageName.trim() || duplicateName}>Save message</Button>
+          <Button type="submit" variant="contained" disabled={!messageName.trim() || duplicateName}>Publish</Button>
         </Stack>
       </Box>
     </Dialog>;
@@ -211,6 +215,7 @@ function App() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState(drafts[0]);
   const [form, setForm] = useState(drafts[0].data);
+  const [messageName, setMessageName] = useState(drafts[0].name);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -233,12 +238,31 @@ function App() {
     return [{ serviceName: "Service Bus emulator", state: emulator.running ? "Running" : "Offline", messagesHandled: null, selectable: false, infrastructure: true, icon: "◈" }, { ...producer, icon: "◉" }, ...reported, ...observed];
   }, [statuses, messages, emulator]);
 
-  function selectDraft(draft) { setSelectedDraft(draft); setForm({ ...draft.data }); setEditorOpen(true); }
+  function selectDraft(draft) { setSelectedDraft(draft); setForm({ ...draft.data }); setMessageName(draft.name); setEditorOpen(true); }
   function updateForm(event) { const { name, value, type, checked } = event.target; setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value })); }
-  function saveDraft() { selectedDraft.data = { ...form }; setToast("Draft saved locally."); }
+  function hasDuplicateName(name, currentDraft) {
+    return drafts.some((draft) => draft !== currentDraft && normalizedName(draft.name) === normalizedName(name));
+  }
+  function saveDraft() {
+    const trimmedName = messageName.trim();
+    if (!trimmedName || hasDuplicateName(trimmedName, selectedDraft)) return;
+    selectedDraft.name = trimmedName;
+    selectedDraft.data = { ...form };
+    setMessageName(trimmedName);
+    setToast("Message saved locally.");
+  }
   async function publish(event) { event.preventDefault(); try { await getJson("/api/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, type: selectedDraft.type }) }); setToast("Message published."); refresh(); } catch (publishError) { setToast(publishError.message); } }
-  function createDraft({ name, type, data }) { const draft = { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: data || emptyData(fieldsFor(type, config)) }; drafts.push(draft); selectDraft(draft); setNewMessageOpen(false); }
+  function createDraft({ name, type, data }) {
+    const fields = fieldsFor(type, config);
+    const draftData = data || emptyData(fields);
+    if (fields.some((field) => field.Name === "contactId") && !draftData.contactId) draftData.contactId = createUuid();
+    const draft = { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: draftData };
+    drafts.push(draft);
+    selectDraft(draft);
+    setNewMessageOpen(false);
+  }
   const editorFields = fieldsFor(selectedDraft.type, config);
+  const duplicateEditorName = drafts.some((draft) => draft !== selectedDraft && normalizedName(draft.name) === normalizedName(messageName));
 
   return <Container maxWidth="xl" sx={{ py: 3 }}>
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark">P</Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging workspace</Typography><Typography variant="h5" color="text.primary">Contact events</Typography></Box><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
@@ -250,7 +274,7 @@ function App() {
     </Box>
     <MessageDialog service={activeService} messages={messages} config={config} onClose={() => setActiveService(null)} />
     <NewMessageDialog open={newMessageOpen} config={config} existingNames={drafts.map((draft) => draft.name)} onClose={() => setNewMessageOpen(false)} onCreate={createDraft} />
-    <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} onChange={updateForm} onSave={saveDraft} onPublish={publish} onClose={() => setEditorOpen(false)} />
+    <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} messageName={messageName} duplicateName={duplicateEditorName} onNameChange={setMessageName} onChange={updateForm} onSave={saveDraft} onPublish={(event) => { if (duplicateEditorName || !messageName.trim()) { event.preventDefault(); return; } saveDraft(); publish(event); }} onClose={() => setEditorOpen(false)} />
     <Snackbar open={Boolean(toast)} autoHideDuration={4500} onClose={() => setToast(null)} message={toast} />
     {loading && <CircularProgress size={24} sx={{ position: "fixed", bottom: 24, left: 24 }} />}
   </Container>;

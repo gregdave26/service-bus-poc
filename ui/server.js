@@ -15,9 +15,47 @@ const heartbeats = new Map();
 const messageHistory = [];
 const maxMessageHistory = 500;
 const serviceBusConfigPath = path.resolve(__dirname, "..", "infra", "servicebus", "config.json");
+const contractsPath = path.resolve(__dirname, "..", "contracts");
 const serviceBusConfig = JSON.parse(readFileSync(serviceBusConfigPath, "utf8"));
 const subscriberLabels = serviceBusConfig.Dashboard?.SubscriberLabels ?? {};
 const producerLabels = serviceBusConfig.Dashboard?.ProducerLabels ?? {};
+const configuredMessageTypes = serviceBusConfig.Dashboard?.MessageTypes ?? {};
+
+function getMessageTypes() {
+  return Object.fromEntries(Object.entries(configuredMessageTypes).map(([type, configuration]) => {
+    const schema = JSON.parse(readFileSync(path.join(contractsPath, configuration.Schema), "utf8"));
+    const configurationErrors = [];
+    const formFields = configuration.FormFields ?? {};
+    for (const [name, field] of Object.entries(formFields)) {
+      if (!schema.properties?.[name] && !field.Type) {
+        configurationErrors.push(`Configured field "${name}" was not found in the contract schema.`);
+      }
+      if (!field.Label || field.Label.trim() === "") {
+        configurationErrors.push(`No label was configured for field "${name}".`);
+      }
+    }
+    const schemaFields = Object.entries(schema.properties ?? {}).map(([name, property]) => ({
+      Name: name,
+      Type: property.type === "boolean" ? "boolean" : property.format === "email" ? "email" : property.type === "object" ? "object" : "text",
+      Required: (schema.required ?? []).includes(name),
+      Options: property.enum,
+    }));
+    const additionalFields = Object.entries(formFields)
+      .filter(([name]) => !schema.properties?.[name])
+      .map(([name, field]) => ({ Name: name, ...field }));
+    const fieldsByName = new Map([...schemaFields, ...additionalFields].map((field) => [field.Name, field]));
+    const order = [...fieldsByName.keys()].sort((left, right) =>
+      (formFields[left]?.Order ?? Number.MAX_SAFE_INTEGER) -
+      (formFields[right]?.Order ?? Number.MAX_SAFE_INTEGER));
+    const fields = order
+      .map((name) => fieldsByName.get(name))
+      .filter(Boolean)
+      .map((field) => ({ ...field, Label: formFields[field.Name]?.Label ?? field.Name }));
+    return [type, { DisplayName: configuration.DisplayName, Fields: fields, ConfigurationErrors: configurationErrors }];
+  }));
+}
+
+const messageTypes = getMessageTypes();
 
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public", "dist"), {
@@ -69,9 +107,17 @@ function getEmulatorStatus() {
 }
 
 function validatePublishRequest(body) {
-  const requiredFields = ["contactId", "firstName", "lastName", "phone", "email"];
+  const type = body?.type ?? "ContactUpdated";
+  const configuredType = messageTypes[type];
+  if (!configuredType) return `Unsupported message type: ${type}`;
+  const requiredFields = (configuredType.Fields ?? [])
+    .filter((field) => field.Required)
+    .map((field) => field.Name);
   const missingFields = requiredFields.filter(
-    (field) => typeof body?.[field] !== "string" || body[field].trim() === "",
+    (field) => {
+      const value = body?.[field];
+      return typeof value !== "string" || value.trim() === "";
+    },
   );
 
   if (missingFields.length > 0) {
@@ -82,27 +128,28 @@ function validatePublishRequest(body) {
 }
 
 function createPublishMessage(request) {
-  const hasInsurance = request.hasInsurance === true;
-  const hasParksResorts = request.hasParksResorts === true;
-  const hasCarwashProduct = request.hasCarwashProduct === true;
+  const type = request.type ?? "ContactUpdated";
+  const configuredType = messageTypes[type];
+  const data = {};
+  for (const field of configuredType?.Fields ?? []) {
+    if (field.Type === "boolean") data[field.Name] = request[field.Name] === true;
+    else if (request[field.Name] !== undefined) data[field.Name] = String(request[field.Name]).trim();
+  }
+  const applicationProperties = Object.fromEntries(
+    (configuredType?.Fields ?? [])
+      .filter((field) => field.Type === "boolean")
+      .map((field) => [field.Name, data[field.Name] === true]),
+  );
+  if (type === "ContactUpdated") data.attributes = { ...applicationProperties };
   const event = {
     id: randomUUID(),
-    type: "ContactUpdated",
+    type,
     source: "dashboard",
     timestamp: new Date().toISOString(),
     dataVersion: "1.0",
     correlationId: randomUUID(),
     data: {
-      contactId: request.contactId.trim(),
-      firstName: request.firstName.trim(),
-      lastName: request.lastName.trim(),
-      phone: request.phone.trim(),
-      email: request.email.trim(),
-      attributes: {
-        hasInsurance,
-        hasParksResorts,
-        hasCarwashProduct,
-      },
+      ...data,
     },
   };
 
@@ -112,11 +159,7 @@ function createPublishMessage(request) {
     messageId: event.id,
     correlationId: event.correlationId,
     subject: event.type,
-    applicationProperties: {
-      hasInsurance,
-      hasParksResorts,
-      hasCarwashProduct,
-    },
+    applicationProperties,
   };
 }
 
@@ -206,7 +249,7 @@ app.post("/api/heartbeat", (request, response) => {
 
 app.get("/api/status", (_request, response) => response.json(getServiceStatuses()));
 
-app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels }));
+app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes }));
 
 app.get("/api/emulator-status", async (_request, response) => {
   response.json(await getEmulatorStatus());

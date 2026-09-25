@@ -18,7 +18,9 @@ Design principles (Clean Code, SOLID, GRASP) come from the user-level instructio
 
 ## Naming
 
-PascalCase for types, methods, properties, and constants. camelCase for locals and private fields. Interfaces are `I`-prefixed.
+- Use PascalCase for types, methods, properties, and constants. Use camelCase for locals and private fields. Prefix private fields with an underscore (_).
+- Name every abstract class with the `Abstract` prefix so its abstract nature is immediately clear, for example `AbstractConsumerService`.
+- Name every interface with the `I` prefix so its abstract nature is immediately clear, for example `IConsumerService`.
 
 ## Async
 

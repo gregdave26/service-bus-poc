@@ -9,9 +9,9 @@
   },
   "scripts": {
     "start": "npm run build && node server.js",
-    "test": "node --test",
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "node --test"
   },
   "dependencies": {
     "@azure/identity": "^4.10.0",
@@ -25,7 +25,7 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^5.0.2",
     "vite": "^7.1.5"
   }
 }

@@ -23,7 +23,7 @@ async function withServer(callback) {
 }
 
 test("validates all required publish fields", () => {
-  assert.match(validatePublishRequest({}), /contactId, firstName, lastName, phone, email/);
+  assert.match(validatePublishRequest({}), /contactId, firstName, lastName/);
   assert.equal(
     validatePublishRequest({
       contactId: "c-1",
@@ -54,6 +54,34 @@ test("promotes capability flags to Service Bus application properties", () => {
     hasCarwashProduct: true,
   });
   assert.deepEqual(message.body.data.attributes, message.applicationProperties);
+});
+
+test("creates configured ProductHoldingChange messages with dynamic fields", () => {
+  assert.equal(validatePublishRequest({
+    type: "ProductHoldingChange",
+    contactId: "c-2",
+    holdingId: "holding-2",
+    productType: "insurance",
+    action: "created",
+  }), null);
+  const message = createPublishMessage({
+    type: "ProductHoldingChange",
+    contactId: "c-2",
+    holdingId: "holding-2",
+    productType: "insurance",
+    action: "created",
+  });
+  assert.equal(message.body.type, "ProductHoldingChange");
+  assert.deepEqual(message.body.data, {
+    contactId: "c-2",
+    holdingId: "holding-2",
+    productType: "insurance",
+    action: "created",
+  });
+});
+
+test("rejects unsupported configured message types", () => {
+  assert.equal(validatePublishRequest({ type: "NotConfigured" }), "Unsupported message type: NotConfigured");
 });
 
 test("returns an empty status list when no heartbeats have been received", () => {

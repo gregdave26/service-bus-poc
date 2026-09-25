@@ -11,9 +11,8 @@ namespace ServiceBusPoc.Carwash.Services;
 /// Only receives messages where <c>hasCarwashProduct = true</c> (filtering done by the broker).
 /// Logs each received message to the console and reports heartbeats to the dashboard.
 /// </summary>
-public sealed class CarwashConsumerService
+public sealed class CarwashConsumerService : AbstractConsumerService
 {
-    private readonly SubscriptionConsumerRunner _consumerRunner;
     private readonly ILogger<CarwashConsumerService> _logger;
     private readonly IOptions<CarwashSettings> _carwashSettings;
 
@@ -21,45 +20,24 @@ public sealed class CarwashConsumerService
         SubscriptionConsumerRunner consumerRunner,
         ILogger<CarwashConsumerService> logger,
         IOptions<CarwashSettings> carwashSettings)
+        : base(consumerRunner, logger)
     {
-        _consumerRunner = consumerRunner;
         _logger = logger;
         _carwashSettings = carwashSettings;
     }
+
+    protected override ConsumerDescriptor Descriptor =>
+        new("carwash", "hasCarwashProduct = true");
+
+    protected override string ServiceName => "Carwash";
 
     /// <summary>
     /// Runs the consumer service, listening for messages on the carwash subscription.
     /// </summary>
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Carwash consumer service starting...");
-        var startTime = DateTimeOffset.UtcNow;
-
-        // Wait for the Service Bus subscription to be ready with exponential backoff
-        var connected = await _consumerRunner.WaitForReadyAsync(startTime, cancellationToken);
-        if (!connected)
-        {
-            _logger.LogError("Service Bus subscription did not become ready within timeout");
-            throw new InvalidOperationException("Service Bus subscription did not become ready within timeout");
-        }
-
         _logger.LogInformation("Pulse API URL: {ApiUrl}", _carwashSettings.Value.ApiUrl);
         _logger.LogInformation("Mock mode: {MockMode}", _carwashSettings.Value.MockMode);
-
-        var descriptor = new ConsumerDescriptor("carwash", "hasCarwashProduct = true");
-
-        try
-        {
-            await _consumerRunner.RunAsync(descriptor, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("Carwash consumer service cancelled");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Carwash consumer service encountered an error");
-            throw;
-        }
+        await RunConsumerAsync(cancellationToken);
     }
 }

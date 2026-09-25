@@ -139,25 +139,27 @@
     "MessageTypes": {
       "ContactUpdated": {
         "DisplayName": "Contact updated",
-        "Fields": [
-          { "Name": "contactId", "Label": "Contact ID", "Type": "text", "Required": true },
-          { "Name": "firstName", "Label": "First name", "Type": "text", "Required": true },
-          { "Name": "lastName", "Label": "Last name", "Type": "text", "Required": true },
-          { "Name": "phone", "Label": "Phone", "Type": "text", "Required": true },
-          { "Name": "email", "Label": "Email", "Type": "email", "Required": true },
-          { "Name": "hasInsurance", "Label": "Insurance", "Type": "boolean" },
-          { "Name": "hasParksResorts", "Label": "Parks & Resorts", "Type": "boolean" },
-          { "Name": "hasCarwashProduct", "Label": "Carwash", "Type": "boolean" }
-        ]
+        "Schema": "contact-updated-v1.schema.json",
+        "FormFields": {
+          "contactId": { "Label": "Contact ID", "Order": 1 },
+          "firstName": { "Label": "First name", "Order": 2 },
+          "lastName": { "Label": "Last name", "Order": 3 },
+          "phone": { "Label": "Phone", "Order": 4 },
+          "email": { "Label": "Email", "Order": 5 },
+          "hasInsurance": { "Label": "Insurance", "Order": 6, "Type": "boolean" },
+          "hasParksResorts": { "Label": "Parks & Resorts", "Order": 7, "Type": "boolean" },
+          "hasCarwashProduct": { "Label": "Carwash", "Order": 8, "Type": "boolean" }
+        }
       },
       "ProductHoldingChange": {
         "DisplayName": "Product holding change",
-        "Fields": [
-          { "Name": "contactId", "Label": "Contact ID", "Type": "text", "Required": true },
-          { "Name": "holdingId", "Label": "Holding ID", "Type": "text", "Required": true },
-          { "Name": "productType", "Label": "Product type", "Type": "text", "Options": ["insurance", "parks-resorts", "carwash", "other"], "Required": true },
-          { "Name": "action", "Label": "Action", "Type": "text", "Options": ["created", "modified", "removed"], "Required": true }
-        ]
+        "Schema": "product-holding-change-v1.schema.json",
+        "FormFields": {
+          "contactId": { "Label": "Contact ID", "Order": 1 },
+          "holdingId": { "Label": "Holding ID", "Order": 2 },
+          "productType": { "Label": "Product type", "Order": 3 },
+          "action": { "Label": "Action", "Order": 4 }
+        }
       }
     }
   }

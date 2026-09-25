@@ -148,6 +148,7 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
 }
 
 function MessageEditorDialog({ open, draft, form, fields, config, messageName, duplicateName, onNameChange, onChange, onSave, onPublish, onClose }) {
+    const configurationErrors = config.messageTypes?.[draft.type]?.ConfigurationErrors ?? [];
     const preview = JSON.stringify({ type: draft.type, data: form }, null, 2);
     return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby="message-editor-dialog-title">
       <Box component="form" onSubmit={onPublish}>
@@ -158,6 +159,10 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Edit the selected draft, then save it or publish it through the Producer.</Typography>
           <Stack spacing={2}>
+            {configurationErrors.length > 0 && <Alert severity="error" role="alert">
+              <Typography variant="subtitle2">Message form configuration error</Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>{configurationErrors.map((configurationError) => <li key={configurationError}>{configurationError}</li>)}</Box>
+            </Alert>}
             <TextField label="Message name" value={messageName} onChange={(event) => onNameChange(event.target.value)} error={duplicateName} helperText={duplicateName ? "A message with this name already exists." : "Choose a unique name for this message."} required fullWidth />
             <TextField label="Contact ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
             <Typography variant="subtitle2">{config.messageTypes?.[draft.type]?.DisplayName || draft.type}</Typography>
@@ -184,8 +189,8 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
         </DialogContent>
         <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="outlined" onClick={onSave} disabled={!messageName.trim() || duplicateName}>Save message</Button>
-          <Button type="submit" variant="contained" disabled={!messageName.trim() || duplicateName}>Publish</Button>
+          <Button variant="outlined" onClick={onSave} disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}>Save message</Button>
+          <Button type="submit" variant="contained" disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}>Publish</Button>
         </Stack>
       </Box>
     </Dialog>;

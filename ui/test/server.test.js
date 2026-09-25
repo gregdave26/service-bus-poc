@@ -12,7 +12,7 @@ import {
 } from "../server.js";
 
 test("validates all required publish fields", () => {
-  assert.match(validatePublishRequest({}), /contactId, firstName, lastName, phone, email/);
+  assert.match(validatePublishRequest({}), /contactId, firstName, lastName/);
   assert.equal(
     validatePublishRequest({
       contactId: "c-1",

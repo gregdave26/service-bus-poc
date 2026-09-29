@@ -17,7 +17,7 @@ public sealed class StatusRegistryTests
     [Fact]
     public void GetServiceStatuses_RecentHeartbeat_PreservesReportedStateAndDetails()
     {
-        var sentAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        var sentAt = DateTimeOffset.UtcNow;
         var heartbeat = new ServiceHeartbeat
         {
             ServiceName = "insurance",

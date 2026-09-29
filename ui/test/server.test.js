@@ -151,8 +151,12 @@ test("serves the seeded local POS event from SQLite", async () => {
     const response = await fetch(`${baseUrl}/api/pos-events`);
     assert.equal(response.status, 200);
     const events = await response.json();
+    assert.equal(events[0].id, "pos-transaction-created-example");
     assert.equal(events[0].eventType, "POS Transaction Created");
     assert.equal(events[0].receiptNumber, "POS-10042");
+    assert.equal(events[0].occurredAt, "2026-09-25T07:00:00.000Z");
+    assert.equal(events[0].status, "Persisted locally");
     assert.equal(events[0].payload.transactionId, "txn-10042");
+    assert.equal(events[0].payload.total, 42.5);
   });
 });

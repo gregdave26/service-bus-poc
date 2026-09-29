@@ -231,8 +231,44 @@ function ActivityStream({ messages, statuses, config }) {
   </Paper>;
 }
 
+function PosEventDialog({ event, onClose }) {
+  const fields = [
+    ["ID", event?.id],
+    ["Event type", event?.eventType],
+    ["Receipt number", event?.receiptNumber],
+    ["Occurred at", event?.occurredAt ? new Date(event.occurredAt).toLocaleString() : ""],
+    ["Status", event?.status],
+  ];
+  const payloadEntries = Object.entries(event?.payload ?? {});
+
+  return <Dialog open={Boolean(event)} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="pos-event-dialog-title">
+    <DialogTitle id="pos-event-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      POS event details
+      <IconButton aria-label="Close POS event details" onClick={onClose}><CloseIcon /></IconButton>
+    </DialogTitle>
+    <DialogContent dividers>
+      <Typography variant="subtitle1" fontWeight={800} gutterBottom>PosEvents row</Typography>
+      <Table size="small" aria-label="POS event fields">
+        <TableBody>{fields.map(([label, value]) => <TableRow key={label}>
+          <TableCell sx={{ width: "32%", fontWeight: 700, verticalAlign: "top" }}>{label}</TableCell>
+          <TableCell sx={{ fontFamily: label === "ID" ? "monospace" : "inherit", wordBreak: "break-word" }}>{String(value ?? "")}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>Payload details</Typography>
+      {payloadEntries.length === 0 ? <Typography color="text.secondary">No payload fields.</Typography> :
+        <Table size="small" aria-label="POS event payload fields">
+          <TableBody>{payloadEntries.map(([key, value]) => <TableRow key={key}>
+            <TableCell sx={{ width: "32%", fontWeight: 700, verticalAlign: "top" }}>{key}</TableCell>
+            <TableCell sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: 12 }}>{typeof value === "string" ? value : JSON.stringify(value, null, 2)}</TableCell>
+          </TableRow>)}</TableBody>
+        </Table>}
+    </DialogContent>
+  </Dialog>;
+}
+
 function PosProcessing({ events }) {
   const stages = ["POS Receipt", "POS_RECEIPT_EVENT", "POS_RECEIPT_LINE_ITEM", "Reporting / Finance export"];
+  const [selectedEvent, setSelectedEvent] = useState(null);
   return <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
       <Box><Typography variant="h6">Local POS processing</Typography><Typography variant="body2" color="text.secondary">Receipt flow backed by the local SQLite PosEvents table</Typography></Box>
@@ -248,13 +284,36 @@ function PosProcessing({ events }) {
       </React.Fragment>)}
     </Stack>
     <Divider sx={{ my: 3 }} />
-    {events.map((event) => <Paper key={event.id} variant="outlined" sx={{ p: 2 }}>
-      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
-        <Box><Typography fontWeight={800}>{event.eventType}</Typography><Typography variant="body2" color="text.secondary">{event.receiptNumber} · {new Date(event.occurredAt).toLocaleString()}</Typography></Box>
-        <Chip label={event.status} color="success" size="small" />
-      </Stack>
-      <Typography variant="body2" mt={1}>Transaction <b>{event.payload.transactionId}</b> · {event.payload.items} items · {event.payload.currency} {event.payload.total.toFixed(2)}</Typography>
-    </Paper>)}
+    <Box>
+      <Typography variant="subtitle1" fontWeight={800}>Persisted PosEvents rows</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        The latest rows read from the local SQLite database. This view refreshes with the dashboard polling.
+      </Typography>
+      {events.length === 0 ? <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>No persisted POS events yet.</Typography> :
+        <Box sx={{ overflowX: "auto" }}>
+          <Table size="small" aria-label="Persisted POS events" sx={{ minWidth: 980 }}>
+            <TableHead><TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Event type</TableCell>
+              <TableCell>Receipt number</TableCell>
+              <TableCell>Occurred at</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Payload</TableCell>
+            </TableRow></TableHead>
+            <TableBody>{events.map((event) => <TableRow key={event.id} hover onClick={() => setSelectedEvent(event)} onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") { keyboardEvent.preventDefault(); setSelectedEvent(event); } }} tabIndex={0} role="button" aria-label={`View details for POS event ${event.id}`} sx={{ cursor: "pointer" }}>
+              <TableCell sx={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>{event.id}</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>{event.eventType}</TableCell>
+              <TableCell>{event.receiptNumber}</TableCell>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(event.occurredAt).toLocaleString()}</TableCell>
+              <TableCell><Chip label={event.status} color="success" size="small" /></TableCell>
+              <TableCell sx={{ maxWidth: 420, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: 12 }}>
+                {JSON.stringify(event.payload)}
+              </TableCell>
+            </TableRow>)}</TableBody>
+          </Table>
+        </Box>}
+    </Box>
+    <PosEventDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />
   </Paper>;
 }
 

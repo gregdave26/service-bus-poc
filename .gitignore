@@ -49,6 +49,7 @@ azuredeploy.parameters.json
 **/servicebus/data/
 **/servicebus/logs/
 *.log
+ui/data/*.db
 
 # Docker and local tool state
 .docker/

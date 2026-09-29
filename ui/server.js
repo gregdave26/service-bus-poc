@@ -1,7 +1,8 @@
 import express from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient } from "@azure/service-bus";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -20,6 +21,30 @@ const serviceBusConfig = JSON.parse(readFileSync(serviceBusConfigPath, "utf8"));
 const subscriberLabels = serviceBusConfig.Dashboard?.SubscriberLabels ?? {};
 const producerLabels = serviceBusConfig.Dashboard?.ProducerLabels ?? {};
 const configuredMessageTypes = serviceBusConfig.Dashboard?.MessageTypes ?? {};
+const posEventsPath = process.env.POS_EVENTS_DB_PATH ?? path.join(__dirname, "data", "pos-events.db");
+mkdirSync(path.dirname(posEventsPath), { recursive: true });
+const posEventsDb = new DatabaseSync(posEventsPath);
+posEventsDb.exec(`
+  CREATE TABLE IF NOT EXISTS PosEvents (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    receipt_number TEXT NOT NULL,
+    occurred_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    payload TEXT NOT NULL
+  )
+`);
+posEventsDb.prepare(`
+  INSERT OR IGNORE INTO PosEvents (id, event_type, receipt_number, occurred_at, status, payload)
+  VALUES (?, ?, ?, ?, ?, ?)
+`).run(
+  "pos-transaction-created-example",
+  "POS Transaction Created",
+  "POS-10042",
+  "2026-09-25T07:00:00.000Z",
+  "Persisted locally",
+  JSON.stringify({ transactionId: "txn-10042", total: 42.5, currency: "AUD", items: 2 }),
+);
 
 function getMessageTypes() {
   return Object.fromEntries(Object.entries(configuredMessageTypes).map(([type, configuration]) => {
@@ -251,6 +276,15 @@ app.get("/api/status", (_request, response) => response.json(getServiceStatuses(
 
 app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes }));
 
+app.get("/api/pos-events", (_request, response) => {
+  const events = posEventsDb.prepare(`
+    SELECT id, event_type AS eventType, receipt_number AS receiptNumber,
+      occurred_at AS occurredAt, status, payload
+    FROM PosEvents ORDER BY occurred_at DESC
+  `).all().map((event) => ({ ...event, payload: JSON.parse(event.payload) }));
+  return response.json(events);
+});
+
 app.get("/api/emulator-status", async (_request, response) => {
   response.json(await getEmulatorStatus());
 });
@@ -308,6 +342,7 @@ export {
   storeMessage,
   getMessages,
   messageHistory,
+  posEventsDb,
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

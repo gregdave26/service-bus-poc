@@ -122,6 +122,7 @@ test("serves dashboard API resources and publish validation", async () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ serviceName: "Insurance", state: "Connected", sentAt: new Date().toISOString(), messagesHandled: 3 }),
     });
+
     assert.equal(heartbeat.status, 204);
     assert.equal((await (await fetch(`${baseUrl}/api/status`)).json())[0].serviceName, "Insurance");
     assert.ok((await (await fetch(`${baseUrl}/api/config`)).json()).subscriberLabels);
@@ -142,5 +143,16 @@ test("serves dashboard API resources and publish validation", async () => {
       body: JSON.stringify({ contactId: "c-1", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com" }),
     });
     assert.equal(publishFailure.status, 502);
+  });
+});
+
+test("serves the seeded local POS event from SQLite", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/pos-events`);
+    assert.equal(response.status, 200);
+    const events = await response.json();
+    assert.equal(events[0].eventType, "POS Transaction Created");
+    assert.equal(events[0].receiptNumber, "POS-10042");
+    assert.equal(events[0].payload.transactionId, "txn-10042");
   });
 });

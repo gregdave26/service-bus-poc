@@ -346,6 +346,32 @@ catch {
 
 Write-Host ""
 
+# Build the browser dashboard before starting its Node.js server. The server
+# serves the compiled files from ui/public/dist and otherwise only returns the
+# static fallback HTML without the React bundle.
+Write-Host "STEP 2b: Building dashboard..." -ForegroundColor Yellow
+$uiPath = Join-Path $projectRoot 'ui'
+try {
+    Push-Location $uiPath
+    $dashboardOutput = npm run build 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "❌ Dashboard build failed`n$dashboardOutput"
+        Invoke-Cleanup
+        return
+    }
+    Write-Host "  ✓ Dashboard build successful"
+}
+catch {
+    Write-Error "❌ Dashboard build failed: $_"
+    Invoke-Cleanup
+    return
+}
+finally {
+    Pop-Location
+}
+
+Write-Host ""
+
 # Step 3: Set environment variables
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 

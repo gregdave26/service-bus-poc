@@ -42,6 +42,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AddIcon from "@mui/icons-material/Add";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
 
@@ -230,10 +231,39 @@ function ActivityStream({ messages, statuses, config }) {
   </Paper>;
 }
 
+function PosProcessing({ events }) {
+  const stages = ["POS Receipt", "POS_RECEIPT_EVENT", "POS_RECEIPT_LINE_ITEM", "Reporting / Finance export"];
+  return <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
+      <Box><Typography variant="h6">Local POS processing</Typography><Typography variant="body2" color="text.secondary">Receipt flow backed by the local SQLite PosEvents table</Typography></Box>
+      <Chip icon={<ReceiptLongIcon />} label={`${events.length} example event${events.length === 1 ? "" : "s"}`} color="primary" size="small" />
+    </Stack>
+    <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1}>
+      {stages.map((stage, index) => <React.Fragment key={stage}>
+        <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: index === 0 ? "primary.50" : "background.default", borderColor: index === 0 ? "primary.main" : "divider" }}>
+          <Typography variant="subtitle2" fontWeight={800}>{stage}</Typography>
+          <Typography variant="caption" color="text.secondary">{index === 0 ? "Captured locally" : index === stages.length - 1 ? "Ready for export" : "Event generated"}</Typography>
+        </Paper>
+        {index < stages.length - 1 && <Typography aria-hidden="true" color="primary" fontSize={24} sx={{ transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
+      </React.Fragment>)}
+    </Stack>
+    <Divider sx={{ my: 3 }} />
+    {events.map((event) => <Paper key={event.id} variant="outlined" sx={{ p: 2 }}>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
+        <Box><Typography fontWeight={800}>{event.eventType}</Typography><Typography variant="body2" color="text.secondary">{event.receiptNumber} · {new Date(event.occurredAt).toLocaleString()}</Typography></Box>
+        <Chip label={event.status} color="success" size="small" />
+      </Stack>
+      <Typography variant="body2" mt={1}>Transaction <b>{event.payload.transactionId}</b> · {event.payload.items} items · {event.payload.currency} {event.payload.total.toFixed(2)}</Typography>
+    </Paper>)}
+  </Paper>;
+}
+
 function App() {
   const [config, setConfig] = useState({ subscriberLabels: {}, producerLabels: {} });
   const [statuses, setStatuses] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [posEvents, setPosEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState("contact");
   const [emulator, setEmulator] = useState({ running: false });
   const [selectedService, setSelectedService] = useState(null);
   const [activeService, setActiveService] = useState(null);
@@ -248,9 +278,9 @@ function App() {
 
   async function refresh() {
     try {
-      const [nextConfig, nextEmulator, nextStatuses, nextMessages] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages")]);
+      const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosEvents] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos-events")]);
       setConfig({ subscriberLabels: nextConfig.subscriberLabels || {}, producerLabels: nextConfig.producerLabels || {}, messageTypes: nextConfig.messageTypes || {} });
-      setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setError(null);
+      setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosEvents(nextPosEvents); setError(null);
     } catch (refreshError) { setError(refreshError.message); } finally { setLoading(false); }
   }
 
@@ -293,6 +323,11 @@ function App() {
   return <Container maxWidth="xl" sx={{ py: 3 }}>
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark">P</Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging workspace</Typography><Typography variant="h5" color="text.primary">Contact events</Typography></Box><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
+    <Stack direction="row" spacing={1} sx={{ mb: 3 }} role="tablist">
+      <Button variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"}>Contact events</Button>
+      <Button variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local POS processing</Button>
+    </Stack>
+    {activeTab === "pos" ? <PosProcessing events={posEvents} /> : <>
     <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
@@ -302,6 +337,7 @@ function App() {
     <NewMessageDialog open={newMessageOpen} config={config} existingNames={drafts.map((draft) => draft.name)} onClose={() => setNewMessageOpen(false)} onCreate={createDraft} />
     <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} messageName={messageName} duplicateName={duplicateEditorName} onNameChange={setMessageName} onChange={updateForm} onSave={saveDraft} onPublish={(event) => { if (duplicateEditorName || !messageName.trim()) { event.preventDefault(); return; } saveDraft(); publish(event); }} onClose={() => setEditorOpen(false)} />
     <Snackbar open={Boolean(toast)} autoHideDuration={4500} onClose={() => setToast(null)} message={toast} />
+    </>}
     {loading && <CircularProgress size={24} sx={{ position: "fixed", bottom: 24, left: 24 }} />}
   </Container>;
 }

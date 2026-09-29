@@ -5,7 +5,7 @@
   "description": "Node.js dashboard for the Service Bus POC",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   },
   "scripts": {
     "start": "npm run build && node server.js",

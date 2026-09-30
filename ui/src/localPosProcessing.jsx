@@ -228,12 +228,13 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
   async function generateReceipt(request) {
     setFlow({ state: "processing", activeStage: 0 });
     try {
-      await onGenerate(request);
+      const receipt = await onGenerate(request);
+      setFlow({ state: "processing", activeStage: 0, receipt });
       for (let stage = 0; stage <= 2; stage += 1) {
-        setFlow({ state: "processing", activeStage: stage });
+        setFlow({ state: "processing", activeStage: stage, receipt });
         await wait(650);
       }
-      setFlow({ state: "completed", activeStage: 2 });
+      setFlow({ state: "completed", activeStage: 2, receipt });
     } catch (error) {
       setFlow({ state: "error", activeStage: 0 });
       throw error;
@@ -296,6 +297,9 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
                 <Typography variant="caption" color={unavailable ? "text.secondary" : active ? "primary.main" : "text.secondary"}>
                   {unavailable ? stage.description : active ? "Processing…" : completed ? "Persisted" : stage.description}
                 </Typography>
+                {flow.receipt?.receiptBarcode && !unavailable && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontWeight: 700 }}>
+                  Receipt barcode: {flow.receipt.receiptBarcode}
+                </Typography>}
               </Box>
             </Stack>
           </Paper>

@@ -328,7 +328,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
 
   return <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
-      <Box><Typography variant="h6">Local POS processing</Typography><Typography variant="body2" color="text.secondary">Generate simulated receipts backed by the local SQLite POS_RECEIPT_EVENT / POS_RECEIPT_LINE_ITEM tables</Typography></Box>
+      <Box><Typography variant="body2" color="text.secondary">Generate simulated receipts backed by the local SQLite POS_RECEIPT_EVENT / POS_RECEIPT_LINE_ITEM tables</Typography></Box>
       <Chip icon={<ReceiptLongIcon />} label={`${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`} color="primary" size="small" />
     </Stack>
     <Stack direction={{ xs: "column", md: "row" }} alignItems="stretch" spacing={1}>

@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, Divider, IconButton, MenuItem, Paper, Stack,
-  Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
+  Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, TextField, Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -24,6 +24,13 @@ function formatCanonicalJson(receipt) {
   } catch {
     return value;
   }
+}
+
+function compareReceiptValues(left, right, field) {
+  const leftValue = field === "transactionDate" ? Date.parse(left) : left;
+  const rightValue = field === "transactionDate" ? Date.parse(right) : right;
+  if (typeof leftValue === "number" && typeof rightValue === "number") return leftValue - rightValue;
+  return String(leftValue ?? "").localeCompare(String(rightValue ?? ""), undefined, { numeric: true, sensitivity: "base" });
 }
 
 export function ReceiptDetailDialog({ receipt, onClose }) {
@@ -208,6 +215,11 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [detailError, setDetailError] = useState(null);
   const [flow, setFlow] = useState({ state: "idle", activeStage: -1 });
+  const [receiptSort, setReceiptSort] = useState({ field: "transactionDate", direction: "desc" });
+  const sortedReceipts = useMemo(() => [...receipts].sort((left, right) => {
+    const comparison = compareReceiptValues(left[receiptSort.field], right[receiptSort.field], receiptSort.field);
+    return receiptSort.direction === "asc" ? comparison : -comparison;
+  }), [receipts, receiptSort]);
 
   function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -234,6 +246,25 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
     } catch (error) {
       setDetailError(error.message);
     }
+  }
+
+  function changeReceiptSort(field) {
+    setReceiptSort((current) => ({
+      field,
+      direction: current.field === field && current.direction === "asc" ? "desc" : "asc",
+    }));
+  }
+
+  function sortableHeader(label, field, align = "left") {
+    return <TableCell align={align}>
+      <TableSortLabel
+        active={receiptSort.field === field}
+        direction={receiptSort.field === field ? receiptSort.direction : "asc"}
+        onClick={() => changeReceiptSort(field)}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>;
   }
 
   return <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
@@ -287,14 +318,14 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
         <Box sx={{ overflowX: "auto" }}>
           <Table size="small" aria-label="Persisted POS receipts" sx={{ minWidth: 980 }}>
             <TableHead><TableRow>
-              <TableCell>Receipt barcode</TableCell>
-              <TableCell>Store</TableCell>
-              <TableCell>Payment type</TableCell>
-              <TableCell>Transaction date</TableCell>
-              <TableCell align="right">Total (inc GST)</TableCell>
-              <TableCell>Status</TableCell>
+              {sortableHeader("Receipt barcode", "receiptBarcode")}
+              {sortableHeader("Store", "storeId")}
+              {sortableHeader("Payment type", "paymentType")}
+              {sortableHeader("Transaction date", "transactionDate")}
+              {sortableHeader("Total (inc GST)", "totalIncGst", "right")}
+              {sortableHeader("Status", "status")}
             </TableRow></TableHead>
-            <TableBody>{receipts.map((receipt) => <TableRow key={receipt.eventId} hover onClick={() => openReceipt(receipt.eventId)} onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") { keyboardEvent.preventDefault(); openReceipt(receipt.eventId); } }} tabIndex={0} role="button" aria-label={`View details for receipt ${receipt.receiptBarcode}`} sx={{ cursor: "pointer" }}>
+            <TableBody>{sortedReceipts.map((receipt) => <TableRow key={receipt.eventId} hover onClick={() => openReceipt(receipt.eventId)} onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") { keyboardEvent.preventDefault(); openReceipt(receipt.eventId); } }} tabIndex={0} role="button" aria-label={`View details for receipt ${receipt.receiptBarcode}`} sx={{ cursor: "pointer" }}>
               <TableCell sx={{ fontWeight: 700 }}>{receipt.receiptBarcode}</TableCell>
               <TableCell>{receipt.storeId}</TableCell>
               <TableCell>{receipt.paymentType}</TableCell>

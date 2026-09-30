@@ -64,6 +64,6 @@ test("randomly generated receipts contain exactly the schema's required keys and
 test("receipts built from explicit line items also contain exactly the schema's required keys and no extras", () => {
   assertMatchesReceiptSchema(generateReceipt({
     ...validRequest,
-    lineItems: [{ itemCode: "CW-ULTIMATE", quantity: 1 }, { itemCode: "DRINK-BOT", quantity: 4 }],
+    lineItems: [{ itemCode: "ROADSIDE-ASSIST", quantity: 1 }, { itemCode: "DRINK-BOT", quantity: 4 }],
   }, { sequence: 4 }));
 });

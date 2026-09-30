@@ -41,7 +41,7 @@ test("uses the authoritative Cardzoids normalized columns and mappings", () => {
     ...request,
     paymentType: "CASH",
     customer: { membershipNumber: "MB123", membershipLevel: "GOLD", vehicleRegistration: "ABC123", vehicleVin: "VIN123" },
-    lineItems: [{ itemCode: "CW-BASIC", quantity: 1 }],
+    lineItems: [{ itemCode: "BAT-REPL-001", quantity: 1 }],
   }, { sequence: 1 });
   receipt.customer.membershipLevel = "6";
   repository.insertReceipt(receipt);
@@ -74,7 +74,7 @@ test("derives pricing fields from membershipLevel rather than product pricing me
   const receipt = generateReceipt({
     ...request,
     customer: { membershipNumber: "MB456", membershipLevel: "GOLD" },
-    lineItems: [{ itemCode: "CW-BASIC", quantity: 1 }],
+    lineItems: [{ itemCode: "BAT-REPL-001", quantity: 1 }],
   }, { sequence: 1 });
   receipt.customer.membershipLevel = "7";
   receipt.lineItems[0].pricingLevel1 = "RETAIL";

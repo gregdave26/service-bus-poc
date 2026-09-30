@@ -46,42 +46,6 @@
   },
   "products": [
     {
-      "itemCode": "CW-BASIC",
-      "itemDescription": "Basic wash",
-      "unitPrice": 12.00,
-      "itemParentCategory": "Carwash",
-      "itemCategory": "Wash Packages",
-      "itemSubCategory": "Basic",
-      "gstCategory": "STANDARD",
-      "pricingLevel1": "RETAIL",
-      "membershipProductGlCode": "GL-2000",
-      "dispositionCodes": ["WASH_SERVICE"]
-    },
-    {
-      "itemCode": "CW-DELUXE",
-      "itemDescription": "Deluxe wash",
-      "unitPrice": 22.00,
-      "itemParentCategory": "Carwash",
-      "itemCategory": "Wash Packages",
-      "itemSubCategory": "Deluxe",
-      "gstCategory": "STANDARD",
-      "pricingLevel1": "RETAIL",
-      "membershipProductGlCode": "GL-2000",
-      "dispositionCodes": ["WASH_SERVICE"]
-    },
-    {
-      "itemCode": "CW-ULTIMATE",
-      "itemDescription": "Ultimate wash & wax",
-      "unitPrice": 35.00,
-      "itemParentCategory": "Carwash",
-      "itemCategory": "Wash Packages",
-      "itemSubCategory": "Ultimate",
-      "gstCategory": "STANDARD",
-      "pricingLevel1": "RETAIL",
-      "membershipProductGlCode": "GL-2000",
-      "dispositionCodes": ["WASH_SERVICE"]
-    },
-    {
       "itemCode": "FUEL-91",
       "itemDescription": "Unleaded 91 (per litre)",
       "unitPrice": 1.95,
@@ -106,18 +70,6 @@
       "dispositionCodes": ["FUEL_SALE"]
     },
     {
-      "itemCode": "VAC-STD",
-      "itemDescription": "Vacuum token",
-      "unitPrice": 4.00,
-      "itemParentCategory": "Carwash",
-      "itemCategory": "Add-ons",
-      "itemSubCategory": "Vacuum",
-      "gstCategory": "STANDARD",
-      "pricingLevel1": "RETAIL",
-      "membershipProductGlCode": "GL-2000",
-      "dispositionCodes": ["WASH_SERVICE"]
-    },
-    {
       "itemCode": "AIR-FRESH",
       "itemDescription": "Air freshener",
       "unitPrice": 6.50,
@@ -140,6 +92,90 @@
       "pricingLevel1": "RETAIL",
       "membershipProductGlCode": "GL-2020",
       "dispositionCodes": ["RETAIL_SALE"]
+    },
+    {
+      "itemCode": "BAT-REPL-001",
+      "itemDescription": "Battery replacement - standard battery",
+      "unitPrice": 189.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Battery Replacements",
+      "itemSubCategory": "Standard Battery",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["BATTERY_REPLACEMENT"]
+    },
+    {
+      "itemCode": "BAT-REPL-HEAVY",
+      "itemDescription": "Battery replacement - heavy duty battery",
+      "unitPrice": 249.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Battery Replacements",
+      "itemSubCategory": "Heavy Duty Battery",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["BATTERY_REPLACEMENT"]
+    },
+    {
+      "itemCode": "PARTS-FUSE-KIT",
+      "itemDescription": "Automotive fuse and bulb kit",
+      "unitPrice": 24.95,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Parts and Consumables",
+      "itemSubCategory": "Electrical Consumables",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["ROADSIDE_PARTS"]
+    },
+    {
+      "itemCode": "FUEL-EMERGENCY",
+      "itemDescription": "Emergency fuel delivery",
+      "unitPrice": 35.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Fuel and Roadside Services",
+      "itemSubCategory": "Emergency Fuel",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2040",
+      "dispositionCodes": ["EMERGENCY_FUEL"]
+    },
+    {
+      "itemCode": "ROADSIDE-ASSIST",
+      "itemDescription": "Minor roadside assistance service",
+      "unitPrice": 65.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Fuel and Roadside Services",
+      "itemSubCategory": "Minor Roadside Service",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2040",
+      "dispositionCodes": ["ROADSIDE_SERVICE"]
+    },
+    {
+      "itemCode": "JOR-JOIN",
+      "itemDescription": "Join-On-Road membership",
+      "unitPrice": 129.00,
+      "itemParentCategory": "Membership",
+      "itemCategory": "Join-On-Road",
+      "itemSubCategory": "New Membership",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "MEMBER",
+      "membershipProductGlCode": "GL-2050",
+      "dispositionCodes": ["JOR_MEMBERSHIP"]
+    },
+    {
+      "itemCode": "JOR-RENEW",
+      "itemDescription": "Join-On-Road membership renewal",
+      "unitPrice": 109.00,
+      "itemParentCategory": "Membership",
+      "itemCategory": "Join-On-Road",
+      "itemSubCategory": "Renewal",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "MEMBER",
+      "membershipProductGlCode": "GL-2050",
+      "dispositionCodes": ["JOR_RENEWAL"]
     }
   ]
 }

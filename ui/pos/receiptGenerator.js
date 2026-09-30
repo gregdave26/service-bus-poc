@@ -149,6 +149,15 @@ function buildCustomerNumber(random) {
   return `CUS${buildDigitString(random, 6)}`;
 }
 
+function seedForMembershipNumber(membershipNumber) {
+  let hash = 2166136261;
+  for (const character of membershipNumber) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 /**
  * A carwash transaction is always tied to a vehicle, but the customer is not
  * necessarily a loyalty member; membership fields are only populated when a
@@ -169,8 +178,22 @@ function buildRandomCustomer(random, catalog) {
   };
 }
 
-function buildCustomer(random, catalog, explicitCustomer) {
+function buildCustomer(random, catalog, explicitCustomer, isRandomReceipt) {
   if (!explicitCustomer) return buildRandomCustomer(random, catalog);
+  if (isRandomReceipt && isNonEmptyString(explicitCustomer.membershipNumber)) {
+    const membershipRandom = createSeededRandom(seedForMembershipNumber(explicitCustomer.membershipNumber));
+    const membershipLevels = catalog.membershipLevels.filter((level) => level.id !== "0");
+    const requestedMembershipLevel = canonicalMembershipLevel(explicitCustomer.membershipLevel);
+    return {
+      membershipNumber: explicitCustomer.membershipNumber,
+      membershipLevel: requestedMembershipLevel === "0"
+        ? canonicalMembershipLevel(pickItem(membershipRandom, membershipLevels).id)
+        : requestedMembershipLevel,
+      customerNumber: explicitCustomer.customerNumber ?? buildCustomerNumber(membershipRandom),
+      vehicleRegistration: explicitCustomer.vehicleRegistration ?? buildVehicleRegistration(membershipRandom),
+      vehicleVin: explicitCustomer.vehicleVin ?? buildVehicleVin(membershipRandom),
+    };
+  }
   return {
     membershipNumber: explicitCustomer.membershipNumber ?? null,
     membershipLevel: canonicalMembershipLevel(explicitCustomer.membershipLevel),
@@ -218,7 +241,7 @@ export function generateReceipt(request, { sequence }) {
     ? buildExplicitLineItems(request.lineItems)
     : buildRandomLineItems(random, request.itemCount);
 
-  const customer = buildCustomer(random, catalog, request.customer);
+  const customer = buildCustomer(random, catalog, request.customer, !Array.isArray(request.lineItems));
   const lineItems = lineItemInputs.map((lineItemInput, index) => toReceiptLineItem(lineItemInput, index + 1, customer.membershipLevel));
   const totalExGstCents = lineItems.reduce((sum, lineItem) => sum + toCents(lineItem.lineAmount), 0);
   const totalGstCents = lineItems.reduce((sum, lineItem) => sum + toCents(lineItem.gstAmount), 0);

@@ -10,6 +10,7 @@ import net from "node:net";
 import { getCatalog } from "./pos/catalog.js";
 import { validateGenerateRequest, generateReceipt } from "./pos/receiptGenerator.js";
 import { createReceiptRepository } from "./pos/receiptRepository.js";
+import { formatReceiptForPsv } from "./pos/receiptExport.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -287,11 +288,23 @@ app.post("/api/pos/receipts", handlePosReceiptGeneration);
 app.post("/api/pos/generate", handlePosReceiptGeneration);
 app.post("/api/pos/process", handlePosReceiptGeneration);
 
-app.get("/api/pos/receipts", (_request, response) => response.json(posReceipts.listReceipts()));
+app.get("/api/pos/receipts", (_request, response) => response.json(
+  posReceipts.listReceipts().map((receipt) => ({
+    ...receipt,
+    lineItemCount: Number(receipt.lineItemCount),
+  })),
+));
 
 app.get("/api/pos/receipts/:id", (request, response) => {
   const receipt = posReceipts.getReceiptById(request.params.id);
   return receipt ? response.json(receipt) : response.status(404).json({ error: "Receipt not found" });
+});
+
+app.get("/api/pos/receipts/:id/export", (request, response) => {
+  const persistedReceipt = posReceipts.getReceiptById(request.params.id);
+  if (!persistedReceipt) return response.status(404).json({ error: "Receipt not found" });
+  const exportData = formatReceiptForPsv(persistedReceipt.receipt);
+  return response.json(exportData);
 });
 
 app.get("/api/emulator-status", async (_request, response) => {

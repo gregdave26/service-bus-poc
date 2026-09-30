@@ -87,8 +87,10 @@ export function createReceiptRepository(db) {
       InvoiceDate AS transactionDate,
       StoreNumber AS storeId, TerminalID AS terminalId, EFTPOSID AS eftposId, RefNo AS refNo,
       PaymentMethod AS paymentType, CustomerNumber AS customerNumber, TotalIncGST AS totalIncGst,
-      TotalGST AS totalGst, TotalExGST AS totalExGst, RefundFlag AS refundFlag, UserID AS operatorId
-    FROM POS_RECEIPT_EVENT ORDER BY InvoiceDate DESC
+      TotalGST AS totalGst, TotalExGST AS totalExGst, RefundFlag AS refundFlag, UserID AS operatorId,
+      (SELECT COUNT(*) FROM POS_RECEIPT_LINE_ITEM line
+       WHERE line.ReceiptBarcode = event.ReceiptBarcode) AS lineItemCount
+    FROM POS_RECEIPT_EVENT event ORDER BY InvoiceDate DESC
   `);
   const header = db.prepare(`
     SELECT ReceiptBarcode AS receiptBarcode, EventNumber AS eventNumber, EventNumber AS eventId,

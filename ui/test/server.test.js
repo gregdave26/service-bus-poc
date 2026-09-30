@@ -189,11 +189,20 @@ test("serves the POS catalog, generates a receipt, and lists/retrieves persisted
     const list = await (await fetch(`${baseUrl}/api/pos/receipts`)).json();
     assert.equal(list.length, 1);
     assert.equal(list[0].receiptBarcode, receipt.receiptBarcode);
+    assert.equal(list[0].lineItemCount, 1);
 
     const detail = await (await fetch(`${baseUrl}/api/pos/receipts/${receipt.eventId}`)).json();
     assert.deepEqual(detail.receipt, receipt);
     assert.equal(detail.lineItems[0].itemCode, product.itemCode);
 
+    const exportResponse = await fetch(`${baseUrl}/api/pos/receipts/${receipt.receiptBarcode}/export`);
+    assert.equal(exportResponse.status, 200);
+    const exportData = await exportResponse.json();
+    assert.match(exportData.fileName, /^CARSPOS_AR_INV_001_\d{14}\.psv$/);
+    assert.match(exportData.content, /^1\|/);
+    assert.match(exportData.content, /\r\n2\|/);
+
     assert.equal((await fetch(`${baseUrl}/api/pos/receipts/missing`)).status, 404);
+    assert.equal((await fetch(`${baseUrl}/api/pos/receipts/missing/export`)).status, 404);
   });
 });

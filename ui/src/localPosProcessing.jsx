@@ -7,6 +7,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AddIcon from "@mui/icons-material/Add";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import DownloadIcon from "@mui/icons-material/Download";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { ReceiptGenerationForm as ReceiptGenerationTabs } from "./receiptGenerationForm.jsx";
 
 async function getJson(url, options) {
@@ -99,6 +101,39 @@ export function ReceiptDetailDialog({ receipt, onClose }) {
       <Box component="pre" sx={{ m: 0, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>
         {formatCanonicalJson(receipt)}
       </Box>
+    </DialogContent>
+  </Dialog>;
+}
+
+function downloadPsv(exportData) {
+  const blob = new Blob([exportData.content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = exportData.fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function PsvExportDialog({ exportData, onClose }) {
+  return <Dialog open={Boolean(exportData)} onClose={onClose} fullWidth maxWidth="lg" aria-labelledby="psv-dialog-title">
+    <DialogTitle id="psv-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      D365 PSV export preview
+      <IconButton aria-label="Close PSV export preview" onClick={onClose}><CloseIcon /></IconButton>
+    </DialogTitle>
+    <DialogContent dividers>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        This is a simulated POS event-to-PSV conversion based on the supplied `sp_Publish_POSReceipts` mapping. The production queue, Function, and Blob steps are not executed here.
+      </Typography>
+      <Typography variant="subtitle2" fontWeight={800} gutterBottom>{exportData?.fileName}</Typography>
+      <Box component="pre" sx={{ m: 0, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12, whiteSpace: "pre" }}>
+        {exportData?.content}
+      </Box>
+      <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+        <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadPsv(exportData)}>
+          Export PSV to disk
+        </Button>
+      </Stack>
     </DialogContent>
   </Dialog>;
 }
@@ -208,13 +243,13 @@ function ReceiptGenerationForm({ catalog, onGenerate }) {
 export function PosProcessing({ catalog, receipts, onGenerate }) {
   const stages = [
     { name: "POS Receipt", description: "Sale captured locally" },
-    { name: "POS_RECEIPT_EVENT", description: "Receipt header persisted to Cardzoids (ODS)" },
-    { name: "POS_RECEIPT_LINE_ITEM", description: "Receipt lines persisted to Cardzoids (ODS)" },
-    { name: "Reporting / Finance export", description: "Not part of this PoC" },
+    { name: "POS_RECEIPT_EVENT + POS_RECEIPT_LINE_ITEM", description: "Receipt header and lines persisted to Cardzoids (ODS)" },
+    { name: "Reporting / Finance Export", description: "Generate the D365 PSV file" },
   ];
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [detailError, setDetailError] = useState(null);
   const [flow, setFlow] = useState({ state: "idle", activeStage: -1 });
+  const [selectedExport, setSelectedExport] = useState(null);
   const [receiptSort, setReceiptSort] = useState({ field: "transactionDate", direction: "desc" });
   const sortedReceipts = useMemo(() => [...receipts].sort((left, right) => {
     const comparison = compareReceiptValues(left[receiptSort.field], right[receiptSort.field], receiptSort.field);
@@ -230,14 +265,29 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
     try {
       const receipt = await onGenerate(request);
       setFlow({ state: "processing", activeStage: 0, receipt });
-      for (let stage = 0; stage <= 2; stage += 1) {
+      for (let stage = 0; stage <= 1; stage += 1) {
         setFlow({ state: "processing", activeStage: stage, receipt });
         await wait(650);
       }
-      setFlow({ state: "completed", activeStage: 2, receipt });
+      setFlow({ state: "completed", activeStage: 1, receipt });
     } catch (error) {
       setFlow({ state: "error", activeStage: 0 });
       throw error;
+    }
+  }
+
+  async function exportReceipt() {
+    const receipt = flow.receipt ?? receipts[0];
+    if (!receipt) return;
+    try {
+      setDetailError(null);
+      setFlow((current) => ({ ...current, state: "processing", activeStage: 2 }));
+      const exportData = await getJson(`/api/pos/receipts/${receipt.receiptBarcode}/export`);
+      await wait(650);
+      setFlow((current) => ({ ...current, state: "completed", activeStage: 2, receipt, exportData }));
+    } catch (error) {
+      setFlow((current) => ({ ...current, state: "error", activeStage: 2 }));
+      setDetailError(error.message);
     }
   }
 
@@ -275,17 +325,24 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
     </Stack>
     <Stack direction={{ xs: "column", md: "row" }} alignItems="stretch" spacing={1}>
       {stages.map((stage, index) => {
-        const completed = flow.state === "completed" && index <= 2;
+        const completed = flow.state === "completed" && index <= (flow.exportData ? 2 : 1);
         const active = flow.state === "processing" && index === flow.activeStage;
-        const unavailable = index === 3;
+        const exportStage = index === 2;
+        const statusText = active
+          ? (exportStage ? "Generating PSV…" : "Processing…")
+          : completed
+            ? (exportStage ? "PSV file ready" : "Complete")
+            : exportStage
+              ? "Ready to export"
+              : stage.description;
         return <React.Fragment key={stage.name}>
           <Paper variant="outlined" sx={{
             p: 2,
             flex: 1,
             width: "100%",
             minHeight: 92,
-            bgcolor: unavailable ? "action.hover" : completed ? "success.50" : active ? "primary.50" : "background.default",
-            borderColor: unavailable ? "divider" : completed ? "success.main" : active ? "primary.main" : "divider",
+            bgcolor: completed ? "success.50" : active ? "primary.50" : "background.default",
+            borderColor: completed ? "success.main" : active ? "primary.main" : "divider",
             borderWidth: active || completed ? 2 : 1,
             transition: "background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease",
             boxShadow: active ? 3 : 0,
@@ -294,12 +351,18 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
               {completed ? <CheckCircleIcon color="success" fontSize="small" /> : <Typography color={active ? "primary" : "text.disabled"} fontWeight={800}>{index + 1}</Typography>}
               <Box>
                 <Typography variant="subtitle2" fontWeight={800}>{stage.name}</Typography>
-                <Typography variant="caption" color={unavailable ? "text.secondary" : active ? "primary.main" : "text.secondary"}>
-                  {unavailable ? stage.description : active ? "Processing…" : completed ? "Persisted" : stage.description}
+                <Typography variant="caption" color={active ? "primary.main" : "text.secondary"}>
+                  {statusText}
                 </Typography>
-                {flow.receipt?.receiptBarcode && !unavailable && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontWeight: 700 }}>
+                {!exportStage && flow.receipt?.receiptBarcode && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: "0.7rem", fontWeight: 700 }}>
                   Receipt barcode: {flow.receipt.receiptBarcode}
                 </Typography>}
+                {exportStage && flow.exportData?.fileName && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: "0.7rem", overflowWrap: "anywhere" }}>
+                  {flow.exportData.fileName}
+                </Typography>}
+                {index === 2 && flow.exportData && <Button size="small" startIcon={<InsertDriveFileIcon />} onClick={() => setSelectedExport(flow.exportData)} sx={{ mt: 1 }}>
+                  View PSV file
+                </Button>}
               </Box>
             </Stack>
           </Paper>
@@ -307,13 +370,24 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
         </React.Fragment>;
       })}
     </Stack>
-    {flow.state === "processing" && <Alert severity="info" sx={{ mt: 2 }}>Persisting the simulated sale. The flow will remain highlighted briefly so each completed step is visible.</Alert>}
-    {flow.state === "completed" && <Alert severity="success" sx={{ mt: 2 }}>Receipt and its event and line items are persisted in Cardzoids (ODS). Reporting / Finance export is not implemented in this PoC.</Alert>}
+    {flow.state === "processing" && <Alert severity="info" sx={{ mt: 2 }}>Processing the simulated sale and export.</Alert>}
+    {flow.state === "completed" && flow.exportData && <Alert severity="success" sx={{ mt: 2 }}>Receipt data is persisted and the PSV file is available for viewing in the Reporting / Finance Export step.</Alert>}
     <Divider sx={{ my: 3 }} />
     {catalog ? <ReceiptGenerationTabs catalog={catalog} onGenerate={generateReceipt} /> : <Typography color="text.secondary">Loading catalog…</Typography>}
     <Divider sx={{ my: 3 }} />
     <Box>
-      <Typography variant="subtitle1" fontWeight={800}>Persisted receipts</Typography>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+        <Typography variant="subtitle1" fontWeight={800}>Persisted receipts</Typography>
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<InsertDriveFileIcon />}
+          onClick={exportReceipt}
+          disabled={receipts.length === 0 || flow.state === "processing"}
+        >
+          Export to D365 PSV
+        </Button>
+      </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         The latest rows read from the local SQLite database. This view refreshes with the dashboard polling.
       </Typography>
@@ -326,6 +400,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
               {sortableHeader("Store", "storeId")}
               {sortableHeader("Payment type", "paymentType")}
               {sortableHeader("Transaction date", "transactionDate")}
+              {sortableHeader("Line items", "lineItemCount", "right")}
               {sortableHeader("Total (inc GST)", "totalIncGst", "right")}
               {sortableHeader("Status", "status")}
             </TableRow></TableHead>
@@ -334,6 +409,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
               <TableCell>{receipt.storeId}</TableCell>
               <TableCell>{receipt.paymentType}</TableCell>
               <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(receipt.transactionDate).toLocaleString()}</TableCell>
+              <TableCell align="right">{Number(receipt.lineItemCount ?? 0)}</TableCell>
               <TableCell align="right">{receipt.totalIncGst.toFixed(2)}</TableCell>
               <TableCell><Chip label={receipt.status} color="success" size="small" /></TableCell>
             </TableRow>)}</TableBody>
@@ -341,5 +417,6 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
         </Box>}
     </Box>
     <ReceiptDetailDialog receipt={selectedReceipt} onClose={() => setSelectedReceipt(null)} />
+    <PsvExportDialog exportData={selectedExport} onClose={() => setSelectedExport(null)} />
   </Paper>;
 }

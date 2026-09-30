@@ -357,12 +357,14 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
                 {!exportStage && flow.receipt?.receiptBarcode && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: "0.7rem", fontWeight: 700 }}>
                   Receipt barcode: {flow.receipt.receiptBarcode}
                 </Typography>}
-                {exportStage && flow.exportData?.fileName && <Typography variant="caption" display="block" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: "0.7rem", overflowWrap: "anywhere" }}>
-                  {flow.exportData.fileName}
-                </Typography>}
-                {index === 2 && flow.exportData && <Button size="small" startIcon={<InsertDriveFileIcon />} onClick={() => setSelectedExport(flow.exportData)} sx={{ mt: 1 }}>
-                  View PSV file
-                </Button>}
+                {exportStage && flow.exportData?.fileName && <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5, minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ fontFamily: "monospace", fontSize: "0.7rem", overflowWrap: "anywhere" }}>
+                    {flow.exportData.fileName}
+                  </Typography>
+                  <IconButton aria-label="View PSV file" size="small" onClick={() => setSelectedExport(flow.exportData)} sx={{ flexShrink: 0 }}>
+                    <InsertDriveFileIcon fontSize="small" />
+                  </IconButton>
+                </Stack>}
               </Box>
             </Stack>
           </Paper>

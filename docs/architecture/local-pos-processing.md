@@ -1,6 +1,6 @@
 # Local POS Processing (Dashboard-only simulator)
 
-> Local Processing tab in the dashboard UI. This is a self-contained local simulation for
+> POS Processing tab in the dashboard UI. This is a self-contained local simulation for
 > demonstrating catalog-driven, deterministic data generation and normalized persistence; it
 > does not publish to the `contact.events` topic and is not part of the Service Bus POC's
 > in-scope messaging architecture (see [`PROJECT_BRIEF.md`](../PROJECT_BRIEF.md)).
@@ -93,7 +93,7 @@ membership levels 6, 7, and 8.
 
 ## UI
 
-The Local Processing tab (`PosProcessing` in [`ui/src/main.jsx`](../../ui/src/main.jsx)) provides:
+The POS Processing tab (`PosProcessing` in [`ui/src/main.jsx`](../../ui/src/main.jsx)) provides:
 - A generation form: store/till/operator/payment type dropdowns from the catalog, a toggle
   between random generation (optional item count and seed) and explicit product/quantity
   selection. Customer/membership/vehicle details are always generated automatically unless

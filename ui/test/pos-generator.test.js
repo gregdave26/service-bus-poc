@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateReceipt, validateGenerateRequest } from "../pos/receiptGenerator.js";
 import { getCatalog } from "../pos/catalog.js";
+import { formatReceiptForPsv } from "../pos/receiptExport.js";
 
 const validRequest = { storeId: "STORE-NORTH", tillId: "TILL-1", operatorId: "OP-100", paymentType: "EFTPOS" };
 
@@ -86,6 +87,15 @@ test("generates different line items for different seeds", () => {
   const first = generateReceipt({ ...validRequest, seed: 1, itemCount: 3 }, { sequence: 1 });
   const second = generateReceipt({ ...validRequest, seed: 2, itemCount: 3 }, { sequence: 1 });
   assert.notDeepEqual(first.lineItems, second.lineItems);
+});
+
+test("generates between one and five line items when itemCount is omitted", () => {
+  const counts = Array.from({ length: 25 }, (_, seed) => (
+    generateReceipt({ ...validRequest, seed }, { sequence: seed + 1 }).lineItems.length
+  ));
+
+  assert.ok(counts.every((count) => count >= 1 && count <= 5));
+  assert.ok(counts.some((count) => count > 1));
 });
 
 test("computes mathematically consistent totals from randomly selected line items", () => {
@@ -233,4 +243,36 @@ test("formats receipt barcodes from the supplied sequence", () => {
   assert.equal(receipt.receiptBarcode, "200000000001");
   const receiptFar = generateReceipt(validRequest, { sequence: 250 });
   assert.equal(receiptFar.receiptBarcode, "200000000250");
+});
+
+test("formats a receipt as SQL-derived PSV header and detail records", () => {
+  const receipt = generateReceipt({
+    ...validRequest,
+    seed: 12,
+    transactionDate: "2025-01-02T03:04:05Z",
+    customer: {
+      customerNumber: "CUST-1",
+      membershipNumber: "MEM-1",
+      membershipLevel: "6",
+      vehicleRegistration: "ABC123",
+      vehicleVin: "VIN-1",
+    },
+    lineItems: [{ itemCode: "BAT-REPL-001", quantity: 2, discount: { discountType: "LOYALTY", discountAmount: 1 } }],
+  }, { sequence: 7 });
+  const exportData = formatReceiptForPsv(receipt, new Date("2025-01-02T03:04:05Z"));
+
+  assert.equal(exportData.fileName, "CARSPOS_AR_INV_001_20250102110405.psv");
+  assert.equal(exportData.records.length, 2);
+  assert.match(exportData.records[0].recordLine, /^1\|200000000007\|.*\|02-Jan-2025\|STORE-NORTH\|001\|EFTPOS\|.*\|.*\|CUST-1\|INVOICE\|/);
+  assert.match(exportData.records[1].recordLine, /^2\|200000000007\|1\|BAT-REPL-001\|Battery replacement/);
+  assert.match(exportData.content, /\r\n/);
+});
+
+test("formats refunds as credit records with negative amounts", () => {
+  const receipt = generateReceipt({ ...validRequest, seed: 2, refundFlag: "CREDIT" }, { sequence: 8 });
+  const exportData = formatReceiptForPsv(receipt, new Date("2025-01-02T03:04:05Z"));
+
+  assert.match(exportData.records[0].recordLine, /\|CREDIT\|-/);
+  assert.match(exportData.records[1].recordLine, /\|-\d+\.\d{2}\|/);
+  assert.equal(exportData.records[0].sourceReference, `CREDIT-${receipt.receiptBarcode}`);
 });

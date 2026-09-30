@@ -11,6 +11,11 @@ Lets a developer generate realistic, reproducible point-of-sale receipts from th
 inspect how a single receipt normalizes into header/line-item rows, and see the exact JSON
 that was generated and persisted.
 
+The final process-flow stage simulates conversion of the persisted POS event into the
+pipe-delimited PSV shape consumed by D365. The browser can preview and download that simulated
+file; it does not execute the production queue, Azure Function, ADF/database procedures, or
+Blob Storage delivery.
+
 ## Design
 
 ### Catalog
@@ -84,6 +89,7 @@ membership levels 6, 7, and 8.
 | `POST` | `/api/pos/process` | Backward-compatible alias for receipt generation and persistence |
 | `GET` | `/api/pos/receipts` | Lists persisted receipts (header fields only) ordered by most recent |
 | `GET` | `/api/pos/receipts/:id` | Returns a persisted receipt's header, line items, and exact canonical JSON |
+| `GET` | `/api/pos/receipts/:id/export` | Converts a persisted receipt to SQL-derived PSV and returns filename/content/record metadata |
 
 ## UI
 
@@ -95,8 +101,23 @@ The Local Processing tab (`PosProcessing` in [`ui/src/main.jsx`](../../ui/src/ma
 - A table of persisted receipts.
 - A detail dialog showing the normalized header, payments, and line items alongside the exact
   canonical JSON.
+- A Reporting / Finance Export stage that indicates when the PSV file is available, opens an
+  inline preview, and downloads the generated `.psv` file to disk for viewing in Excel.
 
 ## Local data
 
 The SQLite database lives at `ui/data/pos-events.db` (gitignored; override with
 `POS_EVENTS_DB_PATH`). It is created and its tables initialized on server startup.
+
+## PSV export simulation
+
+[`ui/pos/receiptExport.js`](../../ui/pos/receiptExport.js) mirrors the field order and
+transformations from `sp_Publish_POSReceipts` in the supplied SQL reference. It emits one type-1
+header record followed by type-2 detail records. The header contains the receipt barcode, event
+ID, invoice date, store, terminal, payment method, EFTPOS reconciliation keys, customer debtor,
+and totals. Detail rows contain the receipt barcode, line number, product SKU, description,
+quantity, unit price, net amount, GST amount, and GL coding. Refunds are emitted as `CREDIT`
+with negative totals and line amounts, and values are sanitized so pipes and line breaks cannot
+corrupt PSV rows. The generated filename follows
+`CARSPOS_AR_INV_001_<yyyyMMddHHmmss>.psv`. Production queue publication, the Azure Function,
+ADF procedures, and Blob Storage are outside this dashboard's scope.

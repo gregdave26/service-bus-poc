@@ -250,11 +250,18 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
   const [detailError, setDetailError] = useState(null);
   const [flow, setFlow] = useState({ state: "idle", activeStage: -1 });
   const [selectedExport, setSelectedExport] = useState(null);
+  const [exportedReceipts, setExportedReceipts] = useState(() => new Set());
   const [receiptSort, setReceiptSort] = useState({ field: "transactionDate", direction: "desc" });
   const sortedReceipts = useMemo(() => [...receipts].sort((left, right) => {
-    const comparison = compareReceiptValues(left[receiptSort.field], right[receiptSort.field], receiptSort.field);
+    const leftValue = receiptSort.field === "status"
+      ? (exportedReceipts.has(left.receiptBarcode) ? "Exported" : "Not exported")
+      : left[receiptSort.field];
+    const rightValue = receiptSort.field === "status"
+      ? (exportedReceipts.has(right.receiptBarcode) ? "Exported" : "Not exported")
+      : right[receiptSort.field];
+    const comparison = compareReceiptValues(leftValue, rightValue, receiptSort.field);
     return receiptSort.direction === "asc" ? comparison : -comparison;
-  }), [receipts, receiptSort]);
+  }), [receipts, receiptSort, exportedReceipts]);
 
   function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -284,6 +291,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
       setFlow((current) => ({ ...current, state: "processing", activeStage: 2 }));
       const exportData = await getJson(`/api/pos/receipts/${receipt.receiptBarcode}/export`);
       await wait(650);
+      setExportedReceipts((current) => new Set(current).add(receipt.receiptBarcode));
       setFlow((current) => ({ ...current, state: "completed", activeStage: 2, receipt, exportData }));
     } catch (error) {
       setFlow((current) => ({ ...current, state: "error", activeStage: 2 }));
@@ -413,7 +421,13 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
               <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(receipt.transactionDate).toLocaleString()}</TableCell>
               <TableCell align="right">{Number(receipt.lineItemCount ?? 0)}</TableCell>
               <TableCell align="right">{receipt.totalIncGst.toFixed(2)}</TableCell>
-              <TableCell><Chip label={receipt.status} color="success" size="small" /></TableCell>
+              <TableCell>
+                <Chip
+                  label={exportedReceipts.has(receipt.receiptBarcode) ? "Exported" : "Not exported"}
+                  color={exportedReceipts.has(receipt.receiptBarcode) ? "success" : "default"}
+                  size="small"
+                />
+              </TableCell>
             </TableRow>)}</TableBody>
           </Table>
         </Box>}

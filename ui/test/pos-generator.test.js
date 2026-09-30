@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { generateReceipt, validateGenerateRequest } from "../pos/receiptGenerator.js";
+import { getCatalog } from "../pos/catalog.js";
 
 const validRequest = { storeId: "STORE-NORTH", tillId: "TILL-1", operatorId: "OP-100", paymentType: "EFTPOS" };
 
@@ -45,19 +46,19 @@ test("rejects explicit line items referencing an unknown itemCode or an invalid 
     "Unknown product itemCode: NOPE",
   );
   assert.match(
-    validateGenerateRequest({ ...validRequest, lineItems: [{ itemCode: "CW-BASIC", quantity: 0 }] }),
-    /Quantity for CW-BASIC/,
+    validateGenerateRequest({ ...validRequest, lineItems: [{ itemCode: "BAT-REPL-001", quantity: 0 }] }),
+    /Quantity for BAT-REPL-001/,
   );
   assert.equal(validateGenerateRequest({ ...validRequest, lineItems: [] }), "lineItems must be a non-empty array");
   assert.equal(validateGenerateRequest({ ...validRequest, lineItems: "not-an-array" }), "lineItems must be a non-empty array");
   assert.equal(validateGenerateRequest({ ...validRequest, lineItems: [{ quantity: 1 }] }), "Each line item requires an itemCode");
   assert.match(
-    validateGenerateRequest({ ...validRequest, lineItems: Array.from({ length: 21 }, () => ({ itemCode: "CW-BASIC" })) }),
+    validateGenerateRequest({ ...validRequest, lineItems: Array.from({ length: 21 }, () => ({ itemCode: "BAT-REPL-001" })) }),
     /lineItems cannot exceed 20 entries/,
   );
   assert.equal(
-    validateGenerateRequest({ ...validRequest, lineItems: [{ itemCode: "CW-BASIC", discount: { discountAmount: "5" } }] }),
-    "discount.discountAmount for CW-BASIC must be a number",
+    validateGenerateRequest({ ...validRequest, lineItems: [{ itemCode: "BAT-REPL-001", discount: { discountAmount: "5" } }] }),
+    "discount.discountAmount for BAT-REPL-001 must be a number",
   );
 });
 
@@ -106,34 +107,57 @@ test("honors explicit line items exactly, including quantities", () => {
   const receipt = generateReceipt({
     ...validRequest,
     lineItems: [
-      { itemCode: "CW-BASIC", quantity: 2 },
-      { itemCode: "VAC-STD" },
+      { itemCode: "BAT-REPL-001", quantity: 2 },
+      { itemCode: "PARTS-FUSE-KIT" },
     ],
   }, { sequence: 5 });
 
   assert.deepEqual(receipt.lineItems.map((lineItem) => [lineItem.itemCode, lineItem.quantity]), [
-    ["CW-BASIC", 2],
-    ["VAC-STD", 1],
+    ["BAT-REPL-001", 2],
+    ["PARTS-FUSE-KIT", 1],
   ]);
-  assert.equal(receipt.financials.totalExGst, 12 * 2 + 4);
+  assert.equal(receipt.financials.totalExGst, 189 * 2 + 24.95);
+});
+
+test("supports roadside battery, parts, fuel, service, and JOR line items", () => {
+  const supportedCategories = new Set([
+    "Battery Replacements",
+    "Parts and Consumables",
+    "Fuel and Roadside Services",
+    "Join-On-Road",
+  ]);
+  const products = getCatalog().products.filter((product) => supportedCategories.has(product.itemCategory));
+
+  assert.ok(products.length > 0);
+  const receipt = generateReceipt({
+    ...validRequest,
+    lineItems: products.map((product) => ({ itemCode: product.itemCode })),
+  }, { sequence: 12 });
+
+  assert.deepEqual(
+    new Set(receipt.lineItems.map((lineItem) => lineItem.itemCategory)),
+    supportedCategories,
+  );
+  assert.ok(receipt.lineItems.every((lineItem) => lineItem.itemParentCategory === "Roadside Services" || lineItem.itemParentCategory === "Membership"));
 });
 
 test("applies an explicit line item discount before computing GST", () => {
   const receipt = generateReceipt({
     ...validRequest,
-    lineItems: [{ itemCode: "CW-BASIC", quantity: 1, discount: { discountType: "PROMO", discountAmount: 2 } }],
+    lineItems: [{ itemCode: "BAT-REPL-001", quantity: 1, discount: { discountType: "PROMO", discountAmount: 2 } }],
   }, { sequence: 6 });
 
   const [lineItem] = receipt.lineItems;
   assert.deepEqual(lineItem.discount, { discountType: "PROMO", discountAmount: 2 });
-  assert.equal(lineItem.lineAmount, 10);
-  assert.equal(lineItem.gstAmount, 1);
+  assert.equal(lineItem.lineAmount, 187);
+  assert.equal(lineItem.gstAmount, 18.7);
 });
 
 test("honors an explicit customer and defaults omitted fields", () => {
   const receipt = generateReceipt({
     ...validRequest,
     customer: { membershipLevel: "6", membershipNumber: "MB1234567" },
+    lineItems: [{ itemCode: "BAT-REPL-001" }],
   }, { sequence: 7 });
 
   assert.equal(receipt.customer.membershipLevel, "6");
@@ -142,12 +166,34 @@ test("honors an explicit customer and defaults omitted fields", () => {
   assert.equal(receipt.customer.vehicleVin, null);
 });
 
+test("keeps a random receipt customer profile stable for the same membership number", () => {
+  const first = generateReceipt({
+    ...validRequest,
+    seed: 1,
+    customer: { membershipNumber: "MB1234567", membershipLevel: "0" },
+  }, { sequence: 13 });
+  const second = generateReceipt({
+    ...validRequest,
+    seed: 999,
+    customer: { membershipNumber: "MB1234567", membershipLevel: "0" },
+  }, { sequence: 14 });
+
+  assert.equal(first.customer.membershipNumber, "MB1234567");
+  assert.deepEqual(
+    [first.customer.vehicleRegistration, first.customer.vehicleVin, first.customer.membershipLevel],
+    [second.customer.vehicleRegistration, second.customer.vehicleVin, second.customer.membershipLevel],
+  );
+  assert.notEqual(first.customer.vehicleRegistration, null);
+  assert.notEqual(first.customer.vehicleVin, null);
+  assert.notEqual(first.customer.membershipLevel, "0");
+});
+
 test("accepts numeric membership levels and canonical string flags", () => {
   const receipt = generateReceipt({
     ...validRequest,
     refundFlag: "CREDIT",
     customer: { membershipLevel: "2" },
-    lineItems: [{ itemCode: "CW-BASIC" }],
+    lineItems: [{ itemCode: "BAT-REPL-001" }],
   }, { sequence: 11 });
   assert.equal(receipt.customer.membershipLevel, "2");
   assert.equal(receipt.financials.refundFlag, "CREDIT");
@@ -160,7 +206,7 @@ test("sets pricingLevel1 only for membership levels 6, 7, and 8", () => {
     const receipt = generateReceipt({
       ...validRequest,
       customer: { membershipLevel: level },
-      lineItems: [{ itemCode: "CW-BASIC" }],
+      lineItems: [{ itemCode: "BAT-REPL-001" }],
     }, { sequence: Number(level) + 20 });
     assert.equal(receipt.lineItems[0].pricingLevel1, ["6", "7", "8"].includes(level) ? "Y" : "N");
   }

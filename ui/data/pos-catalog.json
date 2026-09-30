@@ -23,12 +23,17 @@
     { "id": "LOYALTY_POINTS", "name": "Loyalty points", "requiresEftposDetails": false, "paymentGl": "GL-4020" }
   ],
   "membershipLevels": [
-    { "id": "0", "name": "No membership" },
-    { "id": "1", "name": "Bronze" },
-    { "id": "2", "name": "Silver" },
-    { "id": "6", "name": "Gold" },
-    { "id": "7", "name": "Platinum" },
-    { "id": "8", "name": "Premium" }
+    { "id": "0", "name": "No Membership" },
+    { "id": "1", "name": "Blue" },
+    { "id": "2", "name": "Bronze" },
+    { "id": "3", "name": "Free2Go" },
+    { "id": "4", "name": "Gold" },
+    { "id": "5", "name": "Gold Life" },
+    { "id": "6", "name": "RAC Ignite" },
+    { "id": "7", "name": "Red Card" },
+    { "id": "8", "name": "Road Ready" },
+    { "id": "9", "name": "Silver" },
+    { "id": "10", "name": "Staff" }
   ],
   "pricingLevels": [
     { "id": "RETAIL", "name": "Retail" },

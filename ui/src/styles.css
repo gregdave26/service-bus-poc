@@ -1,6 +1,8 @@
 html, body, #root { min-height: 100%; }
 body { margin: 0; background: #f7f2fa; }
-.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #6750a4; color: #fff; font-weight: 800; font-size: 18px; }
+.brand-mark { width: 42px; height: 42px; border-radius: 8px; overflow: hidden; background: #ffcc00; }
+.brand-mark img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.psv-ready-icon { display: block; width: 20px; height: 20px; object-fit: contain; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .status-dot.connected { background: #2e7d32; box-shadow: 0 0 0 4px rgba(46, 125, 50, .14); }
 .status-dot.offline { background: #625f66; box-shadow: 0 0 0 4px rgba(98, 95, 102, .14); }

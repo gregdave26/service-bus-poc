@@ -7,6 +7,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AddIcon from "@mui/icons-material/Add";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import { ReceiptGenerationForm as ReceiptGenerationTabs } from "./receiptGenerationForm.jsx";
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
@@ -264,7 +265,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
     {flow.state === "processing" && <Alert severity="info" sx={{ mt: 2 }}>Persisting the simulated sale. The flow will remain highlighted briefly so each completed step is visible.</Alert>}
     {flow.state === "completed" && <Alert severity="success" sx={{ mt: 2 }}>Receipt and its event and line items are persisted in Cardzoids (ODS). Reporting / Finance export is not implemented in this PoC.</Alert>}
     <Divider sx={{ my: 3 }} />
-    {catalog ? <ReceiptGenerationForm catalog={catalog} onGenerate={generateReceipt} /> : <Typography color="text.secondary">Loading catalog…</Typography>}
+    {catalog ? <ReceiptGenerationTabs catalog={catalog} onGenerate={generateReceipt} /> : <Typography color="text.secondary">Loading catalog…</Typography>}
     <Divider sx={{ my: 3 }} />
     <Box>
       <Typography variant="subtitle1" fontWeight={800}>Persisted receipts</Typography>

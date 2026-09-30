@@ -16,6 +16,16 @@ async function getJson(url, options) {
   return body;
 }
 
+function formatCanonicalJson(receipt) {
+  const value = receipt?.receiptJson ?? receipt?.receipt ?? receipt;
+  if (typeof value !== "string") return JSON.stringify(value, null, 2);
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
+
 export function ReceiptDetailDialog({ receipt, onClose }) {
   const canonicalReceipt = receipt?.receipt ?? receipt;
   const fields = receipt ? [
@@ -80,7 +90,7 @@ export function ReceiptDetailDialog({ receipt, onClose }) {
       </Stack>}
       <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>Exact canonical JSON</Typography>
       <Box component="pre" sx={{ m: 0, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>
-        {receipt?.receiptJson ?? JSON.stringify(receipt?.receipt ?? receipt, null, 2)}
+        {formatCanonicalJson(receipt)}
       </Box>
     </DialogContent>
   </Dialog>;

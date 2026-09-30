@@ -362,7 +362,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
                     {flow.exportData.fileName}
                   </Typography>
                   <IconButton aria-label="View PSV file" size="small" onClick={() => setSelectedExport(flow.exportData)} sx={{ flexShrink: 0 }}>
-                    <InsertDriveFileIcon fontSize="small" />
+                    <img className="psv-ready-icon" src="/psv-ready-icon.png" alt="" />
                   </IconButton>
                 </Stack>}
               </Box>

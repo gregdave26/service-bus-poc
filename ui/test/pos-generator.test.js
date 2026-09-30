@@ -266,6 +266,9 @@ test("formats a receipt as SQL-derived PSV header and detail records", () => {
   assert.match(exportData.records[0].recordLine, /^1\|200000000007\|.*\|02-Jan-2025\|STORE-NORTH\|001\|EFTPOS\|.*\|.*\|CUST-1\|INVOICE\|/);
   assert.match(exportData.records[1].recordLine, /^2\|200000000007\|1\|BAT-REPL-001\|Battery replacement/);
   assert.match(exportData.content, /\r\n/);
+
+  const septemberExport = formatReceiptForPsv({ ...receipt, transactionDate: "2026-09-30T00:00:00Z" }, new Date("2025-01-02T03:04:05Z"));
+  assert.match(septemberExport.records[0].recordLine, /\|30-Sep-2026\|STORE-NORTH\|/);
 });
 
 test("formats refunds as credit records with negative amounts", () => {

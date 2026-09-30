@@ -7,6 +7,9 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import net from "node:net";
+import { getCatalog } from "./pos/catalog.js";
+import { validateGenerateRequest, generateReceipt } from "./pos/receiptGenerator.js";
+import { createReceiptRepository } from "./pos/receiptRepository.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -24,27 +27,7 @@ const configuredMessageTypes = serviceBusConfig.Dashboard?.MessageTypes ?? {};
 const posEventsPath = process.env.POS_EVENTS_DB_PATH ?? path.join(__dirname, "data", "pos-events.db");
 mkdirSync(path.dirname(posEventsPath), { recursive: true });
 const posEventsDb = new DatabaseSync(posEventsPath);
-posEventsDb.exec(`
-  CREATE TABLE IF NOT EXISTS PosEvents (
-    id TEXT PRIMARY KEY,
-    event_type TEXT NOT NULL,
-    receipt_number TEXT NOT NULL,
-    occurred_at TEXT NOT NULL,
-    status TEXT NOT NULL,
-    payload TEXT NOT NULL
-  )
-`);
-posEventsDb.prepare(`
-  INSERT OR IGNORE INTO PosEvents (id, event_type, receipt_number, occurred_at, status, payload)
-  VALUES (?, ?, ?, ?, ?, ?)
-`).run(
-  "pos-transaction-created-example",
-  "POS Transaction Created",
-  "POS-10042",
-  "2026-09-25T07:00:00.000Z",
-  "Persisted locally",
-  JSON.stringify({ transactionId: "txn-10042", total: 42.5, currency: "AUD", items: 2 }),
-);
+const posReceipts = createReceiptRepository(posEventsDb);
 
 function getMessageTypes() {
   return Object.fromEntries(Object.entries(configuredMessageTypes).map(([type, configuration]) => {
@@ -252,6 +235,13 @@ async function publishContactEvent(request) {
   }
 }
 
+function generatePosReceipt(request) {
+  const sequence = posReceipts.nextSequenceNumber();
+  const receipt = generateReceipt(request, { sequence });
+  posReceipts.insertReceipt(receipt);
+  return receipt;
+}
+
 app.post("/api/heartbeat", (request, response) => {
   const heartbeat = request.body;
 
@@ -276,13 +266,32 @@ app.get("/api/status", (_request, response) => response.json(getServiceStatuses(
 
 app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes }));
 
-app.get("/api/pos-events", (_request, response) => {
-  const events = posEventsDb.prepare(`
-    SELECT id, event_type AS eventType, receipt_number AS receiptNumber,
-      occurred_at AS occurredAt, status, payload
-    FROM PosEvents ORDER BY occurred_at DESC
-  `).all().map((event) => ({ ...event, payload: JSON.parse(event.payload) }));
-  return response.json(events);
+app.get("/api/pos/catalog", (_request, response) => response.json(getCatalog()));
+
+function handlePosReceiptGeneration(request, response) {
+  const validationError = validateGenerateRequest(request.body);
+  if (validationError) {
+    return response.status(400).json({ error: validationError });
+  }
+
+  try {
+    const receipt = generatePosReceipt(request.body);
+    return response.status(201).json(receipt);
+  } catch (error) {
+    console.error("Failed to generate POS receipt", error);
+    return response.status(500).json({ error: "Failed to generate POS receipt" });
+  }
+}
+
+app.post("/api/pos/receipts", handlePosReceiptGeneration);
+app.post("/api/pos/generate", handlePosReceiptGeneration);
+app.post("/api/pos/process", handlePosReceiptGeneration);
+
+app.get("/api/pos/receipts", (_request, response) => response.json(posReceipts.listReceipts()));
+
+app.get("/api/pos/receipts/:id", (request, response) => {
+  const receipt = posReceipts.getReceiptById(request.params.id);
+  return receipt ? response.json(receipt) : response.status(404).json({ error: "Receipt not found" });
 });
 
 app.get("/api/emulator-status", async (_request, response) => {
@@ -343,6 +352,8 @@ export {
   getMessages,
   messageHistory,
   posEventsDb,
+  posReceipts,
+  generatePosReceipt,
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

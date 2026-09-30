@@ -1,0 +1,140 @@
+{
+  "currency": "AUD",
+  "stores": [
+    { "id": "STORE-NORTH", "name": "Northgate Fuel & Wash" },
+    { "id": "STORE-SOUTH", "name": "Southbank Service Centre" },
+    { "id": "STORE-WEST", "name": "Westfield Carwash Plaza" }
+  ],
+  "tills": [
+    { "id": "TILL-1", "name": "Till 1" },
+    { "id": "TILL-2", "name": "Till 2" },
+    { "id": "TILL-3", "name": "Till 3" }
+  ],
+  "operators": [
+    { "id": "OP-100", "name": "Priya N." },
+    { "id": "OP-101", "name": "Marco T." },
+    { "id": "OP-102", "name": "Ada L." }
+  ],
+  "paymentMethods": [
+    { "id": "EFTPOS", "name": "EFTPOS", "requiresEftposDetails": true, "paymentGl": "GL-4000" },
+    { "id": "VISA", "name": "Visa", "requiresEftposDetails": true, "paymentGl": "GL-4001" },
+    { "id": "MASTERCARD", "name": "Mastercard", "requiresEftposDetails": true, "paymentGl": "GL-4002" },
+    { "id": "CASH", "name": "Cash", "requiresEftposDetails": false, "paymentGl": "GL-4010" },
+    { "id": "LOYALTY_POINTS", "name": "Loyalty points", "requiresEftposDetails": false, "paymentGl": "GL-4020" }
+  ],
+  "membershipLevels": [
+    { "id": "0", "name": "No membership" },
+    { "id": "1", "name": "Bronze" },
+    { "id": "2", "name": "Silver" },
+    { "id": "6", "name": "Gold" },
+    { "id": "7", "name": "Platinum" },
+    { "id": "8", "name": "Premium" }
+  ],
+  "pricingLevels": [
+    { "id": "RETAIL", "name": "Retail" },
+    { "id": "MEMBER", "name": "Member" },
+    { "id": "FLEET", "name": "Fleet" }
+  ],
+  "gstCategories": {
+    "STANDARD": { "rate": 0.10 },
+    "GST_FREE": { "rate": 0 }
+  },
+  "products": [
+    {
+      "itemCode": "CW-BASIC",
+      "itemDescription": "Basic wash",
+      "unitPrice": 12.00,
+      "itemParentCategory": "Carwash",
+      "itemCategory": "Wash Packages",
+      "itemSubCategory": "Basic",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2000",
+      "dispositionCodes": ["WASH_SERVICE"]
+    },
+    {
+      "itemCode": "CW-DELUXE",
+      "itemDescription": "Deluxe wash",
+      "unitPrice": 22.00,
+      "itemParentCategory": "Carwash",
+      "itemCategory": "Wash Packages",
+      "itemSubCategory": "Deluxe",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2000",
+      "dispositionCodes": ["WASH_SERVICE"]
+    },
+    {
+      "itemCode": "CW-ULTIMATE",
+      "itemDescription": "Ultimate wash & wax",
+      "unitPrice": 35.00,
+      "itemParentCategory": "Carwash",
+      "itemCategory": "Wash Packages",
+      "itemSubCategory": "Ultimate",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2000",
+      "dispositionCodes": ["WASH_SERVICE"]
+    },
+    {
+      "itemCode": "FUEL-91",
+      "itemDescription": "Unleaded 91 (per litre)",
+      "unitPrice": 1.95,
+      "itemParentCategory": "Fuel",
+      "itemCategory": "Unleaded",
+      "itemSubCategory": "91 Octane",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2010",
+      "dispositionCodes": ["FUEL_SALE"]
+    },
+    {
+      "itemCode": "FUEL-98",
+      "itemDescription": "Premium 98 (per litre)",
+      "unitPrice": 2.15,
+      "itemParentCategory": "Fuel",
+      "itemCategory": "Unleaded",
+      "itemSubCategory": "98 Octane",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2010",
+      "dispositionCodes": ["FUEL_SALE"]
+    },
+    {
+      "itemCode": "VAC-STD",
+      "itemDescription": "Vacuum token",
+      "unitPrice": 4.00,
+      "itemParentCategory": "Carwash",
+      "itemCategory": "Add-ons",
+      "itemSubCategory": "Vacuum",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2000",
+      "dispositionCodes": ["WASH_SERVICE"]
+    },
+    {
+      "itemCode": "AIR-FRESH",
+      "itemDescription": "Air freshener",
+      "unitPrice": 6.50,
+      "itemParentCategory": "Retail",
+      "itemCategory": "Accessories",
+      "itemSubCategory": "Air Freshener",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2020",
+      "dispositionCodes": ["RETAIL_SALE"]
+    },
+    {
+      "itemCode": "DRINK-BOT",
+      "itemDescription": "Bottled water",
+      "unitPrice": 3.50,
+      "itemParentCategory": "Retail",
+      "itemCategory": "Beverages",
+      "itemSubCategory": "Water",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2020",
+      "dispositionCodes": ["RETAIL_SALE"]
+    }
+  ]
+}

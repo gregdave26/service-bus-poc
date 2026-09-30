@@ -11,7 +11,8 @@
     "start": "npm run build && node server.js",
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test"
+    "test": "node --test",
+    "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage"
   },
   "dependencies": {
     "@azure/identity": "^4.10.0",

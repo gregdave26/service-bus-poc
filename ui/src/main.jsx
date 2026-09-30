@@ -231,48 +231,195 @@ function ActivityStream({ messages, statuses, config }) {
   </Paper>;
 }
 
-function PosEventDialog({ event, onClose }) {
-  const fields = [
-    ["ID", event?.id],
-    ["Event type", event?.eventType],
-    ["Receipt number", event?.receiptNumber],
-    ["Occurred at", event?.occurredAt ? new Date(event.occurredAt).toLocaleString() : ""],
-    ["Status", event?.status],
-  ];
-  const payloadEntries = Object.entries(event?.payload ?? {});
+function ReceiptDetailDialog({ receipt, onClose }) {
+  const canonicalReceipt = receipt?.receipt ?? receipt;
+  const fields = receipt ? [
+    ["ReceiptBarcode", receipt.receiptBarcode],
+    ["EventNumber", receipt.eventNumber],
+    ["InvoiceDate", new Date(receipt.transactionDate).toLocaleString()],
+    ["StoreNumber", receipt.storeId],
+    ["TerminalID", receipt.terminalId],
+    ["EFTPOSID", receipt.eftposId ?? "—"],
+    ["RefNo", receipt.refNo ?? "—"],
+    ["UserID", receipt.operatorId],
+    ["Membership", `${canonicalReceipt?.customer?.membershipLevel ?? "—"}${canonicalReceipt?.customer?.membershipNumber ? ` (${canonicalReceipt.customer.membershipNumber})` : ""}`],
+    ["CustomerNumber", receipt.customerNumber ?? canonicalReceipt?.customer?.customerNumber ?? "—"],
+    ["Vehicle registration", canonicalReceipt?.customer?.vehicleRegistration ?? "—"],
+    ["Vehicle VIN", canonicalReceipt?.customer?.vehicleVin ?? "—"],
+    ["RefundFlag", receipt.refundFlag ?? canonicalReceipt?.financials?.refundFlag ?? "—"],
+  ] : [];
+  const lineItems = receipt?.lineItems ?? [];
+  const payments = canonicalReceipt?.payments ?? [];
 
-  return <Dialog open={Boolean(event)} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="pos-event-dialog-title">
-    <DialogTitle id="pos-event-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      POS event details
-      <IconButton aria-label="Close POS event details" onClick={onClose}><CloseIcon /></IconButton>
+  return <Dialog open={Boolean(receipt)} onClose={onClose} fullWidth maxWidth="md" aria-labelledby="receipt-dialog-title">
+    <DialogTitle id="receipt-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      Receipt details
+      <IconButton aria-label="Close receipt details" onClick={onClose}><CloseIcon /></IconButton>
     </DialogTitle>
     <DialogContent dividers>
-      <Typography variant="subtitle1" fontWeight={800} gutterBottom>PosEvents row</Typography>
-      <Table size="small" aria-label="POS event fields">
+      <Typography variant="subtitle1" fontWeight={800} gutterBottom>POS_RECEIPT_EVENT row</Typography>
+      <Table size="small" aria-label="Receipt fields">
         <TableBody>{fields.map(([label, value]) => <TableRow key={label}>
           <TableCell sx={{ width: "32%", fontWeight: 700, verticalAlign: "top" }}>{label}</TableCell>
-          <TableCell sx={{ fontFamily: label === "ID" ? "monospace" : "inherit", wordBreak: "break-word" }}>{String(value ?? "")}</TableCell>
+          <TableCell sx={{ fontFamily: label === "Event ID" ? "monospace" : "inherit", wordBreak: "break-word" }}>{String(value ?? "")}</TableCell>
         </TableRow>)}</TableBody>
       </Table>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>Payload details</Typography>
-      {payloadEntries.length === 0 ? <Typography color="text.secondary">No payload fields.</Typography> :
-        <Table size="small" aria-label="POS event payload fields">
-          <TableBody>{payloadEntries.map(([key, value]) => <TableRow key={key}>
-            <TableCell sx={{ width: "32%", fontWeight: 700, verticalAlign: "top" }}>{key}</TableCell>
-            <TableCell sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: 12 }}>{typeof value === "string" ? value : JSON.stringify(value, null, 2)}</TableCell>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>Payments ({receipt?.paymentType ?? "CASH"})</Typography>
+      <Table size="small" aria-label="Receipt payments">
+        <TableHead><TableRow><TableCell>Type</TableCell><TableCell align="right">Amount</TableCell><TableCell>EFTPOS terminal</TableCell><TableCell>EFTPOS ref</TableCell><TableCell>GL</TableCell></TableRow></TableHead>
+        <TableBody>{payments.map((payment, index) => <TableRow key={index}>
+          <TableCell>{payment.paymentType}</TableCell>
+          <TableCell align="right">{payment.amount.toFixed(2)}</TableCell>
+          <TableCell>{payment.eftposTerminalId ?? "—"}</TableCell>
+          <TableCell>{payment.eftposRefNo ?? "—"}</TableCell>
+          <TableCell>{payment.paymentGl}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>POS_RECEIPT_LINE_ITEM rows</Typography>
+      {lineItems.length === 0 ? <Typography color="text.secondary">No line items.</Typography> :
+        <Table size="small" aria-label="Receipt line items">
+          <TableHead><TableRow><TableCell>Item code</TableCell><TableCell>Description</TableCell><TableCell align="right">Qty</TableCell><TableCell align="right">Unit price</TableCell><TableCell align="right">Line amount</TableCell><TableCell align="right">GST</TableCell></TableRow></TableHead>
+          <TableBody>{lineItems.map((lineItem) => <TableRow key={lineItem.lineNumber}>
+            <TableCell sx={{ fontFamily: "monospace" }}>{lineItem.itemCode}</TableCell>
+            <TableCell>{lineItem.itemDescription}</TableCell>
+            <TableCell align="right">{lineItem.quantity}</TableCell>
+            <TableCell align="right">{lineItem.unitPrice.toFixed(2)}</TableCell>
+            <TableCell align="right">{lineItem.lineAmount.toFixed(2)}</TableCell>
+            <TableCell align="right">{lineItem.gstAmount.toFixed(2)}</TableCell>
           </TableRow>)}</TableBody>
         </Table>}
+      {canonicalReceipt?.financials && <Stack direction="row" justifyContent="flex-end" spacing={3} sx={{ mt: 2 }}>
+        <Typography variant="body2">Ex GST: {canonicalReceipt.financials.totalExGst.toFixed(2)}</Typography>
+        <Typography variant="body2">GST: {canonicalReceipt.financials.totalGst.toFixed(2)}</Typography>
+        <Typography variant="subtitle2" fontWeight={800}>Inc GST: {canonicalReceipt.financials.totalIncGst.toFixed(2)}</Typography>
+      </Stack>}
+      <Typography variant="subtitle1" fontWeight={800} sx={{ mt: 3 }} gutterBottom>Exact canonical JSON</Typography>
+      <Box component="pre" sx={{ m: 0, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>
+        {receipt?.receiptJson ?? JSON.stringify(receipt?.receipt ?? receipt, null, 2)}
+      </Box>
     </DialogContent>
   </Dialog>;
 }
 
-function PosProcessing({ events }) {
+function emptyLineItemDraft() { return { itemCode: "", quantity: 1 }; }
+
+function ReceiptGenerationForm({ catalog, onGenerate }) {
+  const [storeId, setStoreId] = useState(catalog.stores[0]?.id ?? "");
+  const [tillId, setTillId] = useState(catalog.tills[0]?.id ?? "");
+  const [operatorId, setOperatorId] = useState(catalog.operators[0]?.id ?? "");
+  const [paymentType, setPaymentType] = useState(catalog.paymentMethods.find((method) => method.id === "CASH")?.id ?? catalog.paymentMethods[0]?.id ?? "");
+  const [mode, setMode] = useState("random");
+  const [seed, setSeed] = useState("");
+  const [itemCount, setItemCount] = useState("");
+  const [lineItems, setLineItems] = useState([emptyLineItemDraft()]);
+  const [membershipNumber, setMembershipNumber] = useState("");
+  const [membershipLevel, setMembershipLevel] = useState("0");
+  const [customerNumber, setCustomerNumber] = useState("");
+  const [vehicleRegistration, setVehicleRegistration] = useState("");
+  const [vehicleVin, setVehicleVin] = useState("");
+  const [refundFlag, setRefundFlag] = useState("INVOICE");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  function updateLineItem(index, changes) {
+    setLineItems((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...changes } : item)));
+  }
+  function addLineItem() { setLineItems((current) => [...current, emptyLineItemDraft()]); }
+  function removeLineItem(index) { setLineItems((current) => current.filter((_, itemIndex) => itemIndex !== index)); }
+
+  async function submit(event) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    const request = {
+      storeId, tillId, operatorId, paymentType, refundFlag,
+      customer: {
+        membershipNumber: membershipNumber || null,
+        membershipLevel,
+        customerNumber: customerNumber || null,
+        vehicleRegistration: vehicleRegistration || null,
+        vehicleVin: vehicleVin || null,
+      },
+    };
+    if (seed.trim() !== "") request.seed = Number(seed);
+    if (mode === "random") {
+      if (itemCount.trim() !== "") request.itemCount = Number(itemCount);
+    } else {
+      request.lineItems = lineItems.filter((item) => item.itemCode).map((item) => ({ itemCode: item.itemCode, quantity: Number(item.quantity) || 1 }));
+    }
+    try {
+      await onGenerate(request);
+      setLineItems([emptyLineItemDraft()]);
+    } catch (submitError) {
+      setError(submitError.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return <Box component="form" onSubmit={submit}>
+    <Typography variant="subtitle1" fontWeight={800} gutterBottom>Generate a receipt</Typography>
+    {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+      <TextField select label="Store" value={storeId} onChange={(event) => setStoreId(event.target.value)} fullWidth size="small">{catalog.stores.map((store) => <MenuItem key={store.id} value={store.id}>{store.name}</MenuItem>)}</TextField>
+      <TextField select label="Till" value={tillId} onChange={(event) => setTillId(event.target.value)} fullWidth size="small">{catalog.tills.map((till) => <MenuItem key={till.id} value={till.id}>{till.name}</MenuItem>)}</TextField>
+      <TextField select label="Operator" value={operatorId} onChange={(event) => setOperatorId(event.target.value)} fullWidth size="small">{catalog.operators.map((operator) => <MenuItem key={operator.id} value={operator.id}>{operator.name}</MenuItem>)}</TextField>
+      <TextField select label="Payment type" value={paymentType} onChange={(event) => setPaymentType(event.target.value)} fullWidth size="small">{catalog.paymentMethods.map((method) => <MenuItem key={method.id} value={method.id}>{method.name}</MenuItem>)}</TextField>
+    </Stack>
+    <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>Receipt customer fields (optional)</Typography>
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+      <TextField label="Membership number" value={membershipNumber} onChange={(event) => setMembershipNumber(event.target.value)} size="small" fullWidth />
+      <TextField select label="Membership level" value={membershipLevel} onChange={(event) => setMembershipLevel(event.target.value)} size="small" fullWidth>{catalog.membershipLevels.map((level) => <MenuItem key={level.id} value={level.id}>{level.name}</MenuItem>)}</TextField>
+      <TextField label="Customer number" value={customerNumber} onChange={(event) => setCustomerNumber(event.target.value)} size="small" fullWidth />
+    </Stack>
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+      <TextField label="Vehicle registration" value={vehicleRegistration} onChange={(event) => setVehicleRegistration(event.target.value)} size="small" fullWidth />
+      <TextField label="Vehicle VIN" value={vehicleVin} onChange={(event) => setVehicleVin(event.target.value)} size="small" fullWidth />
+      <TextField select label="Refund flag" value={refundFlag} onChange={(event) => setRefundFlag(event.target.value)} size="small">
+        <MenuItem value="INVOICE">INVOICE</MenuItem>
+        <MenuItem value="CREDIT">CREDIT</MenuItem>
+      </TextField>
+    </Stack>
+    <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+      <Button size="small" variant={mode === "random" ? "contained" : "outlined"} onClick={() => setMode("random")}>Random items</Button>
+      <Button size="small" variant={mode === "explicit" ? "contained" : "outlined"} onClick={() => setMode("explicit")}>Choose items</Button>
+    </Stack>
+    {mode === "random" ?
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <TextField label="Item count (optional)" type="number" size="small" value={itemCount} onChange={(event) => setItemCount(event.target.value)} helperText="Leave blank for a random 1-5 items" inputProps={{ min: 1, max: 20 }} />
+        <TextField label="Seed (optional)" type="number" size="small" value={seed} onChange={(event) => setSeed(event.target.value)} helperText="Reuse a seed to reproduce the same items and customer" inputProps={{ min: 0 }} />
+      </Stack> :
+      <Stack spacing={1} sx={{ mb: 2 }}>
+        {lineItems.map((lineItem, index) => <Stack direction="row" spacing={1} key={index} alignItems="center">
+          <TextField select label="Product" value={lineItem.itemCode} onChange={(event) => updateLineItem(index, { itemCode: event.target.value })} size="small" sx={{ minWidth: 240 }}>
+            {catalog.products.map((product) => <MenuItem key={product.itemCode} value={product.itemCode}>{product.itemDescription} ({product.unitPrice.toFixed(2)})</MenuItem>)}
+          </TextField>
+          <TextField label="Qty" type="number" size="small" value={lineItem.quantity} onChange={(event) => updateLineItem(index, { quantity: event.target.value })} sx={{ width: 90 }} inputProps={{ min: 1, max: 99 }} />
+          <IconButton aria-label="Remove line item" onClick={() => removeLineItem(index)} disabled={lineItems.length === 1}><CloseIcon fontSize="small" /></IconButton>
+        </Stack>)}
+        <Button size="small" startIcon={<AddIcon />} onClick={addLineItem} sx={{ alignSelf: "flex-start" }}>Add product</Button>
+      </Stack>}
+    <Button type="submit" variant="contained" disabled={submitting}>Generate receipt</Button>
+  </Box>;
+}
+
+function PosProcessing({ catalog, receipts, onGenerate }) {
   const stages = ["POS Receipt", "POS_RECEIPT_EVENT", "POS_RECEIPT_LINE_ITEM", "Reporting / Finance export"];
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [detailError, setDetailError] = useState(null);
+
+  async function openReceipt(id) {
+    try {
+      setSelectedReceipt(await getJson(`/api/pos/receipts/${id}`));
+    } catch (error) {
+      setDetailError(error.message);
+    }
+  }
+
   return <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
-      <Box><Typography variant="h6">Local POS processing</Typography><Typography variant="body2" color="text.secondary">Receipt flow backed by the local SQLite PosEvents table</Typography></Box>
-      <Chip icon={<ReceiptLongIcon />} label={`${events.length} example event${events.length === 1 ? "" : "s"}`} color="primary" size="small" />
+      <Box><Typography variant="h6">Local POS processing</Typography><Typography variant="body2" color="text.secondary">Generate simulated receipts backed by the local SQLite POS_RECEIPT_EVENT / POS_RECEIPT_LINE_ITEM tables</Typography></Box>
+      <Chip icon={<ReceiptLongIcon />} label={`${receipts.length} receipt${receipts.length === 1 ? "" : "s"}`} color="primary" size="small" />
     </Stack>
     <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1}>
       {stages.map((stage, index) => <React.Fragment key={stage}>
@@ -284,36 +431,37 @@ function PosProcessing({ events }) {
       </React.Fragment>)}
     </Stack>
     <Divider sx={{ my: 3 }} />
+    {catalog ? <ReceiptGenerationForm catalog={catalog} onGenerate={onGenerate} /> : <Typography color="text.secondary">Loading catalog…</Typography>}
+    <Divider sx={{ my: 3 }} />
     <Box>
-      <Typography variant="subtitle1" fontWeight={800}>Persisted PosEvents rows</Typography>
+      <Typography variant="subtitle1" fontWeight={800}>Persisted receipts</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
         The latest rows read from the local SQLite database. This view refreshes with the dashboard polling.
       </Typography>
-      {events.length === 0 ? <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>No persisted POS events yet.</Typography> :
+      {detailError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setDetailError(null)}>{detailError}</Alert>}
+      {receipts.length === 0 ? <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>No receipts generated yet.</Typography> :
         <Box sx={{ overflowX: "auto" }}>
-          <Table size="small" aria-label="Persisted POS events" sx={{ minWidth: 980 }}>
+          <Table size="small" aria-label="Persisted POS receipts" sx={{ minWidth: 980 }}>
             <TableHead><TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Event type</TableCell>
-              <TableCell>Receipt number</TableCell>
-              <TableCell>Occurred at</TableCell>
+              <TableCell>Receipt barcode</TableCell>
+              <TableCell>Store</TableCell>
+              <TableCell>Payment type</TableCell>
+              <TableCell>Transaction date</TableCell>
+              <TableCell align="right">Total (inc GST)</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Payload</TableCell>
             </TableRow></TableHead>
-            <TableBody>{events.map((event) => <TableRow key={event.id} hover onClick={() => setSelectedEvent(event)} onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") { keyboardEvent.preventDefault(); setSelectedEvent(event); } }} tabIndex={0} role="button" aria-label={`View details for POS event ${event.id}`} sx={{ cursor: "pointer" }}>
-              <TableCell sx={{ fontFamily: "monospace", whiteSpace: "nowrap" }}>{event.id}</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>{event.eventType}</TableCell>
-              <TableCell>{event.receiptNumber}</TableCell>
-              <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(event.occurredAt).toLocaleString()}</TableCell>
-              <TableCell><Chip label={event.status} color="success" size="small" /></TableCell>
-              <TableCell sx={{ maxWidth: 420, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "monospace", fontSize: 12 }}>
-                {JSON.stringify(event.payload)}
-              </TableCell>
+            <TableBody>{receipts.map((receipt) => <TableRow key={receipt.eventId} hover onClick={() => openReceipt(receipt.eventId)} onKeyDown={(keyboardEvent) => { if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") { keyboardEvent.preventDefault(); openReceipt(receipt.eventId); } }} tabIndex={0} role="button" aria-label={`View details for receipt ${receipt.receiptBarcode}`} sx={{ cursor: "pointer" }}>
+              <TableCell sx={{ fontWeight: 700 }}>{receipt.receiptBarcode}</TableCell>
+              <TableCell>{receipt.storeId}</TableCell>
+              <TableCell>{receipt.paymentType}</TableCell>
+              <TableCell sx={{ whiteSpace: "nowrap" }}>{new Date(receipt.transactionDate).toLocaleString()}</TableCell>
+              <TableCell align="right">{receipt.totalIncGst.toFixed(2)}</TableCell>
+              <TableCell><Chip label={receipt.status} color="success" size="small" /></TableCell>
             </TableRow>)}</TableBody>
           </Table>
         </Box>}
     </Box>
-    <PosEventDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+    <ReceiptDetailDialog receipt={selectedReceipt} onClose={() => setSelectedReceipt(null)} />
   </Paper>;
 }
 
@@ -321,7 +469,8 @@ function App() {
   const [config, setConfig] = useState({ subscriberLabels: {}, producerLabels: {} });
   const [statuses, setStatuses] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [posEvents, setPosEvents] = useState([]);
+  const [posReceipts, setPosReceipts] = useState([]);
+  const [posCatalog, setPosCatalog] = useState(null);
   const [activeTab, setActiveTab] = useState("contact");
   const [emulator, setEmulator] = useState({ running: false });
   const [selectedService, setSelectedService] = useState(null);
@@ -337,13 +486,19 @@ function App() {
 
   async function refresh() {
     try {
-      const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosEvents] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos-events")]);
+      const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosReceipts] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos/receipts")]);
       setConfig({ subscriberLabels: nextConfig.subscriberLabels || {}, producerLabels: nextConfig.producerLabels || {}, messageTypes: nextConfig.messageTypes || {} });
-      setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosEvents(nextPosEvents); setError(null);
+      setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosReceipts(nextPosReceipts); setError(null);
     } catch (refreshError) { setError(refreshError.message); } finally { setLoading(false); }
   }
 
+  async function generatePosReceipt(request) {
+    await getJson("/api/pos/receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+    await refresh();
+  }
+
   useEffect(() => { refresh(); const timer = setInterval(refresh, 3000); return () => clearInterval(timer); }, []);
+  useEffect(() => { getJson("/api/pos/catalog").then(setPosCatalog).catch((catalogError) => setError(catalogError.message)); }, []);
 
   const services = useMemo(() => {
     const reported = statuses.filter((service) => !["Dashboard", "producer"].includes(service.serviceName));
@@ -382,7 +537,7 @@ function App() {
   return <Container maxWidth="xl" sx={{ py: 3 }}>
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark">P</Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{activeTab === "contact" ? "Contact Events" : "Local Processing"}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
-    {activeTab === "pos" ? <PosProcessing events={posEvents} /> : <>
+    {activeTab === "pos" ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <>
     <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>

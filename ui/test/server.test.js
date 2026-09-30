@@ -6,6 +6,7 @@ import {
   getMessages,
   getServiceStatuses,
   messageHistory,
+  posEventsDb,
   storeMessage,
   createPublishMessage,
   validateDashboardMessage,
@@ -146,17 +147,53 @@ test("serves dashboard API resources and publish validation", async () => {
   });
 });
 
-test("serves the seeded local POS event from SQLite", async () => {
+test("serves the POS catalog, generates a receipt, and lists/retrieves persisted receipts", async () => {
+  posEventsDb.exec("DELETE FROM POS_RECEIPT_LINE_ITEM");
+  posEventsDb.exec("DELETE FROM POS_RECEIPT_EVENT");
+
   await withServer(async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/pos-events`);
-    assert.equal(response.status, 200);
-    const events = await response.json();
-    assert.equal(events[0].id, "pos-transaction-created-example");
-    assert.equal(events[0].eventType, "POS Transaction Created");
-    assert.equal(events[0].receiptNumber, "POS-10042");
-    assert.equal(events[0].occurredAt, "2026-09-25T07:00:00.000Z");
-    assert.equal(events[0].status, "Persisted locally");
-    assert.equal(events[0].payload.transactionId, "txn-10042");
-    assert.equal(events[0].payload.total, 42.5);
+    const catalog = await (await fetch(`${baseUrl}/api/pos/catalog`)).json();
+    assert.ok(Array.isArray(catalog.stores) && catalog.stores.length > 0);
+    assert.ok(Array.isArray(catalog.products) && catalog.products.length > 0);
+
+    const invalidGeneration = await fetch(`${baseUrl}/api/pos/receipts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.equal(invalidGeneration.status, 400);
+
+    const store = catalog.stores[0];
+    const till = catalog.tills[0];
+    const operator = catalog.operators[0];
+    const paymentMethod = catalog.paymentMethods[0];
+    const product = catalog.products[0];
+
+    const generation = await fetch(`${baseUrl}/api/pos/receipts`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        storeId: store.id,
+        tillId: till.id,
+        operatorId: operator.id,
+        paymentType: paymentMethod.id,
+        lineItems: [{ itemCode: product.itemCode, quantity: 2 }],
+      }),
+    });
+    assert.equal(generation.status, 201);
+    const receipt = await generation.json();
+    assert.equal(receipt.lineItems.length, 1);
+    assert.equal(receipt.financials.totalExGst, Math.round(product.unitPrice * 2 * 100) / 100);
+    assert.equal(Math.round((receipt.financials.totalExGst + receipt.financials.totalGst) * 100) / 100, receipt.financials.totalIncGst);
+
+    const list = await (await fetch(`${baseUrl}/api/pos/receipts`)).json();
+    assert.equal(list.length, 1);
+    assert.equal(list[0].receiptBarcode, receipt.receiptBarcode);
+
+    const detail = await (await fetch(`${baseUrl}/api/pos/receipts/${receipt.eventId}`)).json();
+    assert.deepEqual(detail.receipt, receipt);
+    assert.equal(detail.lineItems[0].itemCode, product.itemCode);
+
+    assert.equal((await fetch(`${baseUrl}/api/pos/receipts/missing`)).status, 404);
   });
 });

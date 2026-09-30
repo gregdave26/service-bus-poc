@@ -44,6 +44,7 @@ The architecture reference defines the project context:
 | Event contract | `contracts/` | Canonical `contact.events` schemas used by producers and consumers |
 | App | `src/ServiceBusPoc.*/` | Producer, consumers, Carwash verification API, Dashboard (status + publish), scenario verifier, settings |
 | Dashboard | `src/ServiceBusPoc.Dashboard/` | Real-time service status visibility and interactive event publishing via browser UI (ADR-010) |
+| Dashboard (browser UI) | `ui/` | Node/Express + React dashboard serving the status/publish UI and the local POS processing simulator ([`docs/architecture/local-pos-processing.md`](architecture/local-pos-processing.md)) |
 | Tests | `tests/ServiceBusPoc.Tests/` | Schema, routing, settings, scenario tests |
 | Azure IaC | `infra/main.bicep`, `infra/modules/` | `contact.events` topology, filtered subscriptions, and least-privilege RBAC (planned, not yet implemented) |
 | Local infra | `infra/servicebus/compose.yaml`, `config.json` | Emulator topology equivalent to Bicep |

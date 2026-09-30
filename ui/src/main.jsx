@@ -61,7 +61,7 @@ function App() {
   }
 
   async function generatePosReceipt(request) {
-    await getJson("/api/pos/receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+    return getJson("/api/pos/receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
     await refresh();
   }
 

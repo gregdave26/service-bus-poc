@@ -7,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import net from "node:net";
+import { generateAccLineup, DEFAULT_UNIT_GROUPS, parseConfig } from "./rosteringLineup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -46,6 +47,317 @@ posEventsDb.prepare(`
   JSON.stringify({ transactionId: "txn-10042", total: 42.5, currency: "AUD", items: 2 }),
 );
 
+const rosteringDbPath = process.env.ROSTERING_DB_PATH ?? path.join(__dirname, "data", "rostering.db");
+mkdirSync(path.dirname(rosteringDbPath), { recursive: true });
+const rosteringDb = new DatabaseSync(rosteringDbPath);
+rosteringDb.exec(`
+  CREATE TABLE IF NOT EXISTS RosteringInputMappings (
+    input_name TEXT PRIMARY KEY,
+    source_table TEXT NOT NULL,
+    destination_table TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS RosteringBatches (
+    batch_id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    files_json TEXT NOT NULL,
+    validation_json TEXT NOT NULL,
+    extracted_xml TEXT
+  );
+  CREATE TABLE IF NOT EXISTS RosteringRows (
+    batch_id TEXT NOT NULL,
+    source_file TEXT NOT NULL,
+    row_number INTEGER NOT NULL,
+    source_json TEXT NOT NULL,
+    mapped_json TEXT NOT NULL
+  );
+`);
+const rosteringMappingColumns = rosteringDb.prepare("PRAGMA table_info(RosteringInputMappings)").all().map((column) => column.name);
+if (rosteringMappingColumns.includes("staging_table")) {
+  rosteringDb.exec(`
+    CREATE TABLE RosteringInputMappings_v2 (
+      input_name TEXT PRIMARY KEY,
+      source_table TEXT NOT NULL,
+      destination_table TEXT NOT NULL
+    );
+    INSERT INTO RosteringInputMappings_v2 (input_name, source_table, destination_table)
+      SELECT input_name, source_table, destination_table FROM RosteringInputMappings;
+    DROP TABLE RosteringInputMappings;
+    ALTER TABLE RosteringInputMappings_v2 RENAME TO RosteringInputMappings;
+  `);
+}
+
+// Each named input's columns are declared once here as the single source of truth for
+// validation (required vs. optional), inferred type, and recognised header aliases.
+// Field types:
+//   identity - uniquely identifies a person/agent (e.g. AgentID, LogonID)
+//   group    - an organisational or categorical classifier used for joining/filtering (e.g. MUId, ActivityCode)
+//   date     - a date or date-time value
+//   numeric  - a numeric measure or rate
+//   text     - free-form descriptive text that isn't required to drive matching, filtering, or the ACC lineup
+// Per the Rostering MVP update, identity/date/group/numeric columns remain strictly required
+// (the batch is rejected if their header is missing); "text" columns are optional and tolerated
+// when entirely absent from a source file.
+const rosteringInputs = {
+  agentScheduleSummary: {
+    label: "Agent schedule summary",
+    sourceTable: "agentScheduleSummary",
+    destinationTable: "dbo.AgentScheduleSummary",
+    fields: [
+      { name: "AgentID", type: "identity", required: true, aliases: ["AgentNumber", "StaffID"] },
+      { name: "AgentName", type: "identity", required: true, aliases: ["FullName", "DisplayName"] },
+      { name: "MUId", type: "group", required: true, aliases: ["BranchID", "SiteID"] },
+      { name: "MUName", type: "group", required: true, aliases: ["BranchName", "SiteName"] },
+      { name: "ScheduleDate", type: "date", required: true, aliases: ["RosterDate", "ShiftDate"] },
+      { name: "StartDateTime", type: "date", required: true, aliases: [] },
+      { name: "EndDateTime", type: "date", required: true, aliases: [] },
+      { name: "ScheduledMinutes", type: "numeric", required: true, aliases: [] },
+      { name: "PaidMinutes", type: "numeric", required: true, aliases: [] },
+      { name: "ActivityCode", type: "group", required: true, aliases: ["ActivityType", "StatusCode"] },
+    ],
+  },
+  agentScheduleDetail: {
+    label: "Agent schedule detail",
+    sourceTable: "agentScheduleDetail",
+    destinationTable: "dbo.AgentScheduleDetail",
+    fields: [
+      { name: "AgentID", type: "identity", required: true, aliases: ["AgentNumber", "StaffID"] },
+      { name: "AgentName", type: "identity", required: true, aliases: ["FullName", "DisplayName"] },
+      { name: "MUId", type: "group", required: true, aliases: ["BranchID", "SiteID"] },
+      { name: "MUName", type: "group", required: true, aliases: ["BranchName", "SiteName"] },
+      { name: "ScheduleDate", type: "date", required: true, aliases: ["RosterDate", "ShiftDate"] },
+      { name: "StartDateTime", type: "date", required: true, aliases: [] },
+      { name: "EndDateTime", type: "date", required: true, aliases: [] },
+      { name: "DurationMinutes", type: "numeric", required: true, aliases: [] },
+      { name: "ActivityCode", type: "group", required: true, aliases: ["ActivityType", "StatusCode"] },
+      { name: "ActivityDescription", type: "text", required: false, aliases: ["ActivityName", "StatusDescription"] },
+    ],
+  },
+  ctActiveForecast: {
+    label: "CT active forecast",
+    sourceTable: "ctActiveForecast",
+    destinationTable: "dbo.ActiveForecast",
+    fields: [
+      { name: "SAGroupID", type: "group", required: true, aliases: ["SkillGroupID", "QueueID"] },
+      { name: "SAGroupName", type: "group", required: true, aliases: ["SkillGroupName", "QueueName"] },
+      { name: "ForecastDate", type: "date", required: true, aliases: ["IntervalDate"] },
+      { name: "IntervalStartDateTime", type: "date", required: true, aliases: [] },
+      { name: "IntervalEndDateTime", type: "date", required: true, aliases: [] },
+      { name: "ContactsOffered", type: "numeric", required: true, aliases: [] },
+      { name: "AverageHandleTime", type: "numeric", required: true, aliases: [] },
+      { name: "RequiredAgents", type: "numeric", required: true, aliases: [] },
+      { name: "ServiceLevel", type: "numeric", required: true, aliases: [] },
+    ],
+  },
+  agentInfo: {
+    label: "Agent info",
+    sourceTable: "agentInfo",
+    destinationTable: "dbo.AgentInfo",
+    fields: [
+      { name: "AgentID", type: "identity", required: true, aliases: ["AgentNumber", "StaffID"] },
+      { name: "AgentName", type: "identity", required: true, aliases: ["FullName", "DisplayName"] },
+      { name: "LogonID", type: "identity", required: true, aliases: ["UserID", "Username"] },
+      { name: "EmployeeID", type: "identity", required: true, aliases: ["StaffNumber", "PayrollID"] },
+      { name: "MUId", type: "group", required: true, aliases: ["BranchID", "SiteID"] },
+      { name: "MUName", type: "group", required: true, aliases: ["BranchName", "SiteName"] },
+      { name: "EmailAddress", type: "text", required: false, aliases: ["Email"] },
+      { name: "FirstName", type: "identity", required: true, aliases: ["GivenName"] },
+      { name: "LastName", type: "identity", required: true, aliases: ["Surname", "FamilyName"] },
+      { name: "StartDate", type: "date", required: true, aliases: [] },
+      { name: "EndDate", type: "date", required: true, aliases: [] },
+      { name: "TimeOffGroup", type: "text", required: false, aliases: ["LeaveGroup"] },
+    ],
+  },
+};
+
+for (const definition of Object.values(rosteringInputs)) {
+  definition.columns = definition.fields.map((field) => field.name);
+  definition.requiredColumns = definition.fields.filter((field) => field.required).map((field) => field.name);
+  definition.optionalColumns = definition.fields.filter((field) => !field.required).map((field) => field.name);
+}
+
+const rosteringMappings = Object.fromEntries(Object.entries(rosteringInputs).map(([inputName, definition]) => {
+  rosteringDb.prepare(`
+    INSERT OR REPLACE INTO RosteringInputMappings
+      (input_name, source_table, destination_table)
+    VALUES (?, ?, ?)
+  `).run(inputName, definition.sourceTable, definition.destinationTable);
+  return [inputName, {
+    sourceTable: definition.sourceTable,
+    destinationTable: definition.destinationTable,
+  }];
+}));
+
+// Public, UI-facing projection of the centralized input definitions, so the Rostering tab
+// can render labels, required/optional columns, inferred types, and aliases without
+// duplicating this configuration client-side.
+const rosteringInputDefinitions = Object.fromEntries(Object.entries(rosteringInputs).map(([inputName, definition]) => [inputName, {
+  label: definition.label,
+  destinationTable: definition.destinationTable,
+  fields: definition.fields.map((field) => ({ name: field.name, type: field.type, required: field.required, aliases: field.aliases })),
+}]));
+
+const identityAliases = {
+  employeeId: ["employeeid", "employee_id", "staffid", "staff_id", "personid", "person_id", "id"],
+  firstName: ["firstname", "first_name", "givenname", "given_name"],
+  lastName: ["lastname", "last_name", "surname", "familyname", "family_name"],
+  email: ["email", "emailaddress", "email_address"],
+  role: ["role", "jobtitle", "job_title", "position"],
+  date: ["date", "rosterdate", "roster_date", "shiftdate", "shift_date"],
+};
+
+function normalizeHeader(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeInputName(name) {
+  return String(name).replace(/\.txt$/i, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findInputDefinition(name) {
+  const normalizedName = normalizeInputName(name);
+  return Object.entries(rosteringInputs).find(([inputName]) => normalizeInputName(inputName) === normalizedName)?.[0] ?? null;
+}
+
+// A field's header may be supplied using its canonical name or any configured alias.
+function fieldHeaderNames(field) {
+  return [field.name, ...(field.aliases ?? [])].map(normalizeHeader);
+}
+
+// Tolerant numeric parsing: a value that fails to parse is kept as supplied rather than rejected,
+// since only the column's presence is strictly required, not the value's format.
+function coerceFieldValue(field, value) {
+  if (field.type !== "numeric" || value === "") return value;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? value : parsed;
+}
+
+function parseDelimited(content) {
+  const lines = String(content ?? "").replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
+  if (!lines.length) return { headers: [], rows: [] };
+  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  const parseLine = (line) => {
+    const cells = [];
+    let value = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      if (character === '"') {
+        if (quoted && line[index + 1] === '"') { value += '"'; index += 1; }
+        else quoted = !quoted;
+      } else if (character === delimiter && !quoted) { cells.push(value.trim()); value = ""; }
+      else value += character;
+    }
+    cells.push(value.trim());
+    return cells;
+  };
+  const headers = parseLine(lines[0]).map((header, index) => header || `column${index + 1}`);
+  return { headers, rows: lines.slice(1).map((line) => Object.fromEntries(parseLine(line).map((value, index) => [headers[index], value ?? ""]))) };
+}
+
+function mapRosteringRow(row) {
+  const normalized = new Map(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+  const mapped = {};
+  for (const [field, aliases] of Object.entries(identityAliases)) {
+    const match = aliases.find((alias) => normalized.has(alias));
+    if (match && normalized.get(match) !== "") mapped[field] = normalized.get(match);
+  }
+  return mapped;
+}
+
+function mapOdsRow(inputName, row) {
+  const mapped = mapRosteringRow(row);
+  const definition = rosteringInputs[inputName];
+  const normalized = new Map(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+  for (const field of definition.fields) {
+    const headerName = fieldHeaderNames(field).find((name) => normalized.has(name));
+    if (headerName === undefined) continue; // optional column absent from this file - tolerated
+    const value = normalized.get(headerName);
+    if (value !== undefined) mapped[field.name] = coerceFieldValue(field, value);
+  }
+  return mapped;
+}
+
+function escapeXml(value) {
+  return String(value ?? "").replace(/[<>&'"]/g, (character) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[character]));
+}
+
+function createLineupXml(rows) {
+  const grouped = [...rows].sort((left, right) =>
+    (left.source_file < right.source_file ? -1 : left.source_file > right.source_file ? 1 : 0) ||
+    left.row_number - right.row_number);
+  const groups = new Map();
+  for (const row of grouped) {
+    if (!groups.has(row.source_file)) groups.set(row.source_file, []);
+    groups.get(row.source_file).push(row);
+  }
+  const body = [...groups.entries()].map(([source, sourceRows]) =>
+    `  <group source="${escapeXml(source)}">\n${sourceRows.map((row) =>
+      `    <row number="${row.row_number}">
+      <mapped>${Object.entries(JSON.parse(row.mapped_json ?? "{}")).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `<${key}>${escapeXml(value)}</${key}>`).join("")}</mapped>
+      <source>${Object.entries(JSON.parse(row.source_json ?? "{}")).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `<field name="${escapeXml(key)}">${escapeXml(value)}</field>`).join("")}</source>
+    </row>`).join("\n")}\n  </group>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<lineup>\n${body}\n</lineup>\n`;
+}
+
+function processRosteringBatch(files) {
+  if (!Array.isArray(files) || files.length !== 4) return { error: "Upload exactly four TXT files." };
+  const batchId = randomUUID();
+  const validation = [];
+  const rows = [];
+  for (const file of files) {
+    const name = String(file?.name ?? "");
+    if (!/\.txt$/i.test(name)) { validation.push({ file: name || "unnamed", valid: false, error: "File must use .txt." }); continue; }
+    const inputName = findInputDefinition(name);
+    if (!inputName) {
+      validation.push({ file: name, valid: false, error: "Filename must be agentScheduleSummary, agentScheduleDetail, ctActiveForecast, or agentInfo (.txt)." });
+      continue;
+    }
+    const parsed = parseDelimited(file.content);
+    if (!parsed.headers.length) { validation.push({ file: name, valid: false, error: "File has no header row." }); continue; }
+    const normalizedHeaders = new Set(parsed.headers.map(normalizeHeader));
+    const missingColumns = rosteringInputs[inputName].fields
+      .filter((field) => field.required && !fieldHeaderNames(field).some((name) => normalizedHeaders.has(name)))
+      .map((field) => field.name);
+    if (missingColumns.length) {
+      validation.push({
+        file: name,
+        input: inputName,
+        label: rosteringInputs[inputName].label,
+        mapping: rosteringMappings[inputName],
+        valid: false,
+        headers: parsed.headers,
+        error: `Missing required columns: ${missingColumns.join(", ")}.`,
+      });
+      continue;
+    }
+    parsed.rows.forEach((row, index) => rows.push({ source_file: name, row_number: index + 2, source_json: JSON.stringify(row), mapped_json: JSON.stringify(mapOdsRow(inputName, row)) }));
+    const optionalColumnsFound = rosteringInputs[inputName].fields
+      .filter((field) => !field.required && fieldHeaderNames(field).some((headerName) => normalizedHeaders.has(headerName)))
+      .map((field) => field.name);
+    validation.push({
+      file: name,
+      input: inputName,
+      label: rosteringInputs[inputName].label,
+      mapping: rosteringMappings[inputName],
+      valid: true,
+      headers: parsed.headers,
+      rowCount: parsed.rows.length,
+      optionalColumnsFound,
+    });
+  }
+  const suppliedInputs = validation.filter((result) => result.input).map((result) => result.input);
+  const missingInputs = Object.keys(rosteringInputs).filter((inputName) => !suppliedInputs.includes(inputName));
+  if (missingInputs.length) validation.push({ file: "batch", valid: false, error: `Missing required files: ${missingInputs.join(", ")}.` });
+  const valid = validation.length === 4 && new Set(suppliedInputs).size === 4 && validation.every((result) => result.valid);
+  rosteringDb.prepare("INSERT INTO RosteringBatches VALUES (?, ?, ?, ?, ?, ?)").run(batchId, new Date().toISOString(), valid ? "loaded" : "invalid", JSON.stringify(files.map(({ name }) => name)), JSON.stringify(validation), null);
+  if (valid) {
+    const insert = rosteringDb.prepare("INSERT INTO RosteringRows VALUES (?, ?, ?, ?, ?)");
+    for (const row of rows) insert.run(batchId, row.source_file, row.row_number, row.source_json, row.mapped_json);
+  }
+  return { batchId, valid, validation, rowCount: valid ? rows.length : 0 };
+}
+
 function getMessageTypes() {
   return Object.fromEntries(Object.entries(configuredMessageTypes).map(([type, configuration]) => {
     const schema = JSON.parse(readFileSync(path.join(contractsPath, configuration.Schema), "utf8"));
@@ -82,7 +394,7 @@ function getMessageTypes() {
 
 const messageTypes = getMessageTypes();
 
-app.use(express.json({ limit: "32kb" }));
+app.use(express.json({ limit: "4mb" }));
 app.use(express.static(path.join(__dirname, "public", "dist"), {
   setHeaders: (response) => response.setHeader("Cache-Control", "no-store"),
 }));
@@ -274,7 +586,7 @@ app.post("/api/heartbeat", (request, response) => {
 
 app.get("/api/status", (_request, response) => response.json(getServiceStatuses()));
 
-app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes }));
+app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes, rosteringMappings, rosteringInputDefinitions }));
 
 app.get("/api/pos-events", (_request, response) => {
   const events = posEventsDb.prepare(`
@@ -283,6 +595,34 @@ app.get("/api/pos-events", (_request, response) => {
     FROM PosEvents ORDER BY occurred_at DESC
   `).all().map((event) => ({ ...event, payload: JSON.parse(event.payload) }));
   return response.json(events);
+});
+
+app.post("/api/rostering/upload", (request, response) => {
+  const result = processRosteringBatch(request.body?.files);
+  return result.error ? response.status(400).json({ error: result.error }) : response.status(result.valid ? 201 : 422).json(result);
+});
+
+app.post("/api/rostering/:batchId/extract", (request, response) => {
+  const batch = rosteringDb.prepare("SELECT status FROM RosteringBatches WHERE batch_id = ?").get(request.params.batchId);
+  if (!batch) return response.status(404).json({ error: "Rostering batch not found." });
+  if (batch.status !== "loaded") return response.status(422).json({ error: "Only a valid loaded batch can be extracted." });
+  const rows = rosteringDb.prepare("SELECT source_file, row_number, source_json, mapped_json FROM RosteringRows WHERE batch_id = ?").all(request.params.batchId)
+    .map((row) => ({ ...row, input_name: findInputDefinition(row.source_file) }));
+  const mappedRows = rows.map((row) => ({ ...JSON.parse(row.source_json ?? "{}"), ...JSON.parse(row.mapped_json ?? "{}"), input_name: row.input_name }));
+  const unitGroups = parseConfig(process.env.ROSTERING_UNIT_GROUPS, DEFAULT_UNIT_GROUPS);
+  const lineup = generateAccLineup({
+    rows: mappedRows,
+    generatedAt: request.body?.generatedAt,
+    start: request.body?.start,
+    end: request.body?.end,
+    sequence: request.body?.sequence ?? 1,
+    timezone: process.env.ROSTERING_TIMEZONE ?? "UTC",
+    filters: request.body?.filters ?? {},
+    coordinateFields: parseConfig(process.env.ROSTERING_COORDINATE_FIELDS, {}),
+    unitGroups,
+  });
+  rosteringDb.prepare("UPDATE RosteringBatches SET status = ?, extracted_xml = ? WHERE batch_id = ?").run("extracted", lineup.xml, request.params.batchId);
+  return response.json({ batchId: request.params.batchId, xml: lineup.xml, rowCount: rows.length, filename: lineup.filename, doneFilename: lineup.doneFilename, header: lineup.header, units: lineup.units.map((unit) => ({ unitId: unit.unitId, agentCount: unit.agents.length })) });
 });
 
 app.get("/api/emulator-status", async (_request, response) => {
@@ -343,6 +683,14 @@ export {
   getMessages,
   messageHistory,
   posEventsDb,
+  parseDelimited,
+  mapRosteringRow,
+  mapOdsRow,
+  createLineupXml,
+  processRosteringBatch,
+  rosteringInputs,
+  rosteringMappings,
+  rosteringInputDefinitions,
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

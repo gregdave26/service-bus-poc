@@ -7,3 +7,4 @@ body { margin: 0; background: #f7f2fa; }
 .status-dot.connected { background: #2e7d32; box-shadow: 0 0 0 4px rgba(46, 125, 50, .14); }
 .status-dot.offline { background: #625f66; box-shadow: 0 0 0 4px rgba(98, 95, 102, .14); }
 @media (max-width: 900px) { .MuiTable-root { min-width: 680px; } }
+.psv-ready-icon { display: block; width: 20px; height: 20px; object-fit: contain; }

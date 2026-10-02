@@ -327,7 +327,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     link.download = result.filename ?? `lineup-${result.batchId}.xml`; link.click(); URL.revokeObjectURL(link.href);
   }
   const stages = [
-    { label: "Create input files", detail: files.every(Boolean) ? "4 TXT files selected" : "Select 4 TXT files", active: files.some(Boolean) },
+    { label: "Create input files", detail: files.every(Boolean) ? "Complete — 4 TXT files ready" : files.some(Boolean) ? `${files.filter(Boolean).length} of 4 TXT files ready` : "Select or generate 4 TXT files", active: files.some(Boolean), completed: files.every(Boolean) },
     { label: "Insert into ODS", detail: result?.valid ? `${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid) },
     { label: "Convert to lineup XML", detail: xml ? "Ready for download" : "Manual extraction", active: Boolean(xml) },
   ];
@@ -353,7 +353,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       </Alert>
       <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
         {stages.map((stage, index) => <React.Fragment key={stage.label}>
-          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.active ? "primary.50" : "background.default", borderColor: stage.active ? "primary.main" : "divider" }}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.completed ? "success.50" : stage.active ? "primary.50" : "background.default", borderColor: stage.completed ? "success.main" : stage.active ? "primary.main" : "divider" }}>
             <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
             <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
           </Paper>

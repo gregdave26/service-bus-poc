@@ -343,7 +343,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
             <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
             <Typography variant="caption" color="text.secondary">{selectedFileCount} of {rosteringInputOrder.length} files</Typography>
           </Stack>
-          <LinearProgress variant="determinate" value={(selectedFileCount / rosteringInputOrder.length) * 100} sx={{ mt: 1, height: 6, borderRadius: 3 }} aria-label={`${selectedFileCount} of ${rosteringInputOrder.length} roster files selected`} />
+          <LinearProgress color={selectedFileCount === rosteringInputOrder.length ? "success" : "primary"} variant="determinate" value={(selectedFileCount / rosteringInputOrder.length) * 100} sx={{ mt: 1, height: 8, borderRadius: 3 }} aria-label={`${selectedFileCount} of ${rosteringInputOrder.length} roster files selected`} />
         </Box>
       </Stack>
       <Alert severity={selectedFileCount === rosteringInputOrder.length ? "success" : "info"} sx={{ mb: 2 }}>
@@ -353,7 +353,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       </Alert>
       <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
         {stages.map((stage, index) => <React.Fragment key={stage.label}>
-          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.completed ? "success.50" : stage.active ? "primary.50" : "background.default", borderColor: stage.completed ? "success.main" : stage.active ? "primary.main" : "divider" }}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.completed ? "#c8e6c9" : stage.active ? "#d9ccf2" : "background.default", borderColor: stage.completed ? "success.dark" : stage.active ? "primary.main" : "divider", borderWidth: stage.active ? 2 : 1 }}>
             <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
             <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
           </Paper>
@@ -367,7 +367,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         const mapping = rosteringMappings[inputName];
         const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
         const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
-        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25, bgcolor: file ? "success.50" : "background.paper", borderColor: file ? "success.main" : "divider" }}>
+        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25, bgcolor: file ? "#d7f0dc" : "background.paper", borderColor: file ? "success.dark" : "divider", borderWidth: file ? 2 : 1 }}>
           <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" fontWeight={800}>{definition?.label ?? inputName}</Typography>

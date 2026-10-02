@@ -288,9 +288,9 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     const file = new File([generated.content], generated.name, { type: generated.type });
     setBusy(true); setError(null);
     try {
-      const saved = await getJson("/api/rostering/temp-files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generated.name, content: generated.content }) });
+      await getJson("/api/rostering/temp-files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generated.name, content: generated.content }) });
       selectFile(index, file);
-      setPreview({ inputName, file, content: generated.content, generated: true, tempDirectory: saved.directory });
+      setPreview(null);
     } catch (generationError) { setError(generationError.message); }
     finally { setBusy(false); }
   }
@@ -367,7 +367,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         const mapping = rosteringMappings[inputName];
         const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
         const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
-        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25 }}>
+        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25, bgcolor: file ? "success.50" : "background.paper", borderColor: file ? "success.main" : "divider" }}>
           <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" fontWeight={800}>{definition?.label ?? inputName}</Typography>

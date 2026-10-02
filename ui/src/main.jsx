@@ -73,6 +73,12 @@ function normalizedName(name) { return name.trim().toLowerCase(); }
 // Field definitions (labels, columns, required/optional, aliases) are centralized server-side
 // and fetched from GET /api/config as `rosteringInputDefinitions`; see docs/rostering-workflow.md.
 const rosteringInputOrder = ["agentScheduleSummary", "agentScheduleDetail", "ctActiveForecast", "agentInfo"];
+const rosteringFilenamePatterns = {
+  agentScheduleSummary: { primary: "agentScheduleSummary_*.txt", second: "agentScheduleSummary2_*.txt", example: "agentScheduleSummary_100825_1750.txt" },
+  agentScheduleDetail: { primary: "agentScheduleDetail_*.txt", second: "agentScheduleDetail2_*.txt", example: "agentScheduleDetail_100825_1750.txt" },
+  ctActiveForecast: { primary: "ctActiveForecast_*.txt", second: "ctActiveForecast2_*.txt", example: "ctActiveForecast_100825_1750.txt" },
+  agentInfo: { primary: "agentInfo_*.txt", second: "agentInfo2_*.txt", example: "agentInfo_100825_1750.txt" },
+};
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
@@ -360,10 +366,16 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         {infoInput && (() => {
           const definition = rosteringInputDefinitions[infoInput];
           const mapping = rosteringMappings[infoInput];
+          const filenamePatterns = rosteringFilenamePatterns[infoInput];
           const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
           const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
           return <Stack spacing={1}>
-            <Typography variant="body2"><b>Input name:</b> {infoInput}</Typography>
+            {filenamePatterns && <Box>
+              <Typography variant="body2" fontWeight={800}>Expected filenames</Typography>
+              <Typography variant="body2"><b>Primary run:</b> <code>{filenamePatterns.primary}</code></Typography>
+              <Typography variant="body2"><b>Afternoon / second run:</b> <code>{filenamePatterns.second}</code></Typography>
+              <Typography variant="body2"><b>Example:</b> <code>{filenamePatterns.example}</code></Typography>
+            </Box>}
             <Typography variant="body2"><b>Required columns:</b> {requiredColumns || "None"}</Typography>
             <Typography variant="body2"><b>Optional columns:</b> {optionalColumns || "None"}</Typography>
             {mapping && <Typography variant="body2"><b>ODS target:</b> {mapping.destinationTable}</Typography>}

@@ -1,0 +1,181 @@
+{
+  "currency": "AUD",
+  "stores": [
+    { "id": "STORE-NORTH", "name": "Northgate Fuel & Wash" },
+    { "id": "STORE-SOUTH", "name": "Southbank Service Centre" },
+    { "id": "STORE-WEST", "name": "Westfield Carwash Plaza" }
+  ],
+  "tills": [
+    { "id": "TILL-1", "name": "Till 1" },
+    { "id": "TILL-2", "name": "Till 2" },
+    { "id": "TILL-3", "name": "Till 3" }
+  ],
+  "operators": [
+    { "id": "OP-100", "name": "Priya N." },
+    { "id": "OP-101", "name": "Marco T." },
+    { "id": "OP-102", "name": "Ada L." }
+  ],
+  "paymentMethods": [
+    { "id": "EFTPOS", "name": "EFTPOS", "requiresEftposDetails": true, "paymentGl": "GL-4000" },
+    { "id": "VISA", "name": "Visa", "requiresEftposDetails": true, "paymentGl": "GL-4001" },
+    { "id": "MASTERCARD", "name": "Mastercard", "requiresEftposDetails": true, "paymentGl": "GL-4002" },
+    { "id": "CASH", "name": "Cash", "requiresEftposDetails": false, "paymentGl": "GL-4010" },
+    { "id": "LOYALTY_POINTS", "name": "Loyalty points", "requiresEftposDetails": false, "paymentGl": "GL-4020" }
+  ],
+  "membershipLevels": [
+    { "id": "0", "name": "No Membership" },
+    { "id": "1", "name": "Blue" },
+    { "id": "2", "name": "Bronze" },
+    { "id": "3", "name": "Free2Go" },
+    { "id": "4", "name": "Gold" },
+    { "id": "5", "name": "Gold Life" },
+    { "id": "6", "name": "RAC Ignite" },
+    { "id": "7", "name": "Red Card" },
+    { "id": "8", "name": "Road Ready" },
+    { "id": "9", "name": "Silver" },
+    { "id": "10", "name": "Staff" }
+  ],
+  "pricingLevels": [
+    { "id": "RETAIL", "name": "Retail" },
+    { "id": "MEMBER", "name": "Member" },
+    { "id": "FLEET", "name": "Fleet" }
+  ],
+  "gstCategories": {
+    "STANDARD": { "rate": 0.10 },
+    "GST_FREE": { "rate": 0 }
+  },
+  "products": [
+    {
+      "itemCode": "FUEL-91",
+      "itemDescription": "Unleaded 91 (per litre)",
+      "unitPrice": 1.95,
+      "itemParentCategory": "Fuel",
+      "itemCategory": "Unleaded",
+      "itemSubCategory": "91 Octane",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2010",
+      "dispositionCodes": ["FUEL_SALE"]
+    },
+    {
+      "itemCode": "FUEL-98",
+      "itemDescription": "Premium 98 (per litre)",
+      "unitPrice": 2.15,
+      "itemParentCategory": "Fuel",
+      "itemCategory": "Unleaded",
+      "itemSubCategory": "98 Octane",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2010",
+      "dispositionCodes": ["FUEL_SALE"]
+    },
+    {
+      "itemCode": "AIR-FRESH",
+      "itemDescription": "Air freshener",
+      "unitPrice": 6.50,
+      "itemParentCategory": "Retail",
+      "itemCategory": "Accessories",
+      "itemSubCategory": "Air Freshener",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2020",
+      "dispositionCodes": ["RETAIL_SALE"]
+    },
+    {
+      "itemCode": "DRINK-BOT",
+      "itemDescription": "Bottled water",
+      "unitPrice": 3.50,
+      "itemParentCategory": "Retail",
+      "itemCategory": "Beverages",
+      "itemSubCategory": "Water",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2020",
+      "dispositionCodes": ["RETAIL_SALE"]
+    },
+    {
+      "itemCode": "BAT-REPL-001",
+      "itemDescription": "Battery replacement - standard battery",
+      "unitPrice": 189.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Battery Replacements",
+      "itemSubCategory": "Standard Battery",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["BATTERY_REPLACEMENT"]
+    },
+    {
+      "itemCode": "BAT-REPL-HEAVY",
+      "itemDescription": "Battery replacement - heavy duty battery",
+      "unitPrice": 249.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Battery Replacements",
+      "itemSubCategory": "Heavy Duty Battery",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["BATTERY_REPLACEMENT"]
+    },
+    {
+      "itemCode": "PARTS-FUSE-KIT",
+      "itemDescription": "Automotive fuse and bulb kit",
+      "unitPrice": 24.95,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Parts and Consumables",
+      "itemSubCategory": "Electrical Consumables",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2030",
+      "dispositionCodes": ["ROADSIDE_PARTS"]
+    },
+    {
+      "itemCode": "FUEL-EMERGENCY",
+      "itemDescription": "Emergency fuel delivery",
+      "unitPrice": 35.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Fuel and Roadside Services",
+      "itemSubCategory": "Emergency Fuel",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2040",
+      "dispositionCodes": ["EMERGENCY_FUEL"]
+    },
+    {
+      "itemCode": "ROADSIDE-ASSIST",
+      "itemDescription": "Minor roadside assistance service",
+      "unitPrice": 65.00,
+      "itemParentCategory": "Roadside Services",
+      "itemCategory": "Fuel and Roadside Services",
+      "itemSubCategory": "Minor Roadside Service",
+      "gstCategory": "STANDARD",
+      "pricingLevel1": "RETAIL",
+      "membershipProductGlCode": "GL-2040",
+      "dispositionCodes": ["ROADSIDE_SERVICE"]
+    },
+    {
+      "itemCode": "JOR-JOIN",
+      "itemDescription": "Join-On-Road membership",
+      "unitPrice": 129.00,
+      "itemParentCategory": "Membership",
+      "itemCategory": "Join-On-Road",
+      "itemSubCategory": "New Membership",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "MEMBER",
+      "membershipProductGlCode": "GL-2050",
+      "dispositionCodes": ["JOR_MEMBERSHIP"]
+    },
+    {
+      "itemCode": "JOR-RENEW",
+      "itemDescription": "Join-On-Road membership renewal",
+      "unitPrice": 109.00,
+      "itemParentCategory": "Membership",
+      "itemCategory": "Join-On-Road",
+      "itemSubCategory": "Renewal",
+      "gstCategory": "GST_FREE",
+      "pricingLevel1": "MEMBER",
+      "membershipProductGlCode": "GL-2050",
+      "dispositionCodes": ["JOR_RENEWAL"]
+    }
+  ]
+}

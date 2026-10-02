@@ -9,6 +9,10 @@ import { randomUUID } from "node:crypto";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { generateAccLineup, DEFAULT_UNIT_GROUPS, parseConfig } from "./rosteringLineup.js";
+import { getCatalog } from "./pos/catalog.js";
+import { validateGenerateRequest, generateReceipt } from "./pos/receiptGenerator.js";
+import { createReceiptRepository } from "./pos/receiptRepository.js";
+import { formatReceiptForPsv } from "./pos/receiptExport.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -16,6 +20,12 @@ const port = Number.parseInt(process.env.PORT ?? "5080", 10);
 const rosteringLogDirectory = process.env.ROSTERING_LOG_DIR ?? path.resolve(__dirname, "..", "logs");
 mkdirSync(rosteringLogDirectory, { recursive: true });
 const rosteringLogPath = path.join(rosteringLogDirectory, `rostering-${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.log`);
+const posLogDirectory = process.env.POS_LOG_DIR ?? path.resolve(__dirname, "..", "logs");
+mkdirSync(posLogDirectory, { recursive: true });
+const posLogPath = path.join(posLogDirectory, `pos-${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.log`);
+const contactLogDirectory = process.env.CONTACT_LOG_DIR ?? path.resolve(__dirname, "..", "logs");
+mkdirSync(contactLogDirectory, { recursive: true });
+const contactLogPath = path.join(contactLogDirectory, `contact-${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.log`);
 function logRostering(event, details = {}) {
   const entry = { timestamp: new Date().toISOString(), event, ...details };
   try {
@@ -24,7 +34,25 @@ function logRostering(event, details = {}) {
     console.error("Failed to write Rostering log", error);
   }
 }
+function logPos(event, details = {}) {
+  const entry = { timestamp: new Date().toISOString(), event, ...details };
+  try {
+    appendFileSync(posLogPath, `${JSON.stringify(entry)}\n`, "utf8");
+  } catch (error) {
+    console.error("Failed to write POS log", error);
+  }
+}
+function logContact(event, details = {}) {
+  const entry = { timestamp: new Date().toISOString(), event, ...details };
+  try {
+    appendFileSync(contactLogPath, `${JSON.stringify(entry)}\n`, "utf8");
+  } catch (error) {
+    console.error("Failed to write Contact Events log", error);
+  }
+}
 logRostering("server.initialized", { port, logPath: rosteringLogPath });
+logPos("server.initialized", { port, logPath: posLogPath });
+logContact("server.initialized", { port, logPath: contactLogPath });
 const heartbeatTimeoutMs = 15_000;
 const heartbeats = new Map();
 const messageHistory = [];
@@ -38,6 +66,7 @@ const configuredMessageTypes = serviceBusConfig.Dashboard?.MessageTypes ?? {};
 const posEventsPath = process.env.POS_EVENTS_DB_PATH ?? path.join(__dirname, "data", "pos-events.db");
 mkdirSync(path.dirname(posEventsPath), { recursive: true });
 const posEventsDb = new DatabaseSync(posEventsPath);
+const posReceipts = createReceiptRepository(posEventsDb);
 posEventsDb.exec(`
   CREATE TABLE IF NOT EXISTS PosEvents (
     id TEXT PRIMARY KEY,
@@ -561,6 +590,12 @@ function storeMessage(message) {
     payload: message.payload,
   });
   if (messageHistory.length > maxMessageHistory) messageHistory.length = maxMessageHistory;
+  logContact("message.stored", {
+    messageId: message.messageId,
+    serviceName: message.serviceName,
+    direction: message.direction,
+    subscriptionName: message.subscriptionName ?? null,
+  });
   return messageHistory[0];
 }
 
@@ -592,6 +627,24 @@ async function publishContactEvent(request) {
   }
 }
 
+function generatePosReceipt(request) {
+  logPos("receipt.generation_started", {
+    storeId: request?.storeId ?? null,
+    tillId: request?.tillId ?? null,
+    operatorId: request?.operatorId ?? null,
+    paymentType: request?.paymentType ?? null,
+  });
+  const sequence = posReceipts.nextSequenceNumber();
+  const receipt = generateReceipt(request, { sequence });
+  posReceipts.insertReceipt(receipt);
+  logPos("receipt.generation_completed", {
+    receiptBarcode: receipt.receiptBarcode,
+    lineItemCount: receipt.lineItems.length,
+    totalIncGst: receipt.financials.totalIncGst,
+  });
+  return receipt;
+}
+
 app.post("/api/heartbeat", (request, response) => {
   const heartbeat = request.body;
 
@@ -608,6 +661,11 @@ app.post("/api/heartbeat", (request, response) => {
     lastMessageAt: heartbeat.lastMessageAt ?? null,
     lastEventId: heartbeat.lastEventId ?? null,
   });
+  logContact("heartbeat.received", {
+    serviceName: heartbeat.serviceName,
+    state: heartbeat.state,
+    messagesHandled: heartbeat.messagesHandled ?? 0,
+  });
 
   return response.status(204).send();
 });
@@ -615,6 +673,43 @@ app.post("/api/heartbeat", (request, response) => {
 app.get("/api/status", (_request, response) => response.json(getServiceStatuses()));
 
 app.get("/api/config", (_request, response) => response.json({ subscriberLabels, producerLabels, messageTypes, rosteringMappings, rosteringInputDefinitions }));
+
+app.get("/api/pos/catalog", (_request, response) => response.json(getCatalog()));
+
+function handlePosReceiptGeneration(request, response) {
+  const validationError = validateGenerateRequest(request.body);
+  if (validationError) {
+    logPos("receipt.generation_rejected", { reason: validationError });
+    return response.status(400).json({ error: validationError });
+  }
+
+  try {
+    return response.status(201).json(generatePosReceipt(request.body));
+  } catch (error) {
+    logPos("receipt.generation_failed", { error: error instanceof Error ? error.message : String(error) });
+    console.error("Failed to generate POS receipt", error);
+    return response.status(500).json({ error: "Failed to generate POS receipt" });
+  }
+}
+
+app.post("/api/pos/receipts", handlePosReceiptGeneration);
+app.post("/api/pos/generate", handlePosReceiptGeneration);
+app.post("/api/pos/process", handlePosReceiptGeneration);
+
+app.get("/api/pos/receipts", (_request, response) => response.json(
+  posReceipts.listReceipts().map((receipt) => ({ ...receipt, lineItemCount: Number(receipt.lineItemCount) })),
+));
+
+app.get("/api/pos/receipts/:id", (request, response) => {
+  const receipt = posReceipts.getReceiptById(request.params.id);
+  return receipt ? response.json(receipt) : response.status(404).json({ error: "Receipt not found" });
+});
+
+app.get("/api/pos/receipts/:id/export", (request, response) => {
+  const persistedReceipt = posReceipts.getReceiptById(request.params.id);
+  if (!persistedReceipt) return response.status(404).json({ error: "Receipt not found" });
+  return response.json(formatReceiptForPsv(persistedReceipt.receipt));
+});
 
 app.get("/api/pos-events", (_request, response) => {
   const events = posEventsDb.prepare(`
@@ -685,6 +780,7 @@ app.get("/api/emulator-status", async (_request, response) => {
 app.post("/api/publish", async (request, response) => {
   const validationError = validatePublishRequest(request.body);
   if (validationError) {
+    logContact("publish.rejected", { reason: validationError, type: request.body?.type ?? null });
     return response.status(400).json({ success: false, error: validationError });
   }
 
@@ -698,8 +794,10 @@ app.post("/api/publish", async (request, response) => {
       timestamp: event.timestamp,
       payload: JSON.stringify(event),
     });
+    logContact("publish.completed", { eventId: event.id, type: event.type });
     return response.json({ success: true, eventId: event.id });
   } catch (error) {
+    logContact("publish.failed", { error: error instanceof Error ? error.message : String(error) });
     console.error("Failed to publish event from dashboard", error);
     return response.status(502).json({
       success: false,
@@ -711,6 +809,7 @@ app.post("/api/publish", async (request, response) => {
 app.post("/api/messages", (request, response) => {
   const validationError = validateDashboardMessage(request.body);
   if (validationError) {
+    logContact("message.rejected", { reason: validationError });
     return response.status(400).json({ error: validationError });
   }
   return response.status(201).json(storeMessage(request.body));

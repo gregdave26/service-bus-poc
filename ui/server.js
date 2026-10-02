@@ -1,7 +1,7 @@
 import express from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient } from "@azure/service-bus";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -13,6 +13,18 @@ import { generateAccLineup, DEFAULT_UNIT_GROUPS, parseConfig } from "./rostering
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number.parseInt(process.env.PORT ?? "5080", 10);
+const rosteringLogDirectory = process.env.ROSTERING_LOG_DIR ?? path.resolve(__dirname, "..", "logs");
+mkdirSync(rosteringLogDirectory, { recursive: true });
+const rosteringLogPath = path.join(rosteringLogDirectory, `rostering-${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.log`);
+function logRostering(event, details = {}) {
+  const entry = { timestamp: new Date().toISOString(), event, ...details };
+  try {
+    appendFileSync(rosteringLogPath, `${JSON.stringify(entry)}\n`, "utf8");
+  } catch (error) {
+    console.error("Failed to write Rostering log", error);
+  }
+}
+logRostering("server.initialized", { port, logPath: rosteringLogPath });
 const heartbeatTimeoutMs = 15_000;
 const heartbeats = new Map();
 const messageHistory = [];
@@ -304,7 +316,14 @@ function createLineupXml(rows) {
 }
 
 function processRosteringBatch(files) {
-  if (!Array.isArray(files) || files.length !== 4) return { error: "Upload exactly four TXT files." };
+  logRostering("batch.processing_started", {
+    fileCount: Array.isArray(files) ? files.length : 0,
+    filenames: Array.isArray(files) ? files.map((file) => String(file?.name ?? "unnamed")) : [],
+  });
+  if (!Array.isArray(files) || files.length !== 4) {
+    logRostering("batch.rejected", { reason: "incorrect_file_count" });
+    return { error: "Upload exactly four TXT files." };
+  }
   const batchId = randomUUID();
   const validation = [];
   const rows = [];
@@ -358,6 +377,12 @@ function processRosteringBatch(files) {
     const insert = rosteringDb.prepare("INSERT INTO RosteringRows VALUES (?, ?, ?, ?, ?)");
     for (const row of rows) insert.run(batchId, row.source_file, row.row_number, row.source_json, row.mapped_json);
   }
+  logRostering(valid ? "batch.loaded" : "batch.rejected", {
+    batchId,
+    valid,
+    rowCount: valid ? rows.length : 0,
+    validation: validation.map(({ file, input, valid: itemValid, rowCount, error }) => ({ file, input, valid: itemValid, rowCount: rowCount ?? 0, error })),
+  });
   return { batchId, valid, validation, rowCount: valid ? rows.length : 0 };
 }
 
@@ -602,6 +627,7 @@ app.get("/api/pos-events", (_request, response) => {
 
 app.post("/api/rostering/upload", (request, response) => {
   const result = processRosteringBatch(request.body?.files);
+  logRostering("batch.upload_completed", { batchId: result.batchId ?? null, statusCode: result.error ? 400 : result.valid ? 201 : 422 });
   return result.error ? response.status(400).json({ error: result.error }) : response.status(result.valid ? 201 : 422).json(result);
 });
 
@@ -612,17 +638,26 @@ app.post("/api/rostering/temp-files", (request, response) => {
   if (typeof content !== "string") return response.status(400).json({ error: "Generated file content is required." });
   try {
     writeFileSync(path.join(rosteringTempDirectory, name), content, "utf8");
+    logRostering("file.generated_saved", { name, bytes: Buffer.byteLength(content, "utf8"), directory: rosteringTempDirectory });
     return response.json({ saved: true, name, directory: rosteringTempDirectory });
   } catch (error) {
+    logRostering("file.generated_save_failed", { name, error: error.message });
     console.error("Failed to save generated rostering file", error);
     return response.status(500).json({ error: "Unable to save generated file to the temporary directory." });
   }
 });
 
 app.post("/api/rostering/:batchId/extract", (request, response) => {
+  logRostering("extraction.started", { batchId: request.params.batchId });
   const batch = rosteringDb.prepare("SELECT status FROM RosteringBatches WHERE batch_id = ?").get(request.params.batchId);
-  if (!batch) return response.status(404).json({ error: "Rostering batch not found." });
-  if (batch.status !== "loaded") return response.status(422).json({ error: "Only a valid loaded batch can be extracted." });
+  if (!batch) {
+    logRostering("extraction.rejected", { batchId: request.params.batchId, reason: "batch_not_found" });
+    return response.status(404).json({ error: "Rostering batch not found." });
+  }
+  if (batch.status !== "loaded") {
+    logRostering("extraction.rejected", { batchId: request.params.batchId, reason: "batch_not_loaded", status: batch.status });
+    return response.status(422).json({ error: "Only a valid loaded batch can be extracted." });
+  }
   const rows = rosteringDb.prepare("SELECT source_file, row_number, source_json, mapped_json FROM RosteringRows WHERE batch_id = ?").all(request.params.batchId)
     .map((row) => ({ ...row, input_name: findInputDefinition(row.source_file) }));
   const mappedRows = rows.map((row) => ({ ...JSON.parse(row.source_json ?? "{}"), ...JSON.parse(row.mapped_json ?? "{}"), input_name: row.input_name }));
@@ -639,6 +674,7 @@ app.post("/api/rostering/:batchId/extract", (request, response) => {
     unitGroups,
   });
   rosteringDb.prepare("UPDATE RosteringBatches SET status = ?, extracted_xml = ? WHERE batch_id = ?").run("extracted", lineup.xml, request.params.batchId);
+  logRostering("extraction.completed", { batchId: request.params.batchId, rowCount: rows.length, filename: lineup.filename, units: lineup.units.map((unit) => unit.unitId) });
   return response.json({ batchId: request.params.batchId, xml: lineup.xml, rowCount: rows.length, filename: lineup.filename, doneFilename: lineup.doneFilename, header: lineup.header, units: lineup.units.map((unit) => ({ unitId: unit.unitId, agentCount: unit.agents.length })) });
 });
 
@@ -712,6 +748,7 @@ export {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   app.listen(port, () => {
+    logRostering("server.started", { port });
     console.log(`Service Bus POC dashboard listening on http://localhost:${port}`);
   });
 }

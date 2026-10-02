@@ -72,3 +72,13 @@ Unrecognised headers remain in the source JSON and are not discarded. A batch is
 The ACC physical XML element names are provisional and isolated in `ui/rosteringLineup.js`; replace that generator when the canonical contract is supplied. The current mapping joins schedule summary/detail and agent info by `AgentID`, emits schedule/agent rows to RAC units 4000/4001/4002 according to `ROSTERING_UNIT_GROUPS` (JSON, with optional `muIds` and `saGroupIds`), and retains `AgentID`, `AgentName`, `EmployeeID`, and `VehicleID` when present. Only schedule/agent rows whose source `AgentName` contains the required `#` naming marker are emitted. Forecast rows load directly to `dbo.ActiveForecast` and retain their configured `SAGroupID`/`SAGroupName` values; they are not restricted to the RAC unit groups. Detail `ActivityCode` values become activity segments with derived `AVAILABLE`, `BUSY`, `UNAVAILABLE`, or `UNKNOWN` status. Empty filtered lineups are valid. Coordinates are emitted only when `ROSTERING_COORDINATE_FIELDS` is configured as JSON such as `{"x":"XCoord","y":"YCoord"}`; values are copied without latitude/longitude conversion.
 
 The older generic `<lineup>` shape remains available through the existing helper for backwards-compatible tests, but is no longer used by the extraction endpoint.
+
+## Diagnostics
+
+Rostering activity is written as JSON Lines to a separate timestamped log for
+each dashboard process. By default the files are created in the repository's
+`logs/` directory with names such as
+`rostering-2026-10-02T12-00-00-000Z-12345.log`. Entries cover server startup,
+generated-file saves, batch validation/load results, and lineup extraction
+results or rejection reasons. Full file contents are not written to the log.
+Set `ROSTERING_LOG_DIR` to use a different directory.

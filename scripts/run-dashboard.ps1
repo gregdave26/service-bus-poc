@@ -353,13 +353,29 @@ Write-Host "STEP 2b: Building dashboard..." -ForegroundColor Yellow
 $uiPath = Join-Path $projectRoot 'ui'
 try {
     Push-Location $uiPath
-    $dashboardOutput = npm run build 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "❌ Dashboard build failed`n$dashboardOutput"
-        Invoke-Cleanup
-        return
+    $nodeCommands = @(Get-Command node.exe -ErrorAction Stop | Select-Object -ExpandProperty Source)
+    $nodeExecutable = $nodeCommands | Where-Object { $_ -notmatch '\\Volta\\' } | Select-Object -First 1
+    if (-not $nodeExecutable) {
+        $nodeExecutable = $nodeCommands | Select-Object -First 1
     }
-    Write-Host "  ✓ Dashboard build successful"
+    $viteCli = Join-Path $uiPath 'node_modules\vite\bin\vite.js'
+    if (-not (Test-Path $viteCli)) {
+        throw "Vite CLI not found: $viteCli"
+    }
+    $dashboardOutput = & $nodeExecutable $viteCli build 2>&1
+    $dashboardBuildSucceeded = $LASTEXITCODE -eq 0
+    if (-not $dashboardBuildSucceeded) {
+        $existingBundle = Join-Path $uiPath 'public\dist\index.html'
+        if (-not (Test-Path $existingBundle)) {
+            Write-Error "❌ Dashboard build failed and no existing bundle is available.`n$dashboardOutput"
+            Invoke-Cleanup
+            return
+        }
+        Write-Warning "Dashboard build failed; serving the existing compiled bundle.`n$dashboardOutput"
+    }
+    if ($dashboardBuildSucceeded) {
+        Write-Host "  ✓ Dashboard build successful"
+    }
 }
 catch {
     Write-Error "❌ Dashboard build failed: $_"

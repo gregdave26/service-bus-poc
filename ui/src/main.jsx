@@ -67,6 +67,9 @@ function fieldsFor(type, config) { return config.messageTypes?.[type]?.Fields ??
 function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, field.Type === "boolean" ? false : ""])); }
 function createUuid() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function normalizedName(name) { return name.trim().toLowerCase(); }
+// Field definitions (labels, columns, required/optional, aliases) are centralized server-side
+// and fetched from GET /api/config as `rosteringInputDefinitions`; see docs/rostering-workflow.md.
+const rosteringInputOrder = ["agentScheduleSummary", "agentScheduleDetail", "ctActiveForecast", "agentInfo"];
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
@@ -258,6 +261,77 @@ function PosProcessing({ events }) {
   </Paper>;
 }
 
+function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions = {} }) {
+  const [files, setFiles] = useState([null, null, null, null]);
+  const [result, setResult] = useState(null);
+  const [xml, setXml] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  function selectFile(index, file) {
+    setFiles((current) => current.map((value, position) => position === index ? file : value));
+    setResult(null); setXml(""); setError(null);
+  }
+  async function upload() {
+    if (files.some((file) => !file)) return setError("Choose all four source files before validating.");
+    setBusy(true); setError(null);
+    try {
+      const response = await getJson("/api/rostering/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files: await Promise.all(files.map(async (file) => ({ name: file.name, content: await file.text() }))) }) });
+      setResult(response);
+    } catch (uploadError) { setError(uploadError.message); }
+    finally { setBusy(false); }
+  }
+  async function extract() {
+    setBusy(true); setError(null);
+    try { const response = await getJson(`/api/rostering/${result.batchId}/extract`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sequence: 1 }) }); setXml(response.xml); setResult((current) => ({ ...current, ...response })); }
+    catch (extractError) { setError(extractError.message); }
+    finally { setBusy(false); }
+  }
+  function download() {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([xml], { type: "application/xml" }));
+    link.download = result.filename ?? `lineup-${result.batchId}.xml`; link.click(); URL.revokeObjectURL(link.href);
+  }
+  const stages = [
+    { label: "Create input files", detail: files.every(Boolean) ? "4 TXT files selected" : "Select 4 TXT files", active: files.some(Boolean) },
+    { label: "Insert into ODS", detail: result?.valid ? `${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid) },
+    { label: "Convert to lineup XML", detail: xml ? "Ready for download" : "Manual extraction", active: Boolean(xml) },
+  ];
+  return <Stack spacing={2}>
+    <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
+        <Box><Typography variant="h6">Rostering workflow simulation</Typography><Typography variant="body2" color="text.secondary">Create the source files, load the ODS tables, then generate the lineup XML.</Typography></Box>
+        <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
+      </Stack>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        {stages.map((stage, index) => <React.Fragment key={stage.label}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.active ? "primary.50" : "background.default", borderColor: stage.active ? "primary.main" : "divider" }}>
+            <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
+            <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
+          </Paper>
+          {index < stages.length - 1 && <Typography aria-hidden="true" color="primary" fontSize={24} sx={{ transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
+        </React.Fragment>)}
+      </Stack>
+      <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>
+      <Stack spacing={1.5}>{rosteringInputOrder.map((inputName, index) => {
+        const file = files[index];
+        const definition = rosteringInputDefinitions[inputName];
+        const mapping = rosteringMappings[inputName];
+        const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
+        const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
+        return <Button key={index} component="label" variant="outlined" sx={{ justifyContent: "flex-start", textAlign: "left" }}><Box><b>{definition?.label ?? inputName}</b> · {inputName}{file ? ` · ${file.name}` : " · choose matching TXT"}<Typography display="block" variant="caption" color="text.secondary">Required columns: {requiredColumns ?? "…"}</Typography>{optionalColumns && <Typography display="block" variant="caption" color="text.secondary">Optional columns: {optionalColumns}</Typography>}{mapping && <Typography display="block" variant="caption" color="text.secondary">Loads {inputName} directly into {mapping.destinationTable}</Typography>}</Box><input hidden type="file" accept=".txt,text/plain" onChange={(event) => selectFile(index, event.target.files?.[0] ?? null)} /></Button>;
+      })}</Stack>
+      <Button sx={{ mt: 2 }} variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
+      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+    </Paper>
+    {result && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}><Box><Typography variant="h6">Batch validation</Typography><Typography variant="body2" color="text.secondary">{result.rowCount} loaded row{result.rowCount === 1 ? "" : "s"} · {result.batchId}</Typography></Box><Chip label={result.valid ? "Valid and loaded" : "Needs correction"} color={result.valid ? "success" : "error"} /></Stack>
+      <Table size="small" aria-label="Rostering validation results"><TableHead><TableRow><TableCell>Input</TableCell><TableCell>File</TableCell><TableCell>Status</TableCell><TableCell>Rows</TableCell><TableCell>Direct load target</TableCell><TableCell>Headers / issue</TableCell></TableRow></TableHead><TableBody>{result.validation.map((item, index) => <TableRow key={`${item.file}-${index}`}><TableCell>{item.label ?? "Batch"}</TableCell><TableCell>{item.file}</TableCell><TableCell>{item.valid ? "Valid" : "Invalid"}</TableCell><TableCell>{item.rowCount ?? "—"}</TableCell><TableCell>{item.mapping?.destinationTable ?? "—"}</TableCell><TableCell>{item.valid ? item.headers.join(", ") : item.error}</TableCell></TableRow>)}</TableBody></Table>
+      {result.valid && <Button sx={{ mt: 2 }} variant="outlined" onClick={extract} disabled={busy}>Manual extraction</Button>}
+    </Paper>}
+    {xml && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="h6">RAC roadside lineup XML</Typography><Typography variant="caption" color="text.secondary">{result.filename} · companion marker: {result.doneFilename} (zero bytes)</Typography></Box><Button onClick={download}>Download XML</Button></Stack><TextField aria-label="Lineup XML preview" value={xml} multiline minRows={12} fullWidth InputProps={{ readOnly: true }} sx={{ mt: 2, "& textarea": { fontFamily: "monospace", fontSize: 12 } }} /></Paper>}
+  </Stack>;
+}
+
 function App() {
   const [config, setConfig] = useState({ subscriberLabels: {}, producerLabels: {} });
   const [statuses, setStatuses] = useState([]);
@@ -279,7 +353,7 @@ function App() {
   async function refresh() {
     try {
       const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosEvents] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos-events")]);
-      setConfig({ subscriberLabels: nextConfig.subscriberLabels || {}, producerLabels: nextConfig.producerLabels || {}, messageTypes: nextConfig.messageTypes || {} });
+      setConfig({ subscriberLabels: nextConfig.subscriberLabels || {}, producerLabels: nextConfig.producerLabels || {}, messageTypes: nextConfig.messageTypes || {}, rosteringMappings: nextConfig.rosteringMappings || {}, rosteringInputDefinitions: nextConfig.rosteringInputDefinitions || {} });
       setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosEvents(nextPosEvents); setError(null);
     } catch (refreshError) { setError(refreshError.message); } finally { setLoading(false); }
   }
@@ -321,9 +395,9 @@ function App() {
   const duplicateEditorName = drafts.some((draft) => draft !== selectedDraft && normalizedName(draft.name) === normalizedName(messageName));
 
   return <Container maxWidth="xl" sx={{ py: 3 }}>
-    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark">P</Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{activeTab === "contact" ? "Contact Events" : "Local Processing"}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
+    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{activeTab === "contact" ? "Contact Events" : activeTab === "pos" ? "Local Processing" : "Rostering"}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"}>Rostering</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
-    {activeTab === "pos" ? <PosProcessing events={posEvents} /> : <>
+    {activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? <PosProcessing events={posEvents} /> : <>
     <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>

@@ -11,6 +11,7 @@ namespace ServiceBusPoc.Core.Utilities;
 /// </summary>
 public class TopologyValidator : ITopologyValidator
 {
+    private static readonly TimeSpan ValidationTimeout = TimeSpan.FromSeconds(5);
     private readonly ServiceBusSettings _settings;
     private readonly ILogger<TopologyValidator> _logger;
 
@@ -33,8 +34,10 @@ public class TopologyValidator : ITopologyValidator
 
         try
         {
+            using var validationTimeout = new CancellationTokenSource(ValidationTimeout);
+            var cancellationToken = validationTimeout.Token;
             var client = new ServiceBusAdministrationClient(_settings.ConnectionString);
-            if (!await client.TopicExistsAsync(_settings.TopicName))
+            if (!await client.TopicExistsAsync(_settings.TopicName, cancellationToken))
             {
                 throw new InvalidOperationException($"Topic '{_settings.TopicName}' does not exist.");
             }
@@ -49,14 +52,14 @@ public class TopologyValidator : ITopologyValidator
 
             foreach (var expected in expectedFilters)
             {
-                if (!await client.SubscriptionExistsAsync(_settings.TopicName, expected.Key))
+                if (!await client.SubscriptionExistsAsync(_settings.TopicName, expected.Key, cancellationToken))
                 {
                     throw new InvalidOperationException(
                         $"Subscription '{expected.Key}' does not exist on topic '{_settings.TopicName}'.");
                 }
 
                 var rules = new List<RuleProperties>();
-                await foreach (var rule in client.GetRulesAsync(_settings.TopicName, expected.Key))
+                await foreach (var rule in client.GetRulesAsync(_settings.TopicName, expected.Key, cancellationToken))
                 {
                     rules.Add(rule);
                 }

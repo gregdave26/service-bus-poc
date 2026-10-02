@@ -270,6 +270,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   const [xml, setXml] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [infoInput, setInfoInput] = useState(null);
   function selectFile(index, file) {
     setFiles((current) => current.map((value, position) => position === index ? file : value));
     setResult(null); setXml(""); setError(null);
@@ -329,17 +330,47 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         </React.Fragment>)}
       </Stack>
       <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>
-      <Stack spacing={1.5}>{rosteringInputOrder.map((inputName, index) => {
+      <Stack spacing={1}>{rosteringInputOrder.map((inputName, index) => {
         const file = files[index];
         const definition = rosteringInputDefinitions[inputName];
         const mapping = rosteringMappings[inputName];
         const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
         const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
-        return <Button key={index} component="label" variant="outlined" sx={{ justifyContent: "flex-start", textAlign: "left" }}><Box><b>{definition?.label ?? inputName}</b> · {inputName}{file ? ` · ${file.name}` : " · choose matching TXT"}<Typography display="block" variant="caption" color="text.secondary">Required columns: {requiredColumns ?? "…"}</Typography>{optionalColumns && <Typography display="block" variant="caption" color="text.secondary">Optional columns: {optionalColumns}</Typography>}{mapping && <Typography display="block" variant="caption" color="text.secondary">Loads {inputName} directly into {mapping.destinationTable}</Typography>}</Box><input hidden type="file" accept=".txt,text/plain" onChange={(event) => selectFile(index, event.target.files?.[0] ?? null)} /></Button>;
+        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={800}>{definition?.label ?? inputName}</Typography>
+              <Typography variant="caption" color={file ? "text.primary" : "text.secondary"} noWrap title={file?.name}>{file?.name ?? "No file selected"}</Typography>
+            </Box>
+            <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
+              <Button component="label" size="small" variant="outlined">Select File<input hidden type="file" accept=".txt,text/plain" onChange={(event) => selectFile(index, event.target.files?.[0] ?? null)} /></Button>
+              <IconButton size="small" aria-label={`Show ${definition?.label ?? inputName} column requirements`} onClick={() => setInfoInput(inputName)} sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
+                <Typography component="span" fontWeight={800} fontSize="0.85rem">?</Typography>
+              </IconButton>
+            </Stack>
+          </Stack>
+        </Paper>;
       })}</Stack>
       <Button sx={{ mt: 2 }} variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Paper>
+    <Dialog open={Boolean(infoInput)} onClose={() => setInfoInput(null)} fullWidth maxWidth="sm" aria-labelledby="rostering-input-info-title">
+      <DialogTitle id="rostering-input-info-title">{infoInput && (rosteringInputDefinitions[infoInput]?.label ?? infoInput)}</DialogTitle>
+      <DialogContent dividers>
+        {infoInput && (() => {
+          const definition = rosteringInputDefinitions[infoInput];
+          const mapping = rosteringMappings[infoInput];
+          const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
+          const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
+          return <Stack spacing={1}>
+            <Typography variant="body2"><b>Input name:</b> {infoInput}</Typography>
+            <Typography variant="body2"><b>Required columns:</b> {requiredColumns || "None"}</Typography>
+            <Typography variant="body2"><b>Optional columns:</b> {optionalColumns || "None"}</Typography>
+            {mapping && <Typography variant="body2"><b>ODS target:</b> {mapping.destinationTable}</Typography>}
+          </Stack>;
+        })()}
+      </DialogContent>
+    </Dialog>
     {result && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}><Box><Typography variant="h6">Batch validation</Typography><Typography variant="body2" color="text.secondary">{result.rowCount} loaded row{result.rowCount === 1 ? "" : "s"} · {result.batchId}</Typography></Box><Chip label={result.valid ? "Valid and loaded" : "Needs correction"} color={result.valid ? "success" : "error"} /></Stack>
       <Table size="small" aria-label="Rostering validation results"><TableHead><TableRow><TableCell>Input</TableCell><TableCell>File</TableCell><TableCell>Status</TableCell><TableCell>Rows</TableCell><TableCell>Direct load target</TableCell><TableCell>Headers / issue</TableCell></TableRow></TableHead><TableBody>{result.validation.map((item, index) => <TableRow key={`${item.file}-${index}`}><TableCell>{item.label ?? "Batch"}</TableCell><TableCell>{item.file}</TableCell><TableCell>{item.valid ? "Valid" : "Invalid"}</TableCell><TableCell>{item.rowCount ?? "—"}</TableCell><TableCell>{item.mapping?.destinationTable ?? "—"}</TableCell><TableCell>{item.valid ? item.headers.join(", ") : item.error}</TableCell></TableRow>)}</TableBody></Table>

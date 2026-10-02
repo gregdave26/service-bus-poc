@@ -19,6 +19,26 @@ import {
   mapOdsRow,
 } from "../server.js";
 import { generateAccLineup, buildFilename } from "../rosteringLineup.js";
+import { generateRosterFile, rosterFilename } from "../src/rosteringGenerator.js";
+
+test("generates typed pipe-delimited roster files using the documented primary filename", () => {
+  const now = new Date(2026, 9, 2, 11, 43);
+  for (const [inputName, definition] of Object.entries(rosteringInputs)) {
+    const generated = generateRosterFile(inputName, definition, now);
+    assert.equal(generated.name, `${inputName}_261002_1143.txt`);
+    const [header, firstRow] = generated.content.trim().split("\n");
+    assert.equal(header, definition.fields.map((field) => field.name).join("|"));
+    const values = firstRow.split("|");
+    assert.equal(values.length, definition.fields.length);
+    for (const field of definition.fields.filter((candidate) => candidate.required)) {
+      const value = values[definition.fields.indexOf(field)];
+      assert.notEqual(value, "", `${inputName}.${field.name} should have a generated value`);
+      if (field.type === "numeric") assert.ok(Number.isFinite(Number(value)), `${inputName}.${field.name} should be numeric`);
+      if (field.type === "date") assert.match(value, /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/, `${inputName}.${field.name} should be date-shaped`);
+    }
+  }
+  assert.equal(rosterFilename("agentInfo", now), "agentInfo_261002_1143.txt");
+});
 
 test("parses pipe-delimited TXT roster content", () => {
   const parsed = parseDelimited('AgentID|AgentName|ActivityDescription\nE1|Ada #1|"Available|primary"');

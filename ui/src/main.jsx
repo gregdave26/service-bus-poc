@@ -46,6 +46,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContactPageIcon from "@mui/icons-material/ContactPage";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import { generateRosterFile } from "./rosteringGenerator.js";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
 
@@ -277,9 +278,28 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [infoInput, setInfoInput] = useState(null);
+  const [preview, setPreview] = useState(null);
   function selectFile(index, file) {
     setFiles((current) => current.map((value, position) => position === index ? file : value));
     setResult(null); setXml(""); setError(null);
+  }
+  function generateFile(index, inputName) {
+    const generated = generateRosterFile(inputName, rosteringInputDefinitions[inputName]);
+    const file = new File([generated.content], generated.name, { type: generated.type });
+    selectFile(index, file);
+    setPreview({ inputName, file, content: generated.content, generated: true });
+  }
+  async function viewFile(inputName, file) {
+    if (!file) return;
+    setPreview({ inputName, file, content: await file.text(), generated: false });
+  }
+  function saveFile() {
+    if (!preview) return;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([preview.content], { type: "text/plain" }));
+    link.download = preview.file.name;
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
   async function upload() {
     if (files.some((file) => !file)) return setError("Choose all four source files before validating.");
@@ -349,7 +369,9 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
               <Typography variant="caption" color={file ? "text.primary" : "text.secondary"} noWrap title={file?.name}>{file?.name ?? "No file selected"}</Typography>
             </Box>
             <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
-              <Button component="label" size="small" variant="outlined">Select File<input hidden type="file" accept=".txt,text/plain" onChange={(event) => selectFile(index, event.target.files?.[0] ?? null)} /></Button>
+              <Button component="label" size="small" variant="outlined">Select File<input hidden type="file" accept=".txt,text/plain" onChange={(event) => { const file = event.target.files?.[0] ?? null; selectFile(index, file); if (file) viewFile(inputName, file); }} /></Button>
+              <Button size="small" variant="outlined" onClick={() => generateFile(index, inputName)}>Generate</Button>
+              <Button size="small" variant="text" disabled={!file} onClick={() => viewFile(inputName, file)}>View</Button>
               <IconButton size="small" aria-label={`Show ${definition?.label ?? inputName} column requirements`} onClick={() => setInfoInput(inputName)} sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
                 <Typography component="span" fontWeight={800} fontSize="0.85rem">?</Typography>
               </IconButton>
@@ -360,6 +382,19 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       <Button sx={{ mt: 2 }} variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Paper>
+    <Dialog open={Boolean(preview)} onClose={() => setPreview(null)} fullWidth maxWidth="md" aria-labelledby="rostering-file-preview-title">
+      <DialogTitle id="rostering-file-preview-title">{preview?.file.name}</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">{preview?.generated ? "Generated sample file" : "Selected source file"} · pipe-delimited TXT</Typography>
+          <TextField aria-label="Roster file contents" value={preview?.content ?? ""} multiline minRows={14} fullWidth InputProps={{ readOnly: true }} sx={{ "& textarea": { fontFamily: "monospace", fontSize: 12 } }} />
+          <Stack direction="row" justifyContent="flex-end" spacing={1}>
+            <Button onClick={() => setPreview(null)}>Close</Button>
+            <Button variant="contained" onClick={saveFile}>Save TXT</Button>
+          </Stack>
+        </Stack>
+      </DialogContent>
+    </Dialog>
     <Dialog open={Boolean(infoInput)} onClose={() => setInfoInput(null)} fullWidth maxWidth="sm" aria-labelledby="rostering-input-info-title">
       <DialogTitle id="rostering-input-info-title">{infoInput && (rosteringInputDefinitions[infoInput]?.label ?? infoInput)}</DialogTitle>
       <DialogContent dividers>

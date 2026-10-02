@@ -53,20 +53,13 @@ Unrecognised headers remain in the source JSON and are not discarded. A batch is
 ## Workflow
 
 1. Select the four named files in the tab.
-2. **Validate and load batch** sends the file contents to `POST /api/rostering/upload`, validates filenames and columns as one batch, and writes valid mapped rows to `RosteringBatches` and `RosteringRows`. Each loaded row retains both its mapped JSON and complete source JSON.
-3. **Manual extraction** calls `POST /api/rostering/:batchId/extract`. Rows are grouped by source file and sorted by source filename and row number.
-4. Manual extraction generates the provisional ACC/RAC roadside contract. The filename is deterministic in the configured timezone (`ROSTERING_TIMEZONE`, default `UTC`):
-   `Lineup_RAC_{Start_yyyymmddHHMMSS}_ROADSIDE_{End_yyyymmddHHMMSS}_{nnn}.xml`.
-   The API also returns the corresponding zero-byte completion marker name (`.done`); the simulator does not write files.
-
-The ACC physical XML element names are provisional and isolated in `ui/rosteringLineup.js`; replace that generator when the canonical contract is supplied. The current mapping joins schedule summary/detail and agent info by `AgentID`, emits schedule/agent rows to RAC units 4000/4001/4002 according to `ROSTERING_UNIT_GROUPS` (JSON, with optional `muIds` and `saGroupIds`), and retains `AgentID`, `AgentName`, `EmployeeID`, and `VehicleID` when present. Only schedule/agent rows whose source `AgentName` contains the required `#` naming marker are emitted. Forecast rows load directly to `dbo.ActiveForecast` and retain their configured `SAGroupID`/`SAGroupName` values; they are not restricted to the RAC unit groups. Detail `ActivityCode` values become activity segments with derived `AVAILABLE`, `BUSY`, `UNAVAILABLE`, or `UNKNOWN` status. Empty filtered lineups are valid. Coordinates are emitted only when `ROSTERING_COORDINATE_FIELDS` is configured as JSON such as `{"x":"XCoord","y":"YCoord"}`; values are copied without latitude/longitude conversion.
-
-The older generic `<lineup>` shape remains available through the existing helper for backwards-compatible tests, but is no longer used by the extraction endpoint.
-
-
-## Workflow
-
-1. Select the four named files in the tab.
+   The **Generate** button beside each file picker creates three realistic sample
+   rows using the server-provided field definitions, including correctly typed
+   dates, numbers, identities, and groups. Generated files use the documented
+   primary filename pattern (for example `agentInfo_100825_1750.txt`), can be
+   viewed in the file preview, and can be saved as `.txt` files. Selecting an
+   uploaded file also enables the same preview; upload and validation behavior is
+   unchanged.
 2. **Validate and load batch** sends the file contents to `POST /api/rostering/upload`, validates filenames and columns as one batch, and writes valid mapped rows to `RosteringBatches` and `RosteringRows`. Each loaded row retains both its mapped JSON and complete source JSON.
 3. **Manual extraction** calls `POST /api/rostering/:batchId/extract`. Rows are grouped by source file and sorted by source filename and row number.
 4. Manual extraction generates the provisional ACC/RAC roadside contract. The filename is deterministic in the configured timezone (`ROSTERING_TIMEZONE`, default `UTC`):

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Alert,
@@ -224,13 +224,13 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
     </Dialog>;
 }
 
-function ServiceCard({ service, config, selected, onClick }) {
+function ServiceCard({ service, config, selected, onClick, receivedFlash }) {
   const connected = String(service.state).toLowerCase() !== "offline";
   const name = displayName(service.serviceName, config);
   const labels = service.serviceName === "producer" ? config.producerLabels : config.subscriberLabels?.[service.serviceName];
   const stateLabel = connected ? (labels?.ConnectedLabel || "Connected") : (labels?.OfflineLabel || "Offline");
   const countLabel = labels?.MessagesHandledLabel || "handled";
-  return <Card variant="outlined" sx={{ borderColor: selected ? "primary.main" : "divider", bgcolor: selected ? "primary.light" : "background.paper" }}>
+  return <Card variant="outlined" aria-label={receivedFlash ? `${name} received a message` : name} sx={{ borderColor: selected ? "primary.main" : "divider", bgcolor: selected ? "primary.light" : "background.paper", animation: receivedFlash ? "serviceReceiveFlash 900ms ease-out" : "none", "@media (prefers-reduced-motion: reduce)": { animation: "none" }, "@keyframes serviceReceiveFlash": { "0%": { backgroundColor: processFlowColors.completed.background, boxShadow: `0 0 0 6px ${processFlowColors.completed.background}` }, "100%": { backgroundColor: selected ? undefined : "background.paper", boxShadow: "0 0 0 0 transparent" } } }}>
     <CardActionArea onClick={service.selectable === false ? undefined : onClick} disabled={service.selectable === false} sx={{ p: 2, minHeight: 132 }}>
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between"><Typography variant="caption" color="text.secondary">{service.infrastructure ? "Infrastructure" : "Service"}</Typography><Typography color="primary.main">{service.icon || "◎"}</Typography></Stack>
@@ -464,6 +464,8 @@ function App() {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [receivedFlashServices, setReceivedFlashServices] = useState(new Set());
+  const previousMessageIds = useRef(null);
 
   async function refresh() {
     try {
@@ -474,6 +476,24 @@ function App() {
   }
 
   useEffect(() => { refresh(); const timer = setInterval(refresh, 3000); return () => clearInterval(timer); }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const currentIds = new Set(messages.map((message) => message.messageId ?? message.id ?? `${message.serviceName}-${message.timestamp}`));
+    if (previousMessageIds.current === null) {
+      previousMessageIds.current = currentIds;
+      return;
+    }
+    const receivedServices = new Set(messages
+      .filter((message) => message.direction === "received")
+      .filter((message) => !previousMessageIds.current.has(message.messageId ?? message.id ?? `${message.serviceName}-${message.timestamp}`))
+      .map((message) => message.serviceName));
+    previousMessageIds.current = currentIds;
+    if (!receivedServices.size) return;
+    setReceivedFlashServices(receivedServices);
+    const timer = setTimeout(() => setReceivedFlashServices(new Set()), 1000);
+    return () => clearTimeout(timer);
+  }, [messages, loading]);
 
   const services = useMemo(() => {
     const reported = statuses.filter((service) => !["Dashboard", "producer"].includes(service.serviceName));
@@ -513,7 +533,7 @@ function App() {
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{activeTab === "contact" ? "Contact Events" : activeTab === "pos" ? "Local Processing" : "Rostering"}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
     {activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? <PosProcessing events={posEvents} /> : <>
-    <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
+    <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} receivedFlash={receivedFlashServices.has(service.serviceName)} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
       <ActivityStream messages={messages} statuses={statuses} config={config} />

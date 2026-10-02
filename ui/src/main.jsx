@@ -291,10 +291,26 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     link.href = URL.createObjectURL(new Blob([xml], { type: "application/xml" }));
     link.download = result.filename ?? `lineup-${result.batchId}.xml`; link.click(); URL.revokeObjectURL(link.href);
   }
+  const stages = [
+    { label: "Create input files", detail: files.every(Boolean) ? "4 TXT files selected" : "Select 4 TXT files", active: files.some(Boolean) },
+    { label: "Insert into ODS", detail: result?.valid ? `${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid) },
+    { label: "Convert to lineup XML", detail: xml ? "Ready for download" : "Manual extraction", active: Boolean(xml) },
+  ];
   return <Stack spacing={2}>
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
-      <Typography variant="h6">Rostering workflow simulation</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Upload the four named TXT extracts, validate their required columns, then manually extract a deterministic lineup XML preview.</Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
+        <Box><Typography variant="h6">Rostering workflow simulation</Typography><Typography variant="body2" color="text.secondary">Create the source files, load the ODS tables, then generate the lineup XML.</Typography></Box>
+        <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
+      </Stack>
+      <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        {stages.map((stage, index) => <React.Fragment key={stage.label}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.active ? "primary.50" : "background.default", borderColor: stage.active ? "primary.main" : "divider" }}>
+            <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
+            <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
+          </Paper>
+          {index < stages.length - 1 && <Typography aria-hidden="true" color="primary" fontSize={24} sx={{ transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
+        </React.Fragment>)}
+      </Stack>
       <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>
       <Stack spacing={1.5}>{rosteringInputOrder.map((inputName, index) => {
         const file = files[index];

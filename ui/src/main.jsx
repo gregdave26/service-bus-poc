@@ -21,6 +21,7 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
+  LinearProgress,
   List,
   ListItemButton,
   ListItemText,
@@ -298,12 +299,26 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     { label: "Insert into ODS", detail: result?.valid ? `${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid) },
     { label: "Convert to lineup XML", detail: xml ? "Ready for download" : "Manual extraction", active: Boolean(xml) },
   ];
+  const selectedFileCount = files.filter(Boolean).length;
+  const selectedFileNames = files.flatMap((file, index) => file ? [rosteringInputDefinitions[rosteringInputOrder[index]]?.label ?? file.name] : []);
+  const remainingFileCount = rosteringInputOrder.length - selectedFileCount;
   return <Stack spacing={2}>
     <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} mb={3}>
         <Box><Typography variant="h6">Rostering workflow simulation</Typography><Typography variant="body2" color="text.secondary">Create the source files, load the ODS tables, then generate the lineup XML.</Typography></Box>
-        <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
+        <Box sx={{ minWidth: { sm: 260 } }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+            <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
+            <Typography variant="caption" color="text.secondary">{selectedFileCount} of {rosteringInputOrder.length} files</Typography>
+          </Stack>
+          <LinearProgress variant="determinate" value={(selectedFileCount / rosteringInputOrder.length) * 100} sx={{ mt: 1, height: 6, borderRadius: 3 }} aria-label={`${selectedFileCount} of ${rosteringInputOrder.length} roster files selected`} />
+        </Box>
       </Stack>
+      <Alert severity={selectedFileCount === rosteringInputOrder.length ? "success" : "info"} sx={{ mb: 2 }}>
+        <b>{selectedFileCount} of {rosteringInputOrder.length} input files selected.</b>{" "}
+        {selectedFileCount === 0 ? "Choose the four required TXT files below." : selectedFileCount === rosteringInputOrder.length ? "All required files are ready to validate." : `${remainingFileCount} file${remainingFileCount === 1 ? "" : "s"} remaining: ${rosteringInputOrder.filter((inputName, index) => !files[index]).map((inputName) => rosteringInputDefinitions[inputName]?.label ?? inputName).join(", ")}.`}
+        {selectedFileNames.length > 0 && <Typography display="block" variant="caption" color="text.secondary">Selected: {selectedFileNames.join(", ")}</Typography>}
+      </Alert>
       <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
         {stages.map((stage, index) => <React.Fragment key={stage.label}>
           <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.active ? "primary.50" : "background.default", borderColor: stage.active ? "primary.main" : "divider" }}>

@@ -11,6 +11,7 @@ import {
   validateDashboardMessage,
   validatePublishRequest,
   processRosteringBatch,
+  parseDelimited,
   createLineupXml,
   rosteringMappings,
   rosteringInputs,
@@ -18,6 +19,12 @@ import {
   mapOdsRow,
 } from "../server.js";
 import { generateAccLineup, buildFilename } from "../rosteringLineup.js";
+
+test("parses pipe-delimited TXT roster content", () => {
+  const parsed = parseDelimited('AgentID|AgentName|ActivityDescription\nE1|Ada #1|"Available|primary"');
+  assert.deepEqual(parsed.headers, ["AgentID", "AgentName", "ActivityDescription"]);
+  assert.deepEqual(parsed.rows, [{ AgentID: "E1", AgentName: "Ada #1", ActivityDescription: "Available|primary" }]);
+});
 
 async function withServer(callback) {
   const server = app.listen(0);

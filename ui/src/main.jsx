@@ -335,7 +335,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
           {index < stages.length - 1 && <Typography aria-hidden="true" color="primary" fontSize={24} sx={{ transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
         </React.Fragment>)}
       </Stack>
-      <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>
+      <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Each file contains pipe-delimited CSV data using <b>|</b> between columns. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>
       <Stack spacing={1}>{rosteringInputOrder.map((inputName, index) => {
         const file = files[index];
         const definition = rosteringInputDefinitions[inputName];
@@ -376,6 +376,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
               <Typography variant="body2"><b>Afternoon / second run:</b> <code>{filenamePatterns.second}</code></Typography>
               <Typography variant="body2"><b>Example:</b> <code>{filenamePatterns.example}</code></Typography>
             </Box>}
+            <Typography variant="body2"><b>File format:</b> pipe-delimited CSV text (`|`) in a `.txt` file.</Typography>
             <Typography variant="body2"><b>Required columns:</b> {requiredColumns || "None"}</Typography>
             <Typography variant="body2"><b>Optional columns:</b> {optionalColumns || "None"}</Typography>
             {mapping && <Typography variant="body2"><b>ODS target:</b> {mapping.destinationTable}</Typography>}

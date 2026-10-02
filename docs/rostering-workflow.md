@@ -1,6 +1,6 @@
 # Rostering workflow MVP
 
-The dashboard's **Rostering** tab is a local workflow simulator for four named inputs. It accepts exactly one `.txt` file for each input and treats the first row of each file as a header row. Comma-delimited and tab-delimited text are supported, including quoted comma fields.
+The dashboard's **Rostering** tab is a local workflow simulator for four named inputs. It accepts exactly one `.txt` file for each input and treats the first row of each file as a header row. The file extension is `.txt`, while the contents use pipe-delimited CSV format (`|` between columns), including quoted pipe fields.
 
 ## Centralized input definitions
 

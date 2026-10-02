@@ -235,7 +235,7 @@ function coerceFieldValue(field, value) {
 function parseDelimited(content) {
   const lines = String(content ?? "").replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim() !== "");
   if (!lines.length) return { headers: [], rows: [] };
-  const delimiter = lines[0].includes("\t") ? "\t" : ",";
+  const delimiter = lines[0].includes("|") ? "|" : lines[0].includes("\t") ? "\t" : ",";
   const parseLine = (line) => {
     const cells = [];
     let value = "";

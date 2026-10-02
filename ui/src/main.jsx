@@ -61,6 +61,20 @@ const theme = createTheme({
   typography: { fontFamily: "Inter, Roboto, system-ui, sans-serif" },
 });
 
+// Shared process-state palette. Keep workflow colors here so a future RAC theme
+// can update every process-flow surface consistently.
+const processFlowColors = {
+  idle: { background: "#fffbfe", border: "#c9c5ca" },
+  active: { background: "#d9ccf2", border: "#6750a4" },
+  completed: { background: "#c8e6c9", border: "#2e7d32" },
+  fileReady: { background: "#d7f0dc", border: "#2e7d32" },
+};
+
+function processStageSx(state) {
+  const colors = processFlowColors[state];
+  return { bgcolor: colors.background, borderColor: colors.border, borderWidth: state === "idle" ? 1 : 2 };
+}
+
 const drafts = [
   { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
   { id: "product-holding-change", name: "Product holding change", type: "ProductHoldingChange", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
@@ -253,7 +267,7 @@ function PosProcessing({ events }) {
     </Stack>
     <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1}>
       {stages.map((stage, index) => <React.Fragment key={stage}>
-        <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: index === 0 ? "primary.50" : "background.default", borderColor: index === 0 ? "primary.main" : "divider" }}>
+        <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", ...processStageSx(index === 0 ? "active" : "idle") }}>
           <Typography variant="subtitle2" fontWeight={800}>{stage}</Typography>
           <Typography variant="caption" color="text.secondary">{index === 0 ? "Captured locally" : index === stages.length - 1 ? "Ready for export" : "Event generated"}</Typography>
         </Paper>
@@ -343,7 +357,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
             <Chip label={xml ? "XML ready" : result?.valid ? "ODS loaded" : files.some(Boolean) ? "Files selected" : "Awaiting files"} color={xml || result?.valid ? "success" : "primary"} size="small" />
             <Typography variant="caption" color="text.secondary">{selectedFileCount} of {rosteringInputOrder.length} files</Typography>
           </Stack>
-          <LinearProgress color={selectedFileCount === rosteringInputOrder.length ? "success" : "primary"} variant="determinate" value={(selectedFileCount / rosteringInputOrder.length) * 100} sx={{ mt: 1, height: 8, borderRadius: 3 }} aria-label={`${selectedFileCount} of ${rosteringInputOrder.length} roster files selected`} />
+          <LinearProgress variant="determinate" value={(selectedFileCount / rosteringInputOrder.length) * 100} sx={{ mt: 1, height: 8, borderRadius: 3, backgroundColor: processFlowColors.idle.background, "& .MuiLinearProgress-bar": { backgroundColor: selectedFileCount === rosteringInputOrder.length ? processFlowColors.completed.border : processFlowColors.active.border } }} aria-label={`${selectedFileCount} of ${rosteringInputOrder.length} roster files selected`} />
         </Box>
       </Stack>
       <Alert severity={selectedFileCount === rosteringInputOrder.length ? "success" : "info"} sx={{ mb: 2 }}>
@@ -353,7 +367,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       </Alert>
       <Stack direction={{ xs: "column", md: "row" }} alignItems="center" spacing={1} sx={{ mb: 3 }}>
         {stages.map((stage, index) => <React.Fragment key={stage.label}>
-          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", bgcolor: stage.completed ? "#c8e6c9" : stage.active ? "#d9ccf2" : "background.default", borderColor: stage.completed ? "success.dark" : stage.active ? "primary.main" : "divider", borderWidth: stage.active ? 2 : 1 }}>
+          <Paper variant="outlined" sx={{ p: 2, flex: 1, width: "100%", ...processStageSx(stage.completed ? "completed" : stage.active ? "active" : "idle") }}>
             <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
             <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
           </Paper>
@@ -367,7 +381,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         const mapping = rosteringMappings[inputName];
         const requiredColumns = definition?.fields.filter((field) => field.required).map((field) => field.name).join(", ");
         const optionalColumns = definition?.fields.filter((field) => !field.required).map((field) => field.name).join(", ");
-        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25, bgcolor: file ? "#d7f0dc" : "background.paper", borderColor: file ? "success.dark" : "divider", borderWidth: file ? 2 : 1 }}>
+        return <Paper key={inputName} variant="outlined" sx={{ p: 1.25, ...processStageSx(file ? "fileReady" : "idle") }}>
           <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" fontWeight={800}>{definition?.label ?? inputName}</Typography>

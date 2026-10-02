@@ -283,11 +283,16 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     setFiles((current) => current.map((value, position) => position === index ? file : value));
     setResult(null); setXml(""); setError(null);
   }
-  function generateFile(index, inputName) {
+  async function generateFile(index, inputName) {
     const generated = generateRosterFile(inputName, rosteringInputDefinitions[inputName]);
     const file = new File([generated.content], generated.name, { type: generated.type });
-    selectFile(index, file);
-    setPreview({ inputName, file, content: generated.content, generated: true });
+    setBusy(true); setError(null);
+    try {
+      const saved = await getJson("/api/rostering/temp-files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: generated.name, content: generated.content }) });
+      selectFile(index, file);
+      setPreview({ inputName, file, content: generated.content, generated: true, tempDirectory: saved.directory });
+    } catch (generationError) { setError(generationError.message); }
+    finally { setBusy(false); }
   }
   async function viewFile(inputName, file) {
     if (!file) return;
@@ -370,7 +375,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
             </Box>
             <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
               <Button component="label" size="small" variant="outlined">Select File<input hidden type="file" accept=".txt,text/plain" onChange={(event) => { const file = event.target.files?.[0] ?? null; selectFile(index, file); if (file) viewFile(inputName, file); }} /></Button>
-              <Button size="small" variant="outlined" onClick={() => generateFile(index, inputName)}>Generate</Button>
+              <Button size="small" variant="outlined" onClick={() => generateFile(index, inputName)} disabled={busy}>Generate</Button>
               <Button size="small" variant="text" disabled={!file} onClick={() => viewFile(inputName, file)}>View</Button>
               <IconButton size="small" aria-label={`Show ${definition?.label ?? inputName} column requirements`} onClick={() => setInfoInput(inputName)} sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
                 <Typography component="span" fontWeight={800} fontSize="0.85rem">?</Typography>
@@ -386,7 +391,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       <DialogTitle id="rostering-file-preview-title">{preview?.file.name}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography variant="body2" color="text.secondary">{preview?.generated ? "Generated sample file" : "Selected source file"} · pipe-delimited TXT</Typography>
+          <Typography variant="body2" color="text.secondary">{preview?.generated ? `Generated sample file · auto-saved to ${preview.tempDirectory}` : "Selected source file"} · pipe-delimited TXT</Typography>
           <TextField aria-label="Roster file contents" value={preview?.content ?? ""} multiline minRows={14} fullWidth InputProps={{ readOnly: true }} sx={{ "& textarea": { fontFamily: "monospace", fontSize: 12 } }} />
           <Stack direction="row" justifyContent="flex-end" spacing={1}>
             <Button onClick={() => setPreview(null)}>Close</Button>

@@ -56,8 +56,11 @@ Unrecognised headers remain in the source JSON and are not discarded. A batch is
    The **Generate** button beside each file picker creates three realistic sample
    rows using the server-provided field definitions, including correctly typed
    dates, numbers, identities, and groups. Generated files use the documented
-   primary filename pattern (for example `agentInfo_100825_1750.txt`), can be
-   viewed in the file preview, and can be saved as `.txt` files. Selecting an
+   primary filename pattern (for example `agentInfo_100825_1750.txt`), are
+   automatically saved by the dashboard under the operating system's temporary
+   directory in the `service-bus-poc-rostering` subdirectory, can be viewed in
+   the file preview, and can also be downloaded as `.txt` files. Set
+   `ROSTERING_TEMP_DIR` to override the temporary directory. Selecting an
    uploaded file also enables the same preview; upload and validation behavior is
    unchanged.
 2. **Validate and load batch** sends the file contents to `POST /api/rostering/upload`, validates filenames and columns as one batch, and writes valid mapped rows to `RosteringBatches` and `RosteringRows`. Each loaded row retains both its mapped JSON and complete source JSON.

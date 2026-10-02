@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import test from "node:test";
+import path from "node:path";
 import {
   app,
   getEmulatorStatus,
@@ -44,6 +46,23 @@ test("parses pipe-delimited TXT roster content", () => {
   const parsed = parseDelimited('AgentID|AgentName|ActivityDescription\nE1|Ada #1|"Available|primary"');
   assert.deepEqual(parsed.headers, ["AgentID", "AgentName", "ActivityDescription"]);
   assert.deepEqual(parsed.rows, [{ AgentID: "E1", AgentName: "Ada #1", ActivityDescription: "Available|primary" }]);
+});
+
+test("auto-saves generated roster content to the temporary directory", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/rostering/temp-files`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "agentInfo_test.txt", content: "AgentID|AgentName\nAG1|Alex Morgan #1\n" }),
+    });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.saved, true);
+    const savedPath = path.join(body.directory, body.name);
+    assert.equal(existsSync(savedPath), true);
+    assert.equal(readFileSync(savedPath, "utf8"), "AgentID|AgentName\nAG1|Alex Morgan #1\n");
+    unlinkSync(savedPath);
+  });
 });
 
 async function withServer(callback) {

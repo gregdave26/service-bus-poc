@@ -1,12 +1,13 @@
 import express from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient } from "@azure/service-bus";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import net from "node:net";
+import { tmpdir } from "node:os";
 import { generateAccLineup, DEFAULT_UNIT_GROUPS, parseConfig } from "./rosteringLineup.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -187,6 +188,8 @@ const rosteringMappings = Object.fromEntries(Object.entries(rosteringInputs).map
     destinationTable: definition.destinationTable,
   }];
 }));
+const rosteringTempDirectory = process.env.ROSTERING_TEMP_DIR || path.join(tmpdir(), "service-bus-poc-rostering");
+mkdirSync(rosteringTempDirectory, { recursive: true });
 
 // Public, UI-facing projection of the centralized input definitions, so the Rostering tab
 // can render labels, required/optional columns, inferred types, and aliases without
@@ -600,6 +603,20 @@ app.get("/api/pos-events", (_request, response) => {
 app.post("/api/rostering/upload", (request, response) => {
   const result = processRosteringBatch(request.body?.files);
   return result.error ? response.status(400).json({ error: result.error }) : response.status(result.valid ? 201 : 422).json(result);
+});
+
+app.post("/api/rostering/temp-files", (request, response) => {
+  const name = String(request.body?.name ?? "");
+  const content = request.body?.content;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.txt$/i.test(name)) return response.status(400).json({ error: "Generated filename must be a safe .txt filename." });
+  if (typeof content !== "string") return response.status(400).json({ error: "Generated file content is required." });
+  try {
+    writeFileSync(path.join(rosteringTempDirectory, name), content, "utf8");
+    return response.json({ saved: true, name, directory: rosteringTempDirectory });
+  } catch (error) {
+    console.error("Failed to save generated rostering file", error);
+    return response.status(500).json({ error: "Unable to save generated file to the temporary directory." });
+  }
 });
 
 app.post("/api/rostering/:batchId/extract", (request, response) => {

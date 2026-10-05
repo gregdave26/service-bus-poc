@@ -322,6 +322,18 @@ test("rejects wrong filenames even when four files are supplied", () => {
   assert.match(result.validation.find((item) => item.file === "people.txt").error, /Filename must be/);
 });
 
+test("accepts documented timestamped roster filenames", () => {
+  const files = [
+    { name: "agentScheduleSummary_261005_0920.txt", content: "AgentID,AgentName,MUId,MUName,ScheduleDate,StartDateTime,EndDateTime,ScheduledMinutes,PaidMinutes,ActivityCode\nE1,Ada #1,4000,Sales,2026-10-01,09:00,17:00,480,480,WORK" },
+    { name: "agentScheduleDetail2_261005_0920.txt", content: "AgentID\tAgentName\tMUId\tMUName\tScheduleDate\tStartDateTime\tEndDateTime\tDurationMinutes\tActivityCode\tActivityDescription\nE1\tAda #1\t4000\tSales\t2026-10-01\t09:00\t17:00\t480\tWORK\tWork" },
+    { name: "ctActiveForecast_261005_0920.txt", content: "SAGroupID,SAGroupName,ForecastDate,IntervalStartDateTime,IntervalEndDateTime,ContactsOffered,AverageHandleTime,RequiredAgents,ServiceLevel\nS1,Sales,2026-10-01,09:00,09:30,12,300,4,0.8" },
+    { name: "agentInfo2_261005_0920.txt", content: "AgentID,AgentName,LogonID,EmployeeID,MUId,MUName,EmailAddress,FirstName,LastName,StartDate,EndDate,TimeOffGroup\nE1,Ada #1,a1,EMP1,4000,Sales,ada@example.com,Ada,Lovelace,2020-01-01,,Standard" },
+  ];
+  const result = processRosteringBatch(files);
+  assert.equal(result.valid, true);
+  assert.equal(result.rowCount, 4);
+});
+
 test("rejects invalid batch shape and creates deterministic escaped lineup XML", () => {
   assert.match(processRosteringBatch([{ name: "one.csv", content: "id\n1" }]).error, /exactly four/);
   const xml = createLineupXml([

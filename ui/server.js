@@ -260,7 +260,12 @@ function normalizeInputName(name) {
 
 function findInputDefinition(name) {
   const normalizedName = normalizeInputName(name);
-  return Object.entries(rosteringInputs).find(([inputName]) => normalizeInputName(inputName) === normalizedName)?.[0] ?? null;
+  return Object.entries(rosteringInputs).find(([inputName]) => {
+    const normalizedInputName = normalizeInputName(inputName);
+    if (normalizedName === normalizedInputName) return true;
+    const suffix = normalizedName.slice(normalizedInputName.length);
+    return normalizedName.startsWith(normalizedInputName) && /^\d+$/.test(suffix);
+  })?.[0] ?? null;
 }
 
 // A field's header may be supplied using its canonical name or any configured alias.

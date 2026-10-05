@@ -5,9 +5,11 @@ import {
   TableCell, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import AddIcon from "@mui/icons-material/Add";
+import SaveIcon from "@mui/icons-material/Save";
+import Tooltip from "@mui/material/Tooltip";
 
 export const drafts = [
   { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
@@ -95,7 +97,18 @@ export function NewMessageDialog({ open, config, existingNames, onClose, onCreat
         {selectedFields.filter((field) => field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
         <Stack direction="row" flexWrap="wrap">{selectedFields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox checked={Boolean(values[field.Name])} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.checked }))} />} label={field.Label || field.Name} />)}</Stack>
       </Stack></DialogContent>
-      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}><Button onClick={onClose}>Cancel</Button><Button type="submit" variant="contained" disabled={!name.trim() || duplicate}>Create message</Button></Stack>
+      <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
+        <Tooltip title="Cancel">
+          <IconButton aria-label="Cancel" onClick={onClose}><ExitToAppIcon sx={{ transform: "rotate(180deg)" }} /></IconButton>
+        </Tooltip>
+        <Tooltip title="Create message">
+          <span>
+            <IconButton aria-label="Create message" type="submit" color="primary" disabled={!name.trim() || duplicate}>
+              <SaveIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
     </Box>
   </Dialog>;
 }

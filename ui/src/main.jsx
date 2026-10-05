@@ -35,6 +35,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Toolbar,
   Typography,
 } from "@mui/material";
@@ -46,6 +47,9 @@ import AddIcon from "@mui/icons-material/Add";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContactPageIcon from "@mui/icons-material/ContactPage";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import FileOpenIcon from "@mui/icons-material/FileOpen";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { generateRosterFile } from "./rosteringGenerator.js";
 import { PosProcessing } from "./localPosProcessing.jsx";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
@@ -362,9 +366,24 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
               <Typography variant="caption" color={file ? "text.primary" : "text.secondary"} noWrap title={file?.name}>{file?.name ?? "No file selected"}</Typography>
             </Box>
             <Stack direction="row" spacing={0.5} alignItems="center" flexShrink={0}>
-              <Button component="label" size="small" variant="outlined">Select File<input hidden type="file" accept=".txt,text/plain" onChange={(event) => { const file = event.target.files?.[0] ?? null; selectFile(index, file); if (file) viewFile(inputName, file); }} /></Button>
-              <Button size="small" variant="outlined" onClick={() => generateFile(index, inputName)} disabled={busy}>Generate</Button>
-              <Button size="small" variant="text" disabled={!file} onClick={() => viewFile(inputName, file)}>View</Button>
+              <Tooltip title="Select file">
+                <IconButton component="label" size="small" color="primary" aria-label={`Select ${definition?.label ?? inputName} file`}>
+                  <FileOpenIcon fontSize="small" />
+                  <input hidden type="file" accept=".txt,text/plain" onChange={(event) => { const file = event.target.files?.[0] ?? null; selectFile(index, file); if (file) viewFile(inputName, file); }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Generate sample file">
+                <IconButton size="small" color="primary" onClick={() => generateFile(index, inputName)} disabled={busy} aria-label={`Generate ${definition?.label ?? inputName} sample file`}>
+                  <AutoFixHighIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={file ? "View file" : "Select or generate a file to view it"}>
+                <span>
+                  <IconButton size="small" color="primary" disabled={!file} onClick={() => viewFile(inputName, file)} aria-label={`View ${definition?.label ?? inputName} file`}>
+                    <VisibilityIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
               <IconButton size="small" aria-label={`Show ${definition?.label ?? inputName} column requirements`} onClick={() => setInfoInput(inputName)} sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
                 <Typography component="span" fontWeight={800} fontSize="0.85rem">?</Typography>
               </IconButton>

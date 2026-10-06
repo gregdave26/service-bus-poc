@@ -16,6 +16,9 @@ pipe-delimited PSV shape consumed by D365. The browser can preview and download 
 file; it does not execute the production queue, Azure Function, ADF/database procedures, or
 Blob Storage delivery.
 
+Completed process-flow stages and connectors use the same green indication as Contact Events
+and Rostering. Previously completed POS stages stay highlighted while the export stage runs.
+
 ## Design
 
 ### Catalog

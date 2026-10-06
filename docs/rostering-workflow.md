@@ -52,6 +52,9 @@ Unrecognised headers remain in the source JSON and are not discarded. A batch is
 
 ## Workflow
 
+Completed process-flow stages and connectors use the same green indication as the Contact
+Events activity flash and the POS Processing flow. Pending stages remain neutral.
+
 1. Select the four named files in the tab.
    The **Generate** button beside each file picker creates three realistic sample
    rows using the server-provided field definitions, including correctly typed

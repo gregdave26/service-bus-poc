@@ -10,6 +10,8 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DownloadIcon from "@mui/icons-material/Download";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import { ReceiptGenerationForm as ReceiptGenerationTabs } from "./receiptGenerationForm.jsx";
+import { processFlowColors, processStageSx } from "./processFlowStyles.js";
+import { posStageState } from "./posFlowState.js";
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
@@ -333,8 +335,9 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
     </Stack>
     <Stack direction={{ xs: "column", md: "row" }} alignItems="stretch" spacing={1}>
       {stages.map((stage, index) => {
-        const completed = flow.state === "completed" && index <= (flow.exportData ? 2 : 1);
-        const active = flow.state === "processing" && index === flow.activeStage;
+        const state = posStageState(flow, index);
+        const completed = state === "completed";
+        const active = state === "active";
         const exportStage = index === 2;
         const statusText = active
           ? (exportStage ? "Generating PSV…" : "Processing…")
@@ -349,14 +352,12 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
             flex: 1,
             width: "100%",
             minHeight: 92,
-            bgcolor: completed ? "success.50" : active ? "primary.50" : "background.default",
-            borderColor: completed ? "success.main" : active ? "primary.main" : "divider",
-            borderWidth: active || completed ? 2 : 1,
+            ...processStageSx(state),
             transition: "background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease",
             boxShadow: active ? 3 : 0,
           }}>
             <Stack direction="row" spacing={1} alignItems="flex-start">
-              {completed ? <CheckCircleIcon color="success" fontSize="small" /> : <Typography color={active ? "primary" : "text.disabled"} fontWeight={800}>{index + 1}</Typography>}
+              {completed ? <CheckCircleIcon sx={{ color: processFlowColors.completed.border }} fontSize="small" /> : <Typography color={active ? "primary" : "text.disabled"} fontWeight={800}>{index + 1}</Typography>}
               <Box>
                 <Typography variant="subtitle2" fontWeight={800}>{stage.name}</Typography>
                 <Typography variant="caption" color={active ? "primary.main" : "text.secondary"}>
@@ -376,7 +377,7 @@ export function PosProcessing({ catalog, receipts, onGenerate }) {
               </Box>
             </Stack>
           </Paper>
-          {index < stages.length - 1 && <Typography aria-hidden="true" color={completed ? "success.main" : "text.disabled"} fontSize={24} sx={{ alignSelf: "center", transform: { xs: "rotate(90deg)", md: "none" }, transition: "color 300ms ease" }}>→</Typography>}
+          {index < stages.length - 1 && <Typography aria-hidden="true" fontSize={24} sx={{ color: completed ? processFlowColors.completed.border : processFlowColors.idle.border, alignSelf: "center", transform: { xs: "rotate(90deg)", md: "none" }, transition: "color 300ms ease" }}>→</Typography>}
         </React.Fragment>;
       })}
     </Stack>

@@ -54,6 +54,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { generateRosterFile } from "./rosteringGenerator.js";
 import { PosProcessing } from "./localPosProcessing.jsx";
+import { processFlowColors, processStageSx } from "./processFlowStyles.js";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
 
@@ -67,20 +68,6 @@ const theme = createTheme({
   shape: { borderRadius: 12 },
   typography: { fontFamily: "Inter, Roboto, system-ui, sans-serif" },
 });
-
-// Shared process-state palette. Keep workflow colors here so a future RAC theme
-// can update every process-flow surface consistently.
-const processFlowColors = {
-  idle: { background: "#fffbfe", border: "#c9c5ca" },
-  active: { background: "#d9ccf2", border: "#6750a4" },
-  completed: { background: "#c8e6c9", border: "#2e7d32" },
-  fileReady: { background: "#d7f0dc", border: "#2e7d32" },
-};
-
-function processStageSx(state) {
-  const colors = processFlowColors[state];
-  return { bgcolor: colors.background, borderColor: colors.border, borderWidth: state === "idle" ? 1 : 2 };
-}
 
 const drafts = [
   { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
@@ -362,7 +349,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
             <Typography variant="subtitle2" fontWeight={800}>{stage.label}</Typography>
             <Typography variant="caption" color="text.secondary">{stage.detail}</Typography>
           </Paper>
-          {index < stages.length - 1 && <Typography aria-hidden="true" color="primary" fontSize={24} sx={{ transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
+          {index < stages.length - 1 && <Typography aria-hidden="true" fontSize={24} sx={{ color: stage.completed ? processFlowColors.completed.border : processFlowColors.idle.border, transform: { xs: "rotate(90deg)", md: "none" } }}>→</Typography>}
         </React.Fragment>)}
       </Stack>
       <Alert severity="info" sx={{ mb: 2 }}>Choose one .txt file for each named input. Each file contains pipe-delimited CSV data using <b>|</b> between columns. Filenames may use separators (for example, <b>agent_schedule_detail.txt</b>). Required columns (identity, date, group, and numeric fields) must be present; optional descriptive columns may be omitted entirely. Validation details appear below and source rows are preserved.</Alert>

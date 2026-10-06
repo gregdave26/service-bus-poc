@@ -320,8 +320,8 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   }
   const stages = [
     { label: "Create input files", detail: files.every(Boolean) ? "Complete — 4 TXT files ready" : files.some(Boolean) ? `${files.filter(Boolean).length} of 4 TXT files ready` : "Select or generate 4 TXT files", active: files.some(Boolean), completed: files.every(Boolean) },
-    { label: "Insert into ODS", detail: result?.valid ? `${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid) },
-    { label: "Convert to lineup XML", detail: xml ? "Ready for download" : "Manual extraction", active: Boolean(xml) },
+    { label: "Insert into ODS", detail: result?.valid ? `Complete — ${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid), completed: Boolean(result?.valid) },
+    { label: "Convert to lineup XML", detail: xml ? "Complete — ready for download" : "Manual extraction", active: Boolean(xml), completed: Boolean(xml) },
   ];
   const selectedFileCount = files.filter(Boolean).length;
   const selectedFileNames = files.flatMap((file, index) => file ? [rosteringInputDefinitions[rosteringInputOrder[index]]?.label ?? file.name] : []);

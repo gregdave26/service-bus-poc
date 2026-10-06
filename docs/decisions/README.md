@@ -17,8 +17,9 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [006](006-configuration-env-vars.md) | Configuration & Secrets | ✅ Approved | Environment variables only (MVP) |
 | [007](007-separate-apps.md) | Application Architecture | ✅ Approved | Separate console app per role |
 | [008](008-bicep-iac.md) | Infrastructure as Code | ✅ Approved | Bicep templates for Azure deployment |
-| [009](009-carwash-integration-boundary.md) | Carwash Integration Boundary | ✅ Approved | Independent consumer and Pulse-called verification API |
+| [009](009-carwash-integration-boundary.md) | Carwash Integration Boundary | Refined by ADR-011 | Historical API boundary and dependency direction |
 | [010](010-browser-dashboard.md) | Browser-Based Live Dashboard | ✅ Approved | Real-time service status and event publishing UI |
+| [011](011-carwash-membercentral-and-events.md) | Carwash MemberCentral and Events | ✅ Approved | MemberCentral verification and Carwash-owned event publishing |
 
 ---
 
@@ -34,7 +35,8 @@ This folder contains all architecture and technical decisions for the Service Bu
 - [ADR-005](005-schema-validation.md) — Event schema and validation examples
 - [ADR-006](006-configuration-env-vars.md) — Environment variable setup
 - [ADR-007](007-separate-apps.md) — Project structure and separate console apps
-- [ADR-009](009-carwash-integration-boundary.md) — Carwash consumer/API dependency direction
+- [ADR-009](009-carwash-integration-boundary.md) — Historical Carwash API boundary
+- [ADR-011](011-carwash-membercentral-and-events.md) — Carwash membership verification and event publishing
 
 ### For DevOps/Infrastructure
 - [ADR-008](008-bicep-iac.md) — Cloud infrastructure templates
@@ -43,7 +45,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 
 ### For QA/Testing
 - [ADR-001](001-emulator-first-validation.md) — Test environment and reproducibility
-- [ADR-009](009-carwash-integration-boundary.md) — Independent Carwash consumer and API validation
+- [ADR-009](009-carwash-integration-boundary.md) — Historical Carwash API boundary
 - [ADR-005](005-schema-validation.md) — Schema and validation testing
 
 ---
@@ -93,6 +95,10 @@ ADR-009 (Carwash Integration Boundary)
   ├─ Supersedes ADR-002 where it couples storage to the API
   └─ Supersedes ADR-003's generic contact endpoints
 
+ADR-011 (Carwash MemberCentral and Events)
+  ├─ Refines ADR-009's Carwash integration boundary
+  └─ Makes Carwash a MemberCentral-backed API and domain-event producer
+
 ADR-008 (Bicep IaC)
   └─ Validates ADR-001 (emulator topology parity)
 ```
@@ -128,7 +134,7 @@ ADR-008 (Bicep IaC)
 If new architectural decisions arise during implementation:
 
 1. Copy template from any existing ADR
-2. Use next available number (e.g., ADR-009)
+2. Use the next available number (for example, ADR-012)
 3. Include: Context, Problem, Options, Decision, Consequences, Risks, Trade-Offs
 4. Add to this README
 5. Link from DECISIONS_SUMMARY.md
@@ -157,5 +163,5 @@ If new architectural decisions arise during implementation:
 
 ---
 
-**Last Updated:** 2026-09-15  
+**Last Updated:** 2026-09-23
 **Maintained By:** Architecture Team

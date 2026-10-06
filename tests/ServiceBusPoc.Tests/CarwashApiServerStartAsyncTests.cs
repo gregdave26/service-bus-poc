@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Logging;
+using System.Net;
+using System.Net.Sockets;
 using ServiceBusPoc.Carwash.Api;
+using ServiceBusPoc.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 
@@ -12,7 +15,7 @@ public class CarwashApiServerStartAsyncTests
     public async Task StartAsync_WithCancelledToken_CompletesWithoutException()
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
-        var server = new CarwashApiServer(mockLogger.Object);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>(), GetUnusedPort());
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
 
@@ -25,7 +28,7 @@ public class CarwashApiServerStartAsyncTests
     public async Task StartAsync_WithCancelledToken_LogsStartAndStop()
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
-        var server = new CarwashApiServer(mockLogger.Object);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>(), GetUnusedPort());
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
 
@@ -49,5 +52,12 @@ public class CarwashApiServerStartAsyncTests
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
+    }
+
+    private static int GetUnusedPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 }

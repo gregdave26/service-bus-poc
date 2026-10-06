@@ -27,6 +27,7 @@ public sealed class ContactEventPublisherTests
             HasParksResorts = false,
             HasCarwashProduct = true
         });
+        contact.MembershipNumber = "VALID-123";
 
         var eventId = await publisher.PublishContactUpdatedAsync(
             contact, "crm", "correlation-1", CancellationToken.None);
@@ -46,6 +47,7 @@ public sealed class ContactEventPublisherTests
         Assert.Equal("crm", envelope.Source);
         Assert.Equal(timestamp.UtcDateTime, envelope.Timestamp);
         Assert.Equal(contact.ContactId, envelope.Data!.ContactId);
+        Assert.Equal(contact.MembershipNumber, envelope.Data.MembershipNumber);
         sender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), CancellationToken.None), Times.Once);
     }
 
@@ -92,6 +94,24 @@ public sealed class ContactEventPublisherTests
 
         await Assert.ThrowsAsync<ValidationException>(
             () => publisher.PublishContactUpdatedAsync(new ContactData { ContactId = "only-id" }, "crm"));
+
+        sender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task PublishContactUpdatedAsync_CarwashWithoutMembershipNumber_RejectsWithoutSending(string? membershipNumber)
+    {
+        var sender = new Mock<IServiceBusSender>();
+        var publisher = new ContactEventPublisher(
+            sender.Object, Mock.Of<ILogger<ContactEventPublisher>>(), TimeProvider.System);
+        var contact = ValidContact(new ContactAttributes { HasCarwashProduct = true });
+        contact.MembershipNumber = membershipNumber;
+
+        await Assert.ThrowsAsync<ValidationException>(
+            () => publisher.PublishContactUpdatedAsync(contact, "crm"));
 
         sender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Never);
     }

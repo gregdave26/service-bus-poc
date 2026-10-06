@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ServiceBusPoc.Carwash.Api;
+using ServiceBusPoc.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 
@@ -12,7 +13,7 @@ public class CarwashApiServerStopTests
     public void Stop_WhenListenerHasNotStarted_CompletesWithoutException()
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
-        var server = new CarwashApiServer(mockLogger.Object);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>());
 
         server.Stop();
     }
@@ -21,7 +22,7 @@ public class CarwashApiServerStopTests
     public void Stop_WhenCalledMultipleTimes_CompletesWithoutException()
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
-        var server = new CarwashApiServer(mockLogger.Object);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>());
 
         server.Stop();
         server.Stop();

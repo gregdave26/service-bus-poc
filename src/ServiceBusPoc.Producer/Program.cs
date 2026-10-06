@@ -13,6 +13,7 @@ var commandLineMappings = new Dictionary<string, string>
     ["--last-name"] = "Producer:LastName",
     ["--email"] = "Producer:Email",
     ["--phone"] = "Producer:Phone",
+    ["--membership-number"] = "Producer:MembershipNumber",
     ["--source"] = "Producer:Source",
     ["--correlation-id"] = "Producer:CorrelationId",
     ["--has-insurance"] = "Producer:HasInsurance",

@@ -46,6 +46,7 @@ public sealed class ProducerIntegrationTests
             FirstName = "Integration",
             LastName = "TestContact",
             Email = "integration@test.local",
+            MembershipNumber = "VALID-123",
             Attributes = new ContactAttributes
             {
                 HasInsurance = true,
@@ -118,6 +119,7 @@ public sealed class ProducerIntegrationTests
             ContactId = $"C-combo-{hasInsurance}-{hasParksResorts}-{hasCarwashProduct}",
             FirstName = "Test",
             LastName = "Contact",
+            MembershipNumber = hasCarwashProduct ? "VALID-123" : null,
             Attributes = new ContactAttributes
             {
                 HasInsurance = hasInsurance,
@@ -206,4 +208,3 @@ public sealed class ProducerIntegrationTests
         }
     }
 }
-

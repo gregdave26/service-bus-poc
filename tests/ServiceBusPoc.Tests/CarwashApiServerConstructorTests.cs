@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ServiceBusPoc.Carwash.Api;
+using ServiceBusPoc.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 
@@ -13,7 +14,7 @@ public class CarwashApiServerConstructorTests
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
 
-        var server = new CarwashApiServer(mockLogger.Object);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>());
 
         Assert.NotNull(server);
     }
@@ -26,7 +27,7 @@ public class CarwashApiServerConstructorTests
     {
         var mockLogger = new Mock<ILogger<CarwashApiServer>>();
 
-        var server = new CarwashApiServer(mockLogger.Object, port);
+        var server = new CarwashApiServer(mockLogger.Object, Mock.Of<IMembershipVerifier>(), port);
 
         Assert.NotNull(server);
     }

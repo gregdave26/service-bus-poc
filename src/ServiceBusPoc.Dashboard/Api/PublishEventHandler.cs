@@ -35,12 +35,12 @@ public sealed class PublishEventHandler
             LastName = request.LastName,
             Phone = request.Phone,
             Email = request.Email,
+            MembershipNumber = request.MembershipNumber,
             Attributes = new ContactAttributes
             {
                 HasInsurance = request.HasInsurance,
                 HasParksResorts = request.HasParksResorts,
-                HasCarwashProduct = request.HasCarwashProduct,
-                RacId = request.RacId
+                HasCarwashProduct = request.HasCarwashProduct
             }
         };
 
@@ -76,7 +76,7 @@ public sealed class PublishEventRequest
     public required string LastName { get; init; }
     public required string Phone { get; init; }
     public required string Email { get; init; }
-    public string? RacId { get; init; }
+    public string? MembershipNumber { get; init; }
     public bool HasInsurance { get; init; }
     public bool HasParksResorts { get; init; }
     public bool HasCarwashProduct { get; init; }

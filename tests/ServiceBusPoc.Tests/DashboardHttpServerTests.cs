@@ -90,7 +90,7 @@ public sealed class DashboardHttpServerTests
             new
             {
                 ContactId = "C1", FirstName = "Ada", LastName = "Lovelace",
-                Phone = "555", Email = "ada@example.com", RacId = "R1",
+                Phone = "555", Email = "ada@example.com", MembershipNumber = "R1",
                 HasInsurance = true, HasParksResorts = false, HasCarwashProduct = true
             });
         var result = await response.Content.ReadFromJsonAsync<PublishEventResponse>();
@@ -131,7 +131,7 @@ public sealed class DashboardHttpServerTests
             new
             {
                 ContactId = "C1", FirstName = "Ada", LastName = "Lovelace",
-                Phone = "555", Email = "ada@example.com", RacId = "R1"
+                Phone = "555", Email = "ada@example.com", MembershipNumber = "R1"
             });
 
         var result = await response.Content.ReadFromJsonAsync<PublishEventResponse>();

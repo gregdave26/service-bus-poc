@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using ServiceBusPoc.Carwash.Api;
+using ServiceBusPoc.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 
@@ -11,7 +12,7 @@ public sealed class CarwashApiModuleTests
     [Fact]
     public async Task StartAndStopAsync_WithCancelledServerToken_Completes()
     {
-        var server = new CarwashApiServer(Mock.Of<ILogger<CarwashApiServer>>(), GetUnusedPort());
+        var server = new CarwashApiServer(Mock.Of<ILogger<CarwashApiServer>>(), Mock.Of<IMembershipVerifier>(), GetUnusedPort());
         var module = new CarwashApiModule(server, Mock.Of<ILogger<CarwashApiModule>>());
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
@@ -23,7 +24,7 @@ public sealed class CarwashApiModuleTests
     [Fact]
     public async Task StartAsync_WhenCalledTwice_Throws()
     {
-        var server = new CarwashApiServer(Mock.Of<ILogger<CarwashApiServer>>(), GetUnusedPort());
+        var server = new CarwashApiServer(Mock.Of<ILogger<CarwashApiServer>>(), Mock.Of<IMembershipVerifier>(), GetUnusedPort());
         var module = new CarwashApiModule(server, Mock.Of<ILogger<CarwashApiModule>>());
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();

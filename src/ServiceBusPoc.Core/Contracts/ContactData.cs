@@ -6,7 +6,7 @@ namespace ServiceBusPoc.Core.Contracts;
 /// Contact data with required and optional fields.
 /// Represents contact information in the ContactUpdated event.
 /// </summary>
-public class ContactData
+public class ContactData : IValidatableObject
 {
     /// <summary>
     /// Gets or sets the unique contact identifier in the source system.
@@ -41,7 +41,24 @@ public class ContactData
     public string? Phone { get; set; }
 
     /// <summary>
+    /// Gets or sets the membership identifier used to correlate the contact with the membership system.
+    /// </summary>
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "MembershipNumber must be between 1 and 255 characters")]
+    public string? MembershipNumber { get; set; }
+
+    /// <summary>
     /// Gets or sets the contact's capability and product attributes.
     /// </summary>
     public ContactAttributes? Attributes { get; set; }
+
+    /// <inheritdoc />
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Attributes?.HasCarwashProduct == true && string.IsNullOrWhiteSpace(MembershipNumber))
+        {
+            yield return new ValidationResult(
+                "MembershipNumber is required when HasCarwashProduct is true",
+                [nameof(MembershipNumber)]);
+        }
+    }
 }

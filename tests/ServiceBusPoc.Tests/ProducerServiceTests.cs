@@ -38,6 +38,7 @@ public sealed class ProducerServiceTests
         Assert.Equal("correlation-123", envelope.CorrelationId);
         Assert.NotNull(envelope.Data);
         Assert.Equal("C001", envelope.Data.ContactId);
+        Assert.Equal("VALID-123", envelope.Data.MembershipNumber);
         Assert.DoesNotContain("\"contact\":", message.Body.ToString(), StringComparison.Ordinal);
     }
 
@@ -186,6 +187,7 @@ public sealed class ProducerServiceTests
             ContactId = "C-combo-test",
             FirstName = "Test",
             LastName = "Contact",
+            MembershipNumber = hasCarwashProduct ? "VALID-123" : null,
             Attributes = new ContactAttributes
             {
                 HasInsurance = hasInsurance,
@@ -269,6 +271,17 @@ public sealed class ProducerServiceTests
     }
 
     [Fact]
+    public void CreateMessage_CarwashWithoutMembershipNumber_ThrowsValidationException()
+    {
+        var service = CreateService();
+        var contactEvent = CreateContactEvent();
+        contactEvent.MembershipNumber = null;
+
+        Assert.Throws<ValidationException>(
+            () => service.CreateMessage(contactEvent, "crm", "correlation"));
+    }
+
+    [Fact]
     public void CreateMessage_WithoutCorrelationId_GeneratesNewEventIdAsCorrelationId()
     {
         var service = CreateService();
@@ -316,6 +329,25 @@ public sealed class ProducerServiceTests
                 It.IsAny<ServiceBusMessage>(),
                 cts.Token),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithMembershipNumber_IncludesItInPublishedEvent()
+    {
+        var publisher = new Mock<IServiceBusMessagePublisher>();
+        ServiceBusMessage? published = null;
+        publisher.Setup(candidate => candidate.PublishAsync(
+                It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceBusMessage, CancellationToken>((message, _) => published = message)
+            .Returns(Task.CompletedTask);
+        var service = CreateService(publisher, settings: CreateSettings());
+
+        await service.RunAsync();
+
+        Assert.NotNull(published);
+        var envelope = JsonSerializer.Deserialize<EventEnvelope<ContactUpdatedEvent>>(
+            published.Body, JsonSerializerOptionsHelper.DefaultOptions);
+        Assert.Equal("VALID-123", envelope!.Data!.MembershipNumber);
     }
 
     [Fact]
@@ -414,7 +446,8 @@ public sealed class ProducerServiceTests
         CorrelationId = "correlation-123",
         HasInsurance = true,
         HasParksResorts = false,
-        HasCarwashProduct = true
+        HasCarwashProduct = true,
+        MembershipNumber = "VALID-123"
     };
 
     private static ContactUpdatedEvent CreateContactEvent() => new()
@@ -423,6 +456,7 @@ public sealed class ProducerServiceTests
         FirstName = "John",
         LastName = "Smith",
         Email = "john.smith@example.test",
+        MembershipNumber = "VALID-123",
         Attributes = new ContactAttributes
         {
             HasInsurance = true,

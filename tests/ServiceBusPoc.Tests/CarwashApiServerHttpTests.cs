@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using ServiceBusPoc.Carwash.Api;
 using ServiceBusPoc.Carwash.Api.Contracts;
+using ServiceBusPoc.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 
@@ -54,9 +55,10 @@ public class CarwashApiServerHttpTests
 
     [Theory]
     [InlineData("""{}""")]
-    [InlineData("""{"RacId":""}""")]
-    [InlineData("""{"RacId":"   "}""")]
-    public async Task MissingOrBlankRacId_ReturnsBadRequest(string payload)
+    [InlineData("""{"membershipNumber":""}""")]
+    [InlineData("""{"membershipNumber":"   "}""")]
+    [InlineData("""{"RacId":"VALID-123"}""")]
+    public async Task MissingOrBlankMembershipNumber_ReturnsBadRequest(string payload)
     {
         await using var fixture = await ServerFixture.StartAsync();
 
@@ -69,17 +71,34 @@ public class CarwashApiServerHttpTests
     [Theory]
     [InlineData("VALID-123", true)]
     [InlineData("123-INVALID", false)]
-    public async Task MemberResponse_ReflectsMockValidation(string racId, bool expectedValid)
+    public async Task MemberResponse_ReflectsMockValidation(string membershipNumber, bool expectedValid)
     {
         await using var fixture = await ServerFixture.StartAsync();
 
         using var response = await fixture.Client.PostAsJsonAsync(
-            fixture.VerifyUri, new { RacId = racId });
+            fixture.VerifyUri, new { MembershipNumber = membershipNumber });
         var payload = await response.Content.ReadFromJsonAsync<VerifyMemberResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
         Assert.Equal(expectedValid, payload.ValidMember);
+    }
+
+    [Fact]
+    public async Task MemberResponse_DelegatesMembershipNumberToInjectedVerifier()
+    {
+        var verifier = new Mock<IMembershipVerifier>();
+        verifier.Setup(candidate => candidate.VerifyAsync("MEM-123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        await using var fixture = await ServerFixture.StartAsync(verifier.Object);
+
+        using var response = await fixture.Client.PostAsJsonAsync(
+            fixture.VerifyUri, new { MembershipNumber = "MEM-123" });
+        var payload = await response.Content.ReadFromJsonAsync<VerifyMemberResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(payload!.ValidMember);
+        verifier.Verify(candidate => candidate.VerifyAsync("MEM-123", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private sealed class ServerFixture : IAsyncDisposable
@@ -100,14 +119,17 @@ public class CarwashApiServerHttpTests
         public string BaseAddress { get; }
         public string VerifyUri { get; }
 
-        public static async Task<ServerFixture> StartAsync()
+        public static async Task<ServerFixture> StartAsync(IMembershipVerifier? verifier = null)
         {
             using var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
             var port = ((IPEndPoint)probe.LocalEndpoint).Port;
             probe.Stop();
 
-            var server = new CarwashApiServer(new Mock<ILogger<CarwashApiServer>>().Object, port);
+            var server = new CarwashApiServer(
+                new Mock<ILogger<CarwashApiServer>>().Object,
+                verifier ?? new MockMembershipVerifier(),
+                port);
             var task = server.StartAsync();
             var fixture = new ServerFixture(server, task, port);
             await fixture.WaitForStartedAsync();

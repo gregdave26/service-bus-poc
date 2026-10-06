@@ -130,6 +130,7 @@ try {
         --has-insurance true `
         --has-parks-resorts true `
         --has-carwash-product true `
+        --membership-number "VALID-123" `
         2>&1
     
     if ($LASTEXITCODE -ne 0) {

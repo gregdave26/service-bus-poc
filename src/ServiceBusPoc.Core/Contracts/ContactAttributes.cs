@@ -20,8 +20,4 @@ public class ContactAttributes
     /// </summary>
     public bool HasCarwashProduct { get; set; }
 
-    /// <summary>
-    /// Gets or sets the RAC (Roadside Assistance Company) ID for the contact.
-    /// </summary>
-    public string? RacId { get; set; }
 }

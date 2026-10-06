@@ -269,8 +269,8 @@ public sealed class DashboardHttpServer : IDisposable
                                     <input type="text" id="contact-id" value="contact-123" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="rac-id">RAC ID</label>
-                                    <input type="text" id="rac-id" value="RAC-001" required>
+                                    <label for="membership-number">Membership Number</label>
+                                    <input type="text" id="membership-number" value="VALID-001">
                                 </div>
                                 <div class="form-group">
                                     <label for="first-name">First Name *</label>
@@ -372,7 +372,7 @@ public sealed class DashboardHttpServer : IDisposable
                             lastName: document.getElementById('last-name').value,
                             phone: document.getElementById('phone').value,
                             email: document.getElementById('email').value,
-                            racId: document.getElementById('rac-id').value,
+                            membershipNumber: document.getElementById('membership-number').value || null,
                             hasInsurance: document.getElementById('has-insurance').checked,
                             hasParksResorts: document.getElementById('has-parks').checked,
                             hasCarwashProduct: document.getElementById('has-carwash').checked

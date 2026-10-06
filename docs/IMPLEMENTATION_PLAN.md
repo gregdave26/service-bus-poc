@@ -27,7 +27,7 @@ This document proposes a phased implementation approach for the Azure Service Bu
 ### 1.2 Event Contracts (JSON Schema)
 Define canonical event schemas in `contracts/` as JSON Schema:
 
-**Status:** ✅ Done — `contracts/envelope.schema.json`, `contracts/contact-updated-v1.schema.json`, `contracts/product-holding-change-v1.schema.json`, and `contracts/attributes.schema.json` exist, with matching C# DTOs in `src/ServiceBusPoc.Core/Contracts/` (`EventEnvelope<TData>`, `ContactUpdatedEvent`, etc.).
+**Status:** ✅ Done — `contracts/envelope.schema.json`, `contracts/contact-updated-v1.schema.json`, `contracts/product-holding-change-v1.schema.json`, and `contracts/attributes.schema.json` exist, with matching C# DTOs in `src/ServiceBusPoc.Core/Contracts/` (`EventEnvelope<TData>`, `ContactUpdatedEvent`, etc.). `membershipNumber` is now represented in the contact schema and DTO.
 
 **Files:**
 - `contacts/contact-updated-v1.schema.json` — Core contract for contact property changes
@@ -49,6 +49,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
     "lastName": "string",
     "email": "string",
     "phone": "string",
+    "membershipNumber": "string",
     "attributes": {
       "hasInsurance": "boolean",
       "hasParksResorts": "boolean",
@@ -57,6 +58,12 @@ Define canonical event schemas in `contracts/` as JSON Schema:
   }
 }
 ```
+
+**Membership identifier rules:**
+- `membershipNumber` is implemented in `ContactData` and `contact-updated-v1.schema.json` as an optional contact-level identifier.
+- Contact event publishers require a membership number when `hasCarwashProduct=true`; the Carwash verification API independently requires one in every request.
+- Do not publish `validMember` in `contact.updated`; membership validity is determined by the verification provider at request time.
+- Preserve compatibility with older events that do not contain `membershipNumber`.
 
 **Deliverable:** JSON Schema files with matching C# DTOs. Dedicated schema tests remain outstanding.
 
@@ -107,7 +114,8 @@ dotnet run -- --producer \
   --contact-id C001 \
   --first-name John \
   --has-insurance true \
-  --has-carwash-product true
+  --has-carwash-product true \
+  --membership-number VALID-123
 ```
 
 **Deliverable:** Producer class + settings model; can emit test events to local emulator
@@ -131,7 +139,7 @@ dotnet run -- --producer \
 - **DigitalChannels:** Log all received events (validation harness)
 - **Insurance:** Log events with `hasInsurance = true`
 - **ParksResorts:** Log events with `hasParksResorts = true`
-- **Carwash:** Process contacts received through the `hasCarwashProduct=true` subscription. This consumer is independent of the verification API in 2.4.
+- **Carwash:** Process contacts received through the `hasCarwashProduct=true` subscription, including the membership identifier when present. This consumer is independent of the verification API in 2.4 and must not become the API's membership data store.
 
 **Deliverable:** Runnable consumers for all 4 subscriptions; async message handling
 
@@ -140,13 +148,16 @@ dotnet run -- --producer \
 ### 2.4 Carwash Verification API
 **File:** `src/ServiceBusPoc.Carwash/Api/CarwashApiServer.cs`
 
-**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, and Carwash API test files are present. The mock verification rule returns true for RAC IDs beginning with `VALID` (case-insensitive). This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
+**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, provider abstraction, deterministic mock provider, and tests are present. A future authoritative membership adapter can replace the mock through dependency injection. This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
 
 **Responsibilities:**
-- Accept a RAC member ID and return the verification result.
+- Accept a membership number and return the verification result.
+- Call an injected membership-verification provider; the API must not read Service Bus messages.
+- Provide a mock provider for local MVP tests and leave an adapter boundary for the authoritative membership service.
 - Validate request and return the documented HTTP error response.
+- Define timeout, retry, unavailable-provider, and optional short-lived caching behavior before live integration.
 
-**Deliverable:** Carwash verification endpoint and its request/response contract. It does not call Pulse or depend on Service Bus message processing.
+**Deliverable:** Carwash verification endpoint, provider abstraction, mock provider, and request/response contract. Pulse calls Carwash; Carwash does not call Pulse and does not use contact events as the verification backing store.
 
 ### 2.5 Scenario Verifier & Test Harness
 **File:** `src/ServiceBusPoc.Verifier/Services/VerifierService.cs`
@@ -169,6 +180,12 @@ dotnet run -- --producer \
 3. **Schema Validation**
    - Emit malformed event (missing required field)
    - Assert consumer rejects gracefully with schema error
+
+4. **Membership Verification**
+   - Call `POST /carwash/v1/verify` with a membership number
+   - Assert the API delegates to the configured mock provider
+   - Assert invalid input and provider failure produce documented responses
+   - Assert the verification API does not depend on a Service Bus event being received first
 
 **Deliverable:** Harness that runs scenarios sequentially, logs results, exits with pass/fail status
 
@@ -368,8 +385,8 @@ Document the decision to validate with local emulator before cloud deployment, i
 The MVP aims to demonstrate:
 1. ⏳ End-to-end event flow: producer → topic → subscriptions → consumers (implemented surfaces exist; emulator routing is not yet proven)
 2. ⏳ Filter routing validation (all 8 scenarios)
-3. ✅ Carwash exposes the verification API that Pulse or mock Pulse calls; its mock verification rule is implemented
-4. ⏳ Test coverage — 100 tests pass, including Carwash API, ProducerService, ProducerConfiguration, ProducerIntegration, ServiceBusMessagePublisher, and TopologyValidator; dedicated consumer/schema/settings tests are outstanding
+3. ✅ Carwash exposes the verification API that Pulse or mock Pulse calls; its injected mock verifier is implemented
+4. ⏳ Test coverage — Carwash API, publisher, dashboard, and topology tests exist; dedicated consumer/schema/settings tests remain outstanding
 5. ⏳ Reproducible local execution via Docker + script
 6. ⏳ Schema validation and error handling — contracts and DTOs exist; dedicated schema tests and verifier scenarios are not implemented
 
@@ -377,7 +394,9 @@ The MVP aims to demonstrate:
 - Cloud deployment to real Azure subscription
 - Production Bicep (deferred to Phase 4)
 - Live Pulse integration beyond the Carwash verification API contract
-- Persistence, sagas, load testing, custom domains
+- Membership persistence or a Carwash-owned membership database
+- Bulk membership update messages or snapshot synchronization
+- Sagas, load testing, custom domains
 
 **MVP Validation Criteria:**
 - ⏳ `scripts/run-local-poc.ps1` completes with all 8 routing scenarios passing
@@ -428,12 +447,14 @@ Phase 6: Documentation (parallel with others)
 ## Key Technical Decisions (to be formalized as ADRs)
 
 1. **Emulator First:** Validate with local Azure Service Bus emulator before cloud (faster, cheaper, deterministic)
-2. **Mock Verification Rule in MVP:** Carwash exposes a verification API for Pulse or mock Pulse to call; live integration is deferred.
+2. **Membership Verification Boundary:** Pulse calls Carwash synchronously through `POST /carwash/v1/verify`. Carwash delegates to an injected mock provider in the MVP and an authoritative membership provider in a future integration.
 3. **Independent Carwash Paths:** The `hasCarwashProduct=true` consumer and the verification API have no runtime dependency on each other.
-4. **Dependency Injection:** Use constructor injection with `Microsoft.Extensions.DependencyInjection` for all consumers and producers
-5. **Structured Logging:** Use `ILogger` with JSON-structured output for machine-parseable logs
-6. **Schema Validation:** Use JSON Schema for event contracts; C# DTO validation via FluentValidation or data annotations
-7. **Configuration:** No hardcoded secrets; all via `IConfiguration` (appsettings.json, environment variables, Key Vault)
+4. **No Event-Backed Verification Store:** Contact events may carry `membershipNumber` for correlation, but they are not the authoritative membership database and do not back the verification API.
+5. **No Bulk Synchronization in MVP:** Do not add bulk membership update messages. If replication becomes necessary, introduce versioned membership-domain events plus periodic reconciliation through a separate ADR.
+6. **Dependency Injection:** Use constructor injection with `Microsoft.Extensions.DependencyInjection` for all consumers and producers
+7. **Structured Logging:** Use `ILogger` with JSON-structured output for machine-parseable logs
+8. **Schema Validation:** Use JSON Schema for event contracts; C# DTO validation via FluentValidation or data annotations
+9. **Configuration:** No hardcoded secrets; all via `IConfiguration` (appsettings.json, environment variables, Key Vault)
 
 ---
 
@@ -465,11 +486,12 @@ Phase 6: Documentation (parallel with others)
 ## Post-MVP Roadmap (Phase 4+)
 
 1. **Cloud Deployment** (Phase 4): Bicep for real Azure; deploy to actual subscription with credentials
-2. **Live Pulse Integration** (Phase 4.1): Connect Pulse to the Carwash verification API; replace the mock verification rule as needed.
-3. **Persistence** (Future): Store verification data as required; expose a query API if needed.
-4. **Sagas & Orchestration** (Future): Handle multi-step workflows (e.g., contact validated → provision in system X)
-5. **Load Testing** (Future): Validate throughput, latency, subscription filter performance
-6. **Producer Integration** (Future): Integrate real CRM/MDM and product systems as publishers
+2. **Live Pulse Integration** (Phase 4.1): Connect Pulse to the Carwash verification API and replace the mock provider with an authoritative membership-service adapter.
+3. **Membership Read Model (Conditional Future):** If latency, availability, or ownership requirements justify local data, introduce membership-domain events and periodic reconciliation through a separate ADR; do not use `contact.updated` as the membership source of truth.
+4. **Persistence** (Future): Store verification data as required; expose a query API if needed.
+5. **Sagas & Orchestration** (Future): Handle multi-step workflows (e.g., contact validated → provision in system X)
+6. **Load Testing** (Future): Validate throughput, latency, subscription filter performance
+7. **Producer Integration** (Future): Integrate real CRM/MDM and product systems as publishers
 7. **Consumer Integration** (Future): Connect Insurance, Parks & Resorts digital channels
 
 ---

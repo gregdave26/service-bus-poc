@@ -25,7 +25,7 @@ public sealed class PublishEventHandlerTests
             LastName = "Lovelace",
             Phone = "+1 555 0100",
             Email = "ada@example.com",
-            RacId = "RAC-1",
+            MembershipNumber = "RAC-1",
             HasInsurance = true,
             HasParksResorts = true,
             HasCarwashProduct = false
@@ -44,7 +44,7 @@ public sealed class PublishEventHandlerTests
         Assert.True(envelope.Data.Attributes!.HasInsurance);
         Assert.True(envelope.Data.Attributes.HasParksResorts);
         Assert.False(envelope.Data.Attributes.HasCarwashProduct);
-        Assert.Equal("RAC-1", envelope.Data.Attributes.RacId);
+        Assert.Equal("RAC-1", envelope.Data.MembershipNumber);
         sender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), CancellationToken.None), Times.Once);
     }
 

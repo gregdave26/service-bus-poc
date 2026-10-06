@@ -6,7 +6,7 @@ namespace ServiceBusPoc.Carwash.Api.Contracts;
 public class VerifyMemberResponse
 {
     /// <summary>
-    /// Indicates whether the RAC ID is a valid member with carwash product.
+    /// Indicates whether the membership number is valid.
     /// </summary>
     public bool ValidMember { get; set; }
 }

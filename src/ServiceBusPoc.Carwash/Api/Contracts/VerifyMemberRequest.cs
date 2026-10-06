@@ -6,8 +6,8 @@ namespace ServiceBusPoc.Carwash.Api.Contracts;
 public class VerifyMemberRequest
 {
     /// <summary>
-    /// RAC member ID to verify against carwash product records.
+    /// Membership number to verify against the membership source.
     /// Must not be empty.
     /// </summary>
-    public string RacId { get; set; } = string.Empty;
+    public string MembershipNumber { get; set; } = string.Empty;
 }

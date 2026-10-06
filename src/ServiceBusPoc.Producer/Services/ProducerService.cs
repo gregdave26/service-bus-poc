@@ -54,6 +54,7 @@ public sealed class ProducerService(
                 LastName = _settings.LastName,
                 Email = _settings.Email,
                 Phone = _settings.Phone,
+                MembershipNumber = _settings.MembershipNumber,
                 Attributes = new ContactAttributes
                 {
                     HasInsurance = _settings.HasInsurance,

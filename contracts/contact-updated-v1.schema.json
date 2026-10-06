@@ -28,6 +28,12 @@
       "type": "string",
       "description": "Contact's phone number (optional)"
     },
+    "membershipNumber": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Membership identifier used to correlate the contact with the membership system (optional)"
+    },
     "attributes": {
       "$ref": "attributes.schema.json",
       "description": "Contact capability and product flags"
@@ -38,5 +44,22 @@
     "contactId",
     "firstName",
     "lastName"
-  ]
+  ],
+  "if": {
+    "properties": {
+      "attributes": {
+        "properties": {
+          "hasCarwashProduct": { "const": true }
+        },
+        "required": ["hasCarwashProduct"]
+      }
+    },
+    "required": ["attributes"]
+  },
+  "then": {
+    "required": ["membershipNumber"],
+    "properties": {
+      "membershipNumber": { "pattern": "\\S" }
+    }
+  }
 }

@@ -37,6 +37,11 @@ public sealed class ProducerSettings
     public string? Phone { get; set; }
 
     /// <summary>
+    /// Gets or sets the optional membership number, required for Carwash product contacts.
+    /// </summary>
+    public string? MembershipNumber { get; set; }
+
+    /// <summary>
     /// Gets or sets the originating system.
     /// </summary>
     [Required]

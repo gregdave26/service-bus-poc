@@ -61,13 +61,13 @@ catch {
     Write-Info "Service status unknown (no health endpoint)"
 }
 
-# Test 1: Valid member (RAC ID starting with VALID)
+# Test 1: Valid member (membership number starting with VALID)
 Write-Host ""
 Write-Test "Test 1: Valid Member Lookup"
-Write-Info "Testing RAC ID starting with 'VALID' (should return ValidMember=true)"
+Write-Info "Testing membership number starting with 'VALID' (should return ValidMember=true)"
 
 $payload1 = @{
-    RacId = "VALID-12345678"
+    membershipNumber = "VALID-12345678"
 } | ConvertTo-Json
 
 try {
@@ -92,13 +92,13 @@ catch {
     Write-Error-Msg "Test failed: $_"
 }
 
-# Test 2: Invalid member (RAC ID not starting with VALID)
+# Test 2: Invalid member (membership number not starting with VALID)
 Write-Host ""
 Write-Test "Test 2: Invalid Member Lookup"
-Write-Info "Testing RAC ID not starting with 'VALID' (should return ValidMember=false)"
+Write-Info "Testing membership number not starting with 'VALID' (should return ValidMember=false)"
 
 $payload2 = @{
-    RacId = "INVALID-87654321"
+    membershipNumber = "INVALID-87654321"
 } | ConvertTo-Json
 
 try {
@@ -123,13 +123,13 @@ catch {
     Write-Error-Msg "Test failed: $_"
 }
 
-# Test 3: Empty RacId (should return 400)
+# Test 3: Empty membership number (should return 400)
 Write-Host ""
-Write-Test "Test 3: Empty RacId Validation"
-Write-Info "Testing empty RacId (should return 400 Bad Request)"
+Write-Test "Test 3: Empty membership number Validation"
+Write-Info "Testing empty membership number (should return 400 Bad Request)"
 
 $payload3 = @{
-    RacId = ""
+    membershipNumber = ""
 } | ConvertTo-Json
 
 try {
@@ -146,7 +146,7 @@ try {
 catch [System.Net.Http.HttpRequestException] {
     $statusCode = $_.Exception.Response.StatusCode
     if ($statusCode -eq 400) {
-        Write-Success "Empty RacId correctly rejected with 400"
+        Write-Success "Empty membership number correctly rejected with 400"
         try {
             $errorContent = $_.Exception.Response.Content.ReadAsStringAsync().Result
             Write-Info "Error Response: $(($errorContent | ConvertFrom-Json) | ConvertTo-Json)"
@@ -162,16 +162,16 @@ catch {
     # Try to extract status from response
     $statusCode = [int]($_.Exception.Response.StatusCode)
     if ($statusCode -eq 400) {
-        Write-Success "Empty RacId correctly rejected with 400"
+        Write-Success "Empty membership number correctly rejected with 400"
     } else {
         Write-Error-Msg "Test failed: $_"
     }
 }
 
-# Test 4: Missing RacId (should return 400)
+# Test 4: Missing membership number (should return 400)
 Write-Host ""
-Write-Test "Test 4: Missing RacId Field"
-Write-Info "Testing missing RacId field (should return 400 Bad Request)"
+Write-Test "Test 4: Missing membership number Field"
+Write-Info "Testing missing membership number field (should return 400 Bad Request)"
 
 $payload4 = @{} | ConvertTo-Json
 
@@ -189,7 +189,7 @@ try {
 catch [System.Net.Http.HttpRequestException] {
     $statusCode = $_.Exception.Response.StatusCode
     if ($statusCode -eq 400) {
-        Write-Success "Missing RacId correctly rejected with 400"
+        Write-Success "Missing membership number correctly rejected with 400"
     } else {
         Write-Error-Msg "Unexpected status code: $statusCode"
     }
@@ -197,7 +197,7 @@ catch [System.Net.Http.HttpRequestException] {
 catch {
     $statusCode = [int]($_.Exception.Response.StatusCode)
     if ($statusCode -eq 400) {
-        Write-Success "Missing RacId correctly rejected with 400"
+        Write-Success "Missing membership number correctly rejected with 400"
     } else {
         Write-Error-Msg "Test failed: $_"
     }

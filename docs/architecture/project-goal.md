@@ -77,6 +77,7 @@ The central routing point for all contact-related events in the enterprise.
       "lastName": "Doe",
       "email": "jane.doe@example.com",
       "phone": "+1-555-0123",
+      "membershipNumber": "VALID-123456",
       "attributes": {
         "hasInsurance": true,
         "hasParksResorts": false,
@@ -88,7 +89,7 @@ The central routing point for all contact-related events in the enterprise.
 ```
 
 **Required Fields:** contactId, firstName, lastName  
-**Optional Fields:** email, phone, attributes
+**Optional Fields:** email, phone, membershipNumber, attributes
 
 ### ProductHoldingChange (v1)
 
@@ -141,7 +142,7 @@ The central routing point for all contact-related events in the enterprise.
 ### Carwash Verification API
 - **Endpoint:** `POST /carwash/v1/verify`
 - **Caller:** Pulse or mock Pulse
-- **Action:** Validates the supplied RAC member ID using the documented mock rule. It does not consume Service Bus messages or call Pulse.
+- **Action:** Validates the supplied membership number through the configured membership verifier. The MVP verifier is a deterministic mock; it does not consume Service Bus messages or call Pulse.
 
 ### Verifier
 - **Role:** Scenario validation

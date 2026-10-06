@@ -47,6 +47,10 @@
     # Start without opening browser
     .\scripts\run-dashboard.ps1 -NoBrowser $true
 
+.EXAMPLE
+    # If another POC instance is running, choose whether to stop it or use another port
+    .\scripts\run-dashboard.ps1 -DashboardPort 5100
+
 .NOTES
     Author: Service Bus POC Team
     Requires: PowerShell 7+, .NET 10 SDK, Node.js 20+, Docker Desktop
@@ -65,6 +69,164 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$srcPath = Join-Path $projectRoot 'src'
+$infraPath = Join-Path $projectRoot 'infra'
+$uiPath = Join-Path $projectRoot 'ui'
+$logsPath = Join-Path $projectRoot 'logs'
+
+function Get-RunningDashboardInstances {
+    $processes = @(Get-CimInstance Win32_Process)
+    $matchingProcesses = @(
+        foreach ($process in $processes) {
+            $commandLine = [string]$process.CommandLine
+            if ([int]$process.ProcessId -ne $PID -and
+                $commandLine -match '(?i)service-bus-poc.*(run-dashboard\.ps1|ui[\\/]+server\.js|ServiceBusPoc\.(Dashboard|Producer|DigitalChannels|Insurance|ParksResorts|Carwash|Verifier))') {
+                [PSCustomObject]@{
+                    Id = [int]$process.ProcessId
+                    ParentId = [int]$process.ParentProcessId
+                    Name = [string]$process.Name
+                    CommandLine = $commandLine.Trim()
+                }
+            }
+        }
+    )
+
+    $processById = @{}
+    foreach ($process in $processes) {
+        $processById[[int]$process.ProcessId] = $process
+    }
+
+    $targetIds = [System.Collections.Generic.HashSet[int]]::new()
+    foreach ($process in $matchingProcesses) {
+        $null = $targetIds.Add($process.Id)
+    }
+
+    $changed = $true
+    while ($changed) {
+        $changed = $false
+        foreach ($process in $processes) {
+            $processId = [int]$process.ProcessId
+            if ($targetIds.Contains([int]$process.ParentProcessId) -and $targetIds.Add($processId)) {
+                $changed = $true
+            }
+        }
+    }
+
+    @(
+        foreach ($processId in $targetIds) {
+            if ($processById.ContainsKey($processId)) {
+                $process = $processById[$processId]
+                [PSCustomObject]@{
+                    Id = $processId
+                    ParentId = [int]$process.ParentProcessId
+                    Name = [string]$process.Name
+                    CommandLine = ([string]$process.CommandLine).Trim()
+                }
+            }
+        }
+    ) | Sort-Object Id -Unique
+}
+
+function Test-DashboardPortAvailable {
+    param([int]$Port)
+
+    if ($Port -lt 1 -or $Port -gt 65535) {
+        return $false
+    }
+
+    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    return $listeners.Count -eq 0
+}
+
+function Read-AvailableDashboardPort {
+    param([int]$SuggestedPort)
+
+    while ($true) {
+        $portText = Read-Host "Enter an available dashboard port (suggested $SuggestedPort)"
+        $selectedPort = 0
+        if (-not [int]::TryParse($portText, [ref]$selectedPort) -or
+            -not (Test-DashboardPortAvailable -Port $selectedPort)) {
+            Write-Host "  Port must be an unused number between 1 and 65535." -ForegroundColor Yellow
+            continue
+        }
+
+        return $selectedPort
+    }
+}
+
+function Stop-RunningDashboardInstances {
+    param([object[]]$Instances)
+
+    $processIds = @($Instances | Select-Object -ExpandProperty Id -Unique | Sort-Object -Descending)
+    foreach ($processId in $processIds) {
+        try {
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+            Write-Host "  Stopped PID $processId" -ForegroundColor Green
+        }
+        catch [System.ArgumentException] {
+            Write-Host "  PID $processId already stopped" -ForegroundColor DarkGray
+        }
+    }
+}
+
+function Resolve-DashboardInstanceConflict {
+    param([int]$RequestedPort)
+
+    $instances = @(Get-RunningDashboardInstances)
+    $portInUse = -not (Test-DashboardPortAvailable -Port $RequestedPort)
+    if ($instances.Count -eq 0 -and -not $portInUse) {
+        return $RequestedPort
+    }
+
+    if ($instances.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Existing Service Bus POC instance(s) detected:" -ForegroundColor Yellow
+        foreach ($instance in $instances) {
+            Write-Host "  PID $($instance.Id) [$($instance.Name)] $($instance.CommandLine)" -ForegroundColor Gray
+        }
+        Write-Host ""
+        Write-Host "1. Stop the existing instance(s) and continue on port $RequestedPort" -ForegroundColor Cyan
+        Write-Host "2. Keep them running and start this instance on another port" -ForegroundColor Cyan
+        Write-Host "3. Cancel startup" -ForegroundColor Cyan
+
+        while ($true) {
+            $choice = (Read-Host "Choose 1, 2, or 3").Trim()
+            switch ($choice) {
+                '1' {
+                    Stop-RunningDashboardInstances -Instances $instances
+                    Start-Sleep -Milliseconds 500
+                    if (Test-DashboardPortAvailable -Port $RequestedPort) {
+                        return $RequestedPort
+                    }
+
+                    Write-Host "Port $RequestedPort is still in use by another process." -ForegroundColor Yellow
+                    return (Read-AvailableDashboardPort -SuggestedPort ($RequestedPort + 1))
+                }
+                '2' {
+                    return (Read-AvailableDashboardPort -SuggestedPort ($RequestedPort + 1))
+                }
+                '3' {
+                    return $null
+                }
+                default {
+                    Write-Host "Please choose 1, 2, or 3." -ForegroundColor Yellow
+                }
+            }
+        }
+    }
+
+    Write-Host "Dashboard port $RequestedPort is already in use by another process." -ForegroundColor Yellow
+    return (Read-AvailableDashboardPort -SuggestedPort ($RequestedPort + 1))
+}
+
+$resolvedDashboardPort = Resolve-DashboardInstanceConflict -RequestedPort $DashboardPort
+if ($null -eq $resolvedDashboardPort) {
+    Write-Host "Startup cancelled." -ForegroundColor Yellow
+    exit 0
+}
+$DashboardPort = [int]$resolvedDashboardPort
 
 # Store all processes for cleanup on exit
 $script:allProcesses = @()
@@ -190,11 +352,6 @@ function Invoke-Cleanup {
     Stop-OrchestrationTranscript
 }
 
-$projectRoot = Split-Path -Parent $PSScriptRoot
-$srcPath = Join-Path $projectRoot 'src'
-$infraPath = Join-Path $projectRoot 'infra'
-$uiPath = Join-Path $projectRoot 'ui'
-$logsPath = Join-Path $projectRoot 'logs'
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Ensure logs directory exists

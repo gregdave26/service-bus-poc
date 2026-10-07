@@ -39,7 +39,7 @@ public class CarwashApiServer
             _httpListener.Start();
             _logger.LogInformation("Carwash API server started on http://localhost:5000");
             
-            while (!cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested && _httpListener.IsListening)
             {
                 HttpListenerContext? context = null;
                 try
@@ -50,13 +50,14 @@ public class CarwashApiServer
                     
                     await HandleRequestAsync(context);
                 }
-                catch (HttpListenerException ex) when (ex.ErrorCode == 995)
-                {
-                    // Server was stopped
-                    break;
-                }
                 catch (Exception ex)
                 {
+                    if (!_httpListener.IsListening)
+                    {
+                        // Stopped while waiting for a request; the exception type differs between platforms
+                        break;
+                    }
+
                     _logger.LogError(ex, "Error processing request");
                     context?.Response.Close();
                 }
@@ -112,7 +113,7 @@ public class CarwashApiServer
 
             if (string.IsNullOrWhiteSpace(body))
             {
-                RespondWithBadRequest(response, "'Membership number' must not be empty.");
+                await RespondWithBadRequestAsync(response, "'Membership number' must not be empty.");
                 return;
             }
 
@@ -125,13 +126,13 @@ public class CarwashApiServer
             catch (JsonException ex)
             {
                 _logger.LogWarning(ex, "Failed to parse request body");
-                RespondWithBadRequest(response, "Invalid JSON format");
+                await RespondWithBadRequestAsync(response, "Invalid JSON format");
                 return;
             }
 
             if (verifyRequest is null || string.IsNullOrWhiteSpace(verifyRequest.MembershipNumber))
             {
-                RespondWithBadRequest(response, "'Membership number' must not be empty.");
+                await RespondWithBadRequestAsync(response, "'Membership number' must not be empty.");
                 return;
             }
 
@@ -170,7 +171,7 @@ public class CarwashApiServer
     /// <summary>
     /// Sends a 400 Bad Request response with error message.
     /// </summary>
-    private static void RespondWithBadRequest(HttpListenerResponse response, string errorMessage)
+    private static async Task RespondWithBadRequestAsync(HttpListenerResponse response, string errorMessage)
     {
         response.StatusCode = (int)HttpStatusCode.BadRequest;
         response.ContentType = "application/json";
@@ -181,7 +182,7 @@ public class CarwashApiServer
         };
 
         var json = JsonSerializer.Serialize(errorResponse);
-        _ = WriteResponseAsync(response, json).ConfigureAwait(false);
+        await WriteResponseAsync(response, json);
     }
 
     /// <summary>

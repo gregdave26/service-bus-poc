@@ -1,6 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { contactEventsClientConfig, contactEventsRouter, logContact } from "./contactEvents/index.js";
+import { digitalSiteRouter, logDigitalSite } from "./digitalSite/index.js";
 import { logPos, posRouter } from "./pos/index.js";
 import { logRostering, rosteringClientConfig, rosteringRouter } from "./rostering/index.js";
 import { uiRoot } from "./shared/paths.js";
@@ -22,6 +23,7 @@ export function createApp() {
   app.use(contactEventsRouter);
   app.use(posRouter);
   app.use(rosteringRouter);
+  app.use(digitalSiteRouter);
   return app;
 }
 
@@ -31,4 +33,5 @@ export function logServerInitialized(port) {
   logRostering("server.initialized", { port, logPath: logRostering.logPath });
   logPos("server.initialized", { port, logPath: logPos.logPath });
   logContact("server.initialized", { port, logPath: logContact.logPath });
+  logDigitalSite("server.initialized", { port, logPath: logDigitalSite.logPath });
 }

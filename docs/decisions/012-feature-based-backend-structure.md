@@ -4,7 +4,7 @@
 
 ## Context
 
-The UI has three tabs: Contact Events, Local (POS) Processing and Rostering. The backend was organised by technical role: four consumer projects sat beside Core and Producer in `src/`, and `ui/server.js` (~850 lines) mixed dashboard, contact-event, POS and rostering code. A legacy C# `ServiceBusPoc.Dashboard` duplicated the Node.js dashboard (see `DASHBOARD_NODEJS_MIGRATION.md`).
+The UI has three tabs: Contact Events, Local (POS) Processing and Rostering (a fourth, Digital Site, was added later — see ADR-013). The backend was organised by technical role: four consumer projects sat beside Core and Producer in `src/`, and `ui/server.js` (~850 lines) mixed dashboard, contact-event, POS and rostering code. A legacy C# `ServiceBusPoc.Dashboard` duplicated the Node.js dashboard (see `DASHBOARD_NODEJS_MIGRATION.md`).
 
 ## Problem Statement
 
@@ -38,6 +38,7 @@ ui/server/
   contactEvents/      router.js, publisher.js, messageStore.js, messageTypes.js, log.js, index.js
   pos/                router.js, database.js, receipt*.js, catalog.js, log.js, index.js
   rostering/          router.js, batchProcessor.js, inputDefinitions.js, lineup.js, log.js, index.js
+  digitalSite/        router.js, orderService.js, orderRepository.js, database.js, catalog.js, vehicleLookup.js, log.js, index.js
 ```
 
 ### Adding a new tab

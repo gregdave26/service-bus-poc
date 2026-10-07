@@ -1,12 +1,12 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using ServiceBusPoc.Carwash.Services;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Services;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Dashboard;
 using ServiceBusPoc.Core.Messaging;
-using ServiceBusPoc.DigitalChannels.Services;
-using ServiceBusPoc.Insurance.Services;
-using ServiceBusPoc.ParksResorts.Services;
+using ServiceBusPoc.ContactEvents.Consumers.DigitalChannels.Services;
+using ServiceBusPoc.ContactEvents.Consumers.Insurance.Services;
+using ServiceBusPoc.ContactEvents.Consumers.ParksResorts.Services;
 
 namespace ServiceBusPoc.Tests;
 

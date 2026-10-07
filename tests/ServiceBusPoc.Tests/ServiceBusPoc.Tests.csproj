@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -17,13 +17,12 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/ServiceBusPoc.Core/ServiceBusPoc.Core.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.Carwash/ServiceBusPoc.Carwash.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.Dashboard/ServiceBusPoc.Dashboard.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.DigitalChannels/ServiceBusPoc.DigitalChannels.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.Insurance/ServiceBusPoc.Insurance.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.ParksResorts/ServiceBusPoc.ParksResorts.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.Producer/ServiceBusPoc.Producer.csproj" />
-    <ProjectReference Include="../../src/ServiceBusPoc.Verifier/ServiceBusPoc.Verifier.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Consumers/Carwash/ServiceBusPoc.ContactEvents.Consumers.Carwash.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Consumers/DigitalChannels/ServiceBusPoc.ContactEvents.Consumers.DigitalChannels.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Consumers/Insurance/ServiceBusPoc.ContactEvents.Consumers.Insurance.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Consumers/ParksResorts/ServiceBusPoc.ContactEvents.Consumers.ParksResorts.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Producer/ServiceBusPoc.ContactEvents.Producer.csproj" />
+    <ProjectReference Include="../../src/ContactEvents/Verifier/ServiceBusPoc.ContactEvents.Verifier.csproj" />
   </ItemGroup>
 
   <ItemGroup>

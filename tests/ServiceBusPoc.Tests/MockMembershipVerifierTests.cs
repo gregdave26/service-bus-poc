@@ -1,4 +1,4 @@
-using ServiceBusPoc.Carwash.Services;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 

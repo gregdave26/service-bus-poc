@@ -66,6 +66,11 @@ $VerbosePreference = 'Continue'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
+function Get-ProjectDirectory {
+    param([string]$ProjectName)
+    $projectFile = Get-ChildItem -Path $srcPath -Recurse -Filter "$ProjectName.csproj" | Select-Object -First 1
+    if ($projectFile) { $projectFile.DirectoryName } else { Join-Path $srcPath $ProjectName }
+}
 $logsPath = Join-Path $projectRoot 'logs'
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
@@ -206,7 +211,7 @@ function Start-App {
     
     Write-Host "  ➜ $AppName" -ForegroundColor Cyan
 
-    $projectPath = Join-Path $srcPath $ProjectName
+    $projectPath = Get-ProjectDirectory $ProjectName
     $projectFile = Join-Path $projectPath "$ProjectName.csproj"
     $appNameLower = $AppName.ToLower()
     
@@ -285,12 +290,12 @@ Write-Host ""
 
 $processes = @()
 $appProjects = @{
-    'DigitalChannels'  = 'ServiceBusPoc.DigitalChannels'
-    'Insurance'        = 'ServiceBusPoc.Insurance'
-    'ParksResorts'     = 'ServiceBusPoc.ParksResorts'
-    'Carwash'          = 'ServiceBusPoc.Carwash'
-    'Producer'         = 'ServiceBusPoc.Producer'
-    'Verifier'         = 'ServiceBusPoc.Verifier'
+    'DigitalChannels'  = 'ServiceBusPoc.ContactEvents.Consumers.DigitalChannels'
+    'Insurance'        = 'ServiceBusPoc.ContactEvents.Consumers.Insurance'
+    'ParksResorts'     = 'ServiceBusPoc.ContactEvents.Consumers.ParksResorts'
+    'Carwash'          = 'ServiceBusPoc.ContactEvents.Consumers.Carwash'
+    'Producer'         = 'ServiceBusPoc.ContactEvents.Producer'
+    'Verifier'         = 'ServiceBusPoc.ContactEvents.Verifier'
 }
 $appSubscriptions = @{
     'DigitalChannels' = 'digital-channels'
@@ -306,7 +311,7 @@ foreach ($appName in $Role) {
         continue
     }
     
-    $projectPath = Join-Path $srcPath $projectName
+    $projectPath = Get-ProjectDirectory $ProjectName
     if (-not (Test-Path $projectPath)) {
         Write-Warning "  ⚠ Project not found: $projectPath"
         continue

@@ -1,3 +1,5 @@
+> **Superseded (ADR-012):** the dashboard now runs on Node.js and the C# implementation has been deleted.
+
 # Dashboard: C# to Node.js Migration (Future Consideration)
 
 **Status:** Deferred (2026-09-17)  

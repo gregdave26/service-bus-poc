@@ -72,6 +72,11 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
+function Get-ProjectDirectory {
+    param([string]$ProjectName)
+    $projectFile = Get-ChildItem -Path $srcPath -Recurse -Filter "$ProjectName.csproj" | Select-Object -First 1
+    if ($projectFile) { $projectFile.DirectoryName } else { Join-Path $srcPath $ProjectName }
+}
 $infraPath = Join-Path $projectRoot 'infra'
 $uiPath = Join-Path $projectRoot 'ui'
 $logsPath = Join-Path $projectRoot 'logs'
@@ -574,11 +579,11 @@ Write-Host ""
 
 # Define the applications to start in order
 $apps = @(
-    @{ Name = 'Producer'; Project = 'ServiceBusPoc.Producer'; Description = 'Event Publisher'; SubscriptionName = '' }
-    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.DigitalChannels'; Description = 'Receives all events'; SubscriptionName = 'digital-channels' }
-    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.Insurance'; Description = 'Receives hasInsurance=true'; SubscriptionName = 'insurance' }
-    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ParksResorts'; Description = 'Receives hasParksResorts=true'; SubscriptionName = 'parks-resorts' }
-    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.Carwash'; Description = 'Receives hasCarwashProduct=true'; SubscriptionName = 'carwash' }
+    @{ Name = 'Producer'; Project = 'ServiceBusPoc.ContactEvents.Producer'; Description = 'Event Publisher'; SubscriptionName = '' }
+    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.ContactEvents.Consumers.DigitalChannels'; Description = 'Receives all events'; SubscriptionName = 'digital-channels' }
+    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Insurance'; Description = 'Receives hasInsurance=true'; SubscriptionName = 'insurance' }
+    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ContactEvents.Consumers.ParksResorts'; Description = 'Receives hasParksResorts=true'; SubscriptionName = 'parks-resorts' }
+    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Carwash'; Description = 'Receives hasCarwashProduct=true'; SubscriptionName = 'carwash' }
 )
 
 function Start-NodeDashboardWithLogging {
@@ -710,7 +715,7 @@ Start-Sleep -Seconds 2
 
 # Start each application
 foreach ($app in $apps) {
-    $projectPath = Join-Path $srcPath $app.Project
+    $projectPath = Get-ProjectDirectory $app.Project
     if (Test-Path $projectPath) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
         $process = Start-AppWithLogging -Name $app.Name -ProjectPath $projectPath -ProjectFile $projectFile -Description $app.Description -SubscriptionName $app.SubscriptionName

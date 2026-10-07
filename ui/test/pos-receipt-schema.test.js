@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateReceipt } from "../pos/receiptGenerator.js";
+import { generateReceipt } from "../server/pos/receiptGenerator.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const schemaPath = path.resolve(__dirname, "..", "..", "contracts", "pos-receipt-v1.schema.json");

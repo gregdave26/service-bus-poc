@@ -51,7 +51,7 @@ $env:ServiceBus__Namespace = $env:ServiceBus__Namespace ?? 'sbemulatorns'
 $env:ServiceBus__TopicName = $env:ServiceBus__TopicName ?? 'contact.events'
 
 Write-Host "Running the Service Bus SDK connectivity probe..." -ForegroundColor Yellow
-& dotnet run --project "$projectRoot/src/ServiceBusPoc.Verifier/ServiceBusPoc.Verifier.csproj" `
+& dotnet run --project "$projectRoot/src/ContactEvents/Verifier/ServiceBusPoc.ContactEvents.Verifier.csproj" `
     --configuration Debug --no-restore -- --connectivity-probe
 if ($LASTEXITCODE -ne 0) {
     throw "SDK connectivity probe failed with exit code $LASTEXITCODE."

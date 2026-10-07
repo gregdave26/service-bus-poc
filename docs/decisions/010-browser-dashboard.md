@@ -1,3 +1,5 @@
+> **Update (ADR-012):** the C# `ServiceBusPoc.Dashboard` project described below was removed. The dashboard is the Node.js app in `ui/`.
+
 # ADR-010: Browser-Based Live Dashboard for Service Status and Event Publishing
 
 ## Status

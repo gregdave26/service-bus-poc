@@ -1,7 +1,7 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
-using ServiceBusPoc.Producer.Services;
+using ServiceBusPoc.ContactEvents.Producer.Services;
 
 namespace ServiceBusPoc.Tests;
 

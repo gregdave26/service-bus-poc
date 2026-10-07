@@ -55,6 +55,11 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
+function Get-ProjectDirectory {
+    param([string]$ProjectName)
+    $projectFile = Get-ChildItem -Path $srcPath -Recurse -Filter "$ProjectName.csproj" | Select-Object -First 1
+    if ($projectFile) { $projectFile.DirectoryName } else { Join-Path $srcPath $ProjectName }
+}
 $infraPath = Join-Path $projectRoot 'infra'
 $logsPath = Join-Path $projectRoot 'logs'
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
@@ -178,14 +183,14 @@ Write-Host "STEP 4: Starting consumer applications..." -ForegroundColor Yellow
 
 $processes = @()
 $apps = @(
-    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.DigitalChannels'; Subscription = 'digital-channels' }
-    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.Insurance'; Subscription = 'insurance' }
-    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ParksResorts'; Subscription = 'parks-resorts' }
-    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.Carwash'; Subscription = 'carwash' }
+    @{ Name = 'DigitalChannels'; Project = 'ServiceBusPoc.ContactEvents.Consumers.DigitalChannels'; Subscription = 'digital-channels' }
+    @{ Name = 'Insurance'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Insurance'; Subscription = 'insurance' }
+    @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ContactEvents.Consumers.ParksResorts'; Subscription = 'parks-resorts' }
+    @{ Name = 'Carwash'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Carwash'; Subscription = 'carwash' }
 )
 
 foreach ($app in $apps) {
-    $projectPath = Join-Path $srcPath $app.Project
+    $projectPath = Get-ProjectDirectory $app.Project
     if (Test-Path $projectPath) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
         $appNameLower = $app.Name.ToLower()
@@ -226,7 +231,7 @@ Write-Host "STEP 5: Running verification scenarios..." -ForegroundColor Yellow
 Write-Host "  Waiting $RunTime seconds for setup..."
 Start-Sleep -Seconds $RunTime
 
-$verifierPath = Join-Path $srcPath 'ServiceBusPoc.Verifier'
+$verifierPath = Get-ProjectDirectory 'ServiceBusPoc.ContactEvents.Verifier'
 if (Test-Path $verifierPath) {
     Write-Host "  Starting Verifier..."
     Push-Location $verifierPath

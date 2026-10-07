@@ -20,6 +20,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [009](009-carwash-integration-boundary.md) | Carwash Integration Boundary | Refined by ADR-011 | Historical API boundary and dependency direction |
 | [010](010-browser-dashboard.md) | Browser-Based Live Dashboard | ✅ Approved | Real-time service status and event publishing UI |
 | [011](011-carwash-membercentral-and-events.md) | Carwash MemberCentral and Events | ✅ Approved | MemberCentral verification and Carwash-owned event publishing |
+| [012](012-feature-based-backend-structure.md) | Feature-Based Backend Structure | ✅ Approved | One namespace/folder per feature tab; C# dashboard removed |
 
 ---
 

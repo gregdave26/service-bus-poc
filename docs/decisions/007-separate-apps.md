@@ -29,12 +29,12 @@ How should these roles be packaged and deployed?
 ## Options Considered
 
 ### A. Separate Console App per Role (Selected)
-- `ServiceBusPoc.Producer` — Produces events
-- `ServiceBusPoc.DigitalChannels` — Consumer
-- `ServiceBusPoc.Insurance` — Consumer
-- `ServiceBusPoc.ParksResorts` — Consumer
-- `ServiceBusPoc.Carwash` — Consumer + HTTP API
-- `ServiceBusPoc.Verifier` — Scenario tester
+- `ServiceBusPoc.ContactEvents.Producer` — Produces events
+- `ServiceBusPoc.ContactEvents.Consumers.DigitalChannels` — Consumer
+- `ServiceBusPoc.ContactEvents.Consumers.Insurance` — Consumer
+- `ServiceBusPoc.ContactEvents.Consumers.ParksResorts` — Consumer
+- `ServiceBusPoc.ContactEvents.Consumers.Carwash` — Consumer + HTTP API
+- `ServiceBusPoc.ContactEvents.Verifier` — Scenario tester
 - Each app has own `Program.cs`, configuration, dependencies
 - **Pros:** Clear separation of concerns; independent scaling; testable in isolation; easy to understand
 - **Cons:** More projects to manage; more executables; deployment complexity
@@ -113,40 +113,40 @@ src/
 │   │   ├── ContactUpdatedEvent.cs
 │   │   ├── ProductHoldingChangeEvent.cs
 │   └── ServiceBusSettings.cs
-├── ServiceBusPoc.Producer/                 # Producer app
+├── ServiceBusPoc.ContactEvents.Producer/                 # Producer app
 │   ├── Program.cs
 │   ├── ProducerService.cs
-│   └── ServiceBusPoc.Producer.csproj
-├── ServiceBusPoc.DigitalChannels/          # DigitalChannels consumer
+│   └── ServiceBusPoc.ContactEvents.Producer.csproj
+├── ServiceBusPoc.ContactEvents.Consumers.DigitalChannels/          # DigitalChannels consumer
 │   ├── Program.cs
 │   ├── DigitalChannelsConsumer.cs
-│   └── ServiceBusPoc.DigitalChannels.csproj
-├── ServiceBusPoc.Insurance/                # Insurance consumer
+│   └── ServiceBusPoc.ContactEvents.Consumers.DigitalChannels.csproj
+├── ServiceBusPoc.ContactEvents.Consumers.Insurance/                # Insurance consumer
 │   ├── Program.cs
 │   ├── InsuranceConsumer.cs
-│   └── ServiceBusPoc.Insurance.csproj
-├── ServiceBusPoc.ParksResorts/             # Parks & Resorts consumer
+│   └── ServiceBusPoc.ContactEvents.Consumers.Insurance.csproj
+├── ServiceBusPoc.ContactEvents.Consumers.ParksResorts/             # Parks & Resorts consumer
 │   ├── Program.cs
 │   ├── ParksResortsConsumer.cs
-│   └── ServiceBusPoc.ParksResorts.csproj
-├── ServiceBusPoc.Carwash/                  # Carwash consumer + API
+│   └── ServiceBusPoc.ContactEvents.Consumers.ParksResorts.csproj
+├── ServiceBusPoc.ContactEvents.Consumers.Carwash/                  # Carwash consumer + API
 │   ├── Program.cs
 │   ├── CarwashConsumer.cs
 │   ├── CarwashApi.cs
 │   ├── CarwashContactRepository.cs
-│   └── ServiceBusPoc.Carwash.csproj
-└── ServiceBusPoc.Verifier/                 # Scenario verifier
+│   └── ServiceBusPoc.ContactEvents.Consumers.Carwash.csproj
+└── ServiceBusPoc.ContactEvents.Verifier/                 # Scenario verifier
     ├── Program.cs
     ├── ScenarioRunner.cs
     ├── MockPulseClient.cs
-    └── ServiceBusPoc.Verifier.csproj
+    └── ServiceBusPoc.ContactEvents.Verifier.csproj
 
 tests/
 ├── ServiceBusPoc.Core.Tests/
-├── ServiceBusPoc.Producer.Tests/
-├── ServiceBusPoc.Insurance.Tests/
-├── ServiceBusPoc.Carwash.Tests/
-└── ServiceBusPoc.Verifier.Tests/
+├── ServiceBusPoc.ContactEvents.Producer.Tests/
+├── ServiceBusPoc.ContactEvents.Consumers.Insurance.Tests/
+├── ServiceBusPoc.ContactEvents.Consumers.Carwash.Tests/
+└── ServiceBusPoc.ContactEvents.Verifier.Tests/
 ```
 
 **Shared Core project (.csproj):**
@@ -170,7 +170,7 @@ tests/
 ```csharp
 using Microsoft.Extensions.Hosting;
 using ServiceBusPoc.Core;
-using ServiceBusPoc.Insurance;
+using ServiceBusPoc.ContactEvents.Consumers.Insurance;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
@@ -204,10 +204,10 @@ await host.RunAsync();
 ```powershell
 # run-local-poc.ps1
 $apps = @(
-    "ServiceBusPoc.DigitalChannels",
-    "ServiceBusPoc.Insurance",
-    "ServiceBusPoc.ParksResorts",
-    "ServiceBusPoc.Carwash"
+    "ServiceBusPoc.ContactEvents.Consumers.DigitalChannels",
+    "ServiceBusPoc.ContactEvents.Consumers.Insurance",
+    "ServiceBusPoc.ContactEvents.Consumers.ParksResorts",
+    "ServiceBusPoc.ContactEvents.Consumers.Carwash"
 )
 
 # Start all consumers in background
@@ -220,7 +220,7 @@ foreach ($app in $apps) {
 
 # Run producer and verifier
 Write-Host "Running scenarios..."
-dotnet run --project src/ServiceBusPoc.Verifier
+dotnet run --project src/ServiceBusPoc.ContactEvents.Verifier
 
 # Cleanup
 Get-Job | Stop-Job

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
-using ServiceBusPoc.Carwash.Api;
-using ServiceBusPoc.Carwash.Services;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Api;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 

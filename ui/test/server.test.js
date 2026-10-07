@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import test from "node:test";
 import path from "node:path";
+import { app } from "../server/app.js";
 import {
-  app,
   getEmulatorStatus,
   getMessages,
   getServiceStatuses,
@@ -12,6 +12,8 @@ import {
   createPublishMessage,
   validateDashboardMessage,
   validatePublishRequest,
+} from "../server/contactEvents/index.js";
+import {
   processRosteringBatch,
   parseDelimited,
   createLineupXml,
@@ -19,8 +21,7 @@ import {
   rosteringInputs,
   rosteringInputDefinitions,
   mapOdsRow,
-} from "../server.js";
-import { generateAccLineup, buildFilename } from "../rosteringLineup.js";
+} from "../server/rostering/index.js";import { generateAccLineup, buildFilename } from "../server/rostering/lineup.js";
 import { generateRosterFile, rosterFilename } from "../src/rosteringGenerator.js";
 
 test("generates typed pipe-delimited roster files using the documented primary filename", () => {

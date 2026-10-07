@@ -320,10 +320,11 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   }
   const stages = [
     { label: "Create input files", detail: files.every(Boolean) ? "Complete — 4 TXT files ready" : files.some(Boolean) ? `${files.filter(Boolean).length} of 4 TXT files ready` : "Select or generate 4 TXT files", active: files.some(Boolean), completed: files.every(Boolean) },
-    { label: "Insert into ODS", detail: result?.valid ? `Complete — ${result.rowCount} rows loaded` : "Validate and load batch", active: Boolean(result?.valid), completed: Boolean(result?.valid) },
-    { label: "Convert to lineup XML", detail: xml ? "Complete — ready for download" : "Manual extraction", active: Boolean(xml), completed: Boolean(xml) },
+    { label: "Insert into ODS", detail: result?.valid ? `Complete — ${result.rowCount} rows loaded` : "Insert into ODS", active: Boolean(result?.valid), completed: Boolean(result?.valid) },
+    { label: "Convert to lineup XML", detail: xml ? "Complete — ready for download" : "Convert to Lineup XML", active: Boolean(xml), completed: Boolean(xml) },
   ];
   const selectedFileCount = files.filter(Boolean).length;
+  const allFilesReady = files.every(Boolean);
   const selectedFileNames = files.flatMap((file, index) => file ? [rosteringInputDefinitions[rosteringInputOrder[index]]?.label ?? file.name] : []);
   const remainingFileCount = rosteringInputOrder.length - selectedFileCount;
   return <Stack spacing={2}>
@@ -392,7 +393,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
         </Paper>;
       })}</Stack>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
+        <Button variant="contained" onClick={upload} disabled={busy || !allFilesReady}>{busy ? "Validating…" : "Insert into ODS"}</Button>
       </Stack>
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Paper>
@@ -437,7 +438,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}><Box><Typography variant="h6">Batch validation</Typography><Typography variant="body2" color="text.secondary">{result.rowCount} loaded row{result.rowCount === 1 ? "" : "s"} · {result.batchId}</Typography></Box><Chip label={result.valid ? "Valid and loaded" : "Needs correction"} color={result.valid ? "success" : "error"} /></Stack>
       <Table size="small" aria-label="Rostering validation results"><TableHead><TableRow><TableCell>Input</TableCell><TableCell>File</TableCell><TableCell>Status</TableCell><TableCell>Rows</TableCell><TableCell>Direct load target</TableCell><TableCell>Headers / issue</TableCell></TableRow></TableHead><TableBody>{result.validation.map((item, index) => <TableRow key={`${item.file}-${index}`}><TableCell>{item.label ?? "Batch"}</TableCell><TableCell>{item.file}</TableCell><TableCell>{item.valid ? "Valid" : "Invalid"}</TableCell><TableCell>{item.rowCount ?? "—"}</TableCell><TableCell>{item.mapping?.destinationTable ?? "—"}</TableCell><TableCell>{item.valid ? item.headers.join(", ") : item.error}</TableCell></TableRow>)}</TableBody></Table>
     </Paper>}
-    {result?.valid && <Button sx={{ alignSelf: "flex-start" }} variant="outlined" onClick={extract} disabled={busy}>Manual extraction</Button>}
+    <Button sx={{ alignSelf: "flex-start" }} variant="outlined" onClick={extract} disabled={busy || !result?.valid}>Convert to Lineup XML</Button>
     {xml && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="h6">RAC roadside lineup XML</Typography><Typography variant="caption" color="text.secondary">{result.filename} · companion marker: {result.doneFilename} (zero bytes)</Typography></Box><Button onClick={download}>Download XML</Button></Stack><TextField aria-label="Lineup XML preview" value={xml} multiline minRows={12} fullWidth InputProps={{ readOnly: true }} sx={{ mt: 2, "& textarea": { fontFamily: "monospace", fontSize: 12 } }} /></Paper>}
   </Stack>;
 }

@@ -2,6 +2,7 @@ import { DefaultAzureCredential } from "@azure/identity";
 import { ServiceBusClient } from "@azure/service-bus";
 import { randomUUID } from "node:crypto";
 import { messageTypes } from "./messageTypes.js";
+import { storeMessage } from "./messageStore.js";
 
 export function validatePublishRequest(body) {
   const type = body?.type ?? "ContactUpdated";
@@ -24,13 +25,19 @@ export function validatePublishRequest(body) {
   return null;
 }
 
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function createPublishMessage(request) {
   const type = request.type ?? "ContactUpdated";
   const configuredType = messageTypes[type];
   const data = {};
   for (const field of configuredType?.Fields ?? []) {
-    if (field.Type === "boolean") data[field.Name] = request[field.Name] === true;
-    else if (request[field.Name] !== undefined) data[field.Name] = String(request[field.Name]).trim();
+    const value = request[field.Name];
+    if (field.Type === "boolean") data[field.Name] = value === true;
+    else if (field.Type === "object") { if (isPlainObject(value)) data[field.Name] = value; }
+    else if (value !== undefined) data[field.Name] = String(value).trim();
   }
   const applicationProperties = Object.fromEntries(
     (configuredType?.Fields ?? [])
@@ -86,4 +93,17 @@ export async function publishContactEvent(request) {
     await sender.close();
     await client.close();
   }
+}
+
+export async function publishAndRecordContactEvent(request) {
+  const event = await publishContactEvent(request);
+  storeMessage({
+    messageId: event.id,
+    eventId: event.id,
+    serviceName: "producer",
+    direction: "sent",
+    timestamp: event.timestamp,
+    payload: JSON.stringify(event),
+  });
+  return event;
 }

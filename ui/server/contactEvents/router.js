@@ -2,7 +2,7 @@ import express from "express";
 import { logContact } from "./log.js";
 import { getEmulatorStatus } from "./emulatorStatus.js";
 import { messageTypes, subscriberLabels, producerLabels } from "./messageTypes.js";
-import { createPublishMessage, publishContactEvent, validatePublishRequest } from "./publisher.js";
+import { publishAndRecordContactEvent, validatePublishRequest } from "./publisher.js";
 import {
   getMessages,
   getServiceStatuses,
@@ -42,15 +42,7 @@ router.post("/api/publish", async (request, response) => {
   }
 
   try {
-    const event = await publishContactEvent(request.body);
-    storeMessage({
-      messageId: event.id,
-      eventId: event.id,
-      serviceName: "producer",
-      direction: "sent",
-      timestamp: event.timestamp,
-      payload: JSON.stringify(event),
-    });
+    const event = await publishAndRecordContactEvent(request.body);
     logContact("publish.completed", { eventId: event.id, type: event.type });
     return response.json({ success: true, eventId: event.id });
   } catch (error) {

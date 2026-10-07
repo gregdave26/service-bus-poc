@@ -15,7 +15,7 @@
     },
     "productType": {
       "type": "string",
-      "enum": ["insurance", "parks-resorts", "carwash", "other"],
+      "enum": ["insurance", "parks-resorts", "carwash", "roadside-assistance", "other"],
       "description": "Classification of the product or holding"
     },
     "action": {

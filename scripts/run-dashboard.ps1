@@ -170,7 +170,10 @@ function Stop-RunningDashboardInstances {
             Stop-Process -Id $processId -Force -ErrorAction Stop
             Write-Host "  Stopped PID $processId" -ForegroundColor Green
         }
-        catch [System.ArgumentException] {
+        catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+            if ($_.FullyQualifiedErrorId -notlike 'NoProcessFoundForGivenId,*') {
+                throw
+            }
             Write-Host "  PID $processId already stopped" -ForegroundColor DarkGray
         }
     }

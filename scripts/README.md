@@ -91,6 +91,9 @@ They may contain obsolete assumptions and should not be used for validation.
 
 **Purpose:** Start the Dashboard with all services for interactive development and testing.
 
+If you choose to stop an existing instance at startup, processes that have already
+exited are skipped; other process-stop errors are reported rather than ignored.
+
 **Use this when:**
 - You want to see real-time service status and test filters interactively
 - You're demonstrating the system or testing manually

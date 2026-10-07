@@ -300,7 +300,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   }
   async function upload() {
     if (files.some((file) => !file)) return setError("Choose all four source files before validating.");
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setResult(null); setXml("");
     try {
       const response = await getJson("/api/rostering/upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files: await Promise.all(files.map(async (file) => ({ name: file.name, content: await file.text() }))) }) });
       setResult(response);
@@ -391,7 +391,10 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
           </Stack>
         </Paper>;
       })}</Stack>
-      <Button sx={{ mt: 2 }} variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
+        <Button variant="contained" onClick={extract} disabled={busy || !result?.valid}>Manual extraction</Button>
+      </Stack>
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Paper>
     <Dialog open={Boolean(preview)} onClose={() => setPreview(null)} fullWidth maxWidth="md" aria-labelledby="rostering-file-preview-title">
@@ -434,7 +437,6 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
     {result && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}><Box><Typography variant="h6">Batch validation</Typography><Typography variant="body2" color="text.secondary">{result.rowCount} loaded row{result.rowCount === 1 ? "" : "s"} · {result.batchId}</Typography></Box><Chip label={result.valid ? "Valid and loaded" : "Needs correction"} color={result.valid ? "success" : "error"} /></Stack>
       <Table size="small" aria-label="Rostering validation results"><TableHead><TableRow><TableCell>Input</TableCell><TableCell>File</TableCell><TableCell>Status</TableCell><TableCell>Rows</TableCell><TableCell>Direct load target</TableCell><TableCell>Headers / issue</TableCell></TableRow></TableHead><TableBody>{result.validation.map((item, index) => <TableRow key={`${item.file}-${index}`}><TableCell>{item.label ?? "Batch"}</TableCell><TableCell>{item.file}</TableCell><TableCell>{item.valid ? "Valid" : "Invalid"}</TableCell><TableCell>{item.rowCount ?? "—"}</TableCell><TableCell>{item.mapping?.destinationTable ?? "—"}</TableCell><TableCell>{item.valid ? item.headers.join(", ") : item.error}</TableCell></TableRow>)}</TableBody></Table>
-      {result.valid && <Button sx={{ mt: 2 }} variant="outlined" onClick={extract} disabled={busy}>Manual extraction</Button>}
     </Paper>}
     {xml && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="h6">RAC roadside lineup XML</Typography><Typography variant="caption" color="text.secondary">{result.filename} · companion marker: {result.doneFilename} (zero bytes)</Typography></Box><Button onClick={download}>Download XML</Button></Stack><TextField aria-label="Lineup XML preview" value={xml} multiline minRows={12} fullWidth InputProps={{ readOnly: true }} sx={{ mt: 2, "& textarea": { fontFamily: "monospace", fontSize: 12 } }} /></Paper>}
   </Stack>;

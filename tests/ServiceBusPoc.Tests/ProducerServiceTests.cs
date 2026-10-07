@@ -6,7 +6,7 @@ using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Contracts;
 using ServiceBusPoc.Core.Dashboard;
 using ServiceBusPoc.Core.Utilities;
-using ServiceBusPoc.Producer.Services;
+using ServiceBusPoc.ContactEvents.Producer.Services;
 
 namespace ServiceBusPoc.Tests;
 

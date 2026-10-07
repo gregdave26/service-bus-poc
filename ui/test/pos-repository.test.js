@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { createReceiptRepository } from "../pos/receiptRepository.js";
-import { generateReceipt } from "../pos/receiptGenerator.js";
+import { createReceiptRepository } from "../server/pos/receiptRepository.js";
+import { generateReceipt } from "../server/pos/receiptGenerator.js";
 
 function buildRepository() {
   return createReceiptRepository(new DatabaseSync(":memory:"));

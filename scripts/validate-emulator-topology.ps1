@@ -34,7 +34,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$verifierProject = Join-Path $projectRoot 'src\ServiceBusPoc.Verifier\ServiceBusPoc.Verifier.csproj'
+$verifierProject = Join-Path $projectRoot 'src\ContactEvents\Verifier\ServiceBusPoc.ContactEvents.Verifier.csproj'
 
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║           VALIDATING SERVICE BUS EMULATOR TOPOLOGY                         ║" -ForegroundColor Cyan

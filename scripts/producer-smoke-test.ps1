@@ -27,8 +27,8 @@ $ErrorActionPreference = 'Stop'
 
 # Set working directory to repo root
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path "$repoRoot/src/ServiceBusPoc.Producer")) {
-    Write-Error "Producer project not found at $repoRoot/src/ServiceBusPoc.Producer"
+if (-not (Test-Path "$repoRoot/src/ContactEvents/Producer")) {
+    Write-Error "Producer project not found at $repoRoot/src/ContactEvents/Producer"
     exit 1
 }
 
@@ -48,7 +48,7 @@ $env:ServiceBus__TopicName ??= 'contact.events'
 
 # Build the producer project
 Write-Host "Building Producer project..." -ForegroundColor Cyan
-Push-Location "$repoRoot/src/ServiceBusPoc.Producer"
+Push-Location "$repoRoot/src/ContactEvents/Producer"
 try {
     $buildOutput = dotnet build --verbosity minimal 2>&1
     if ($LASTEXITCODE -ne 0) {
@@ -63,7 +63,7 @@ finally {
 
 # Test case 1: Contact with insurance only
 Write-Host "`nPublishing test message 1: Insurance customer..." -ForegroundColor Cyan
-Push-Location "$repoRoot/src/ServiceBusPoc.Producer"
+Push-Location "$repoRoot/src/ContactEvents/Producer"
 try {
     $output = dotnet run -- `
         --contact-id "CONTACT-001" `
@@ -91,7 +91,7 @@ finally {
 
 # Test case 2: Contact with Parks & Resorts only
 Write-Host "Publishing test message 2: Parks & Resorts customer..." -ForegroundColor Cyan
-Push-Location "$repoRoot/src/ServiceBusPoc.Producer"
+Push-Location "$repoRoot/src/ContactEvents/Producer"
 try {
     $output = dotnet run -- `
         --contact-id "CONTACT-002" `
@@ -119,7 +119,7 @@ finally {
 
 # Test case 3: Contact with Carwash product (all attributes)
 Write-Host "Publishing test message 3: Multi-product customer..." -ForegroundColor Cyan
-Push-Location "$repoRoot/src/ServiceBusPoc.Producer"
+Push-Location "$repoRoot/src/ContactEvents/Producer"
 try {
     $output = dotnet run -- `
         --contact-id "CONTACT-003" `

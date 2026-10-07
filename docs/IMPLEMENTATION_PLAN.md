@@ -92,7 +92,7 @@ Define canonical event schemas in `contracts/` as JSON Schema:
 **Deliverable:** docker-compose.yaml that spins up emulator with full topology; `config.json` mapping subscriptions
 
 ### 2.2 .NET Console Producer
-**File:** `src/ServiceBusPoc.Producer/Services/ProducerService.cs`
+**File:** `src/ServiceBusPoc.ContactEvents.Producer/Services/ProducerService.cs`
 
 **Status:** ✅ Implemented — `ProducerService`, `ServiceBusMessagePublisher`, and `ContactEventPublisher` publish envelope-wrapped events through the shared sender adapter.
 
@@ -122,10 +122,10 @@ dotnet run -- --producer \
 
 ### 2.3 .NET Console Consumers
 **Files:**
-- `src/ServiceBusPoc.DigitalChannels/`
-- `src/ServiceBusPoc.Insurance/`
-- `src/ServiceBusPoc.ParksResorts/`
-- `src/ServiceBusPoc.Carwash/`
+- `src/ServiceBusPoc.ContactEvents.Consumers.DigitalChannels/`
+- `src/ServiceBusPoc.ContactEvents.Consumers.Insurance/`
+- `src/ServiceBusPoc.ContactEvents.Consumers.ParksResorts/`
+- `src/ServiceBusPoc.ContactEvents.Consumers.Carwash/`
 
 **Status:** ✅ Implemented — `SubscriptionConsumerRunner`, shared receiver adapter, and all four consumer wrappers are implemented. Dashboard reporting is an implemented supporting surface. Dedicated consumer tests and end-to-end emulator routing proof remain outstanding.
 
@@ -146,9 +146,9 @@ dotnet run -- --producer \
 **Supporting surface:** Dashboard reporting is implemented for service state, heartbeats, and published/received event reporting.
 
 ### 2.4 Carwash Verification API
-**File:** `src/ServiceBusPoc.Carwash/Api/CarwashApiServer.cs`
+**File:** `src/ServiceBusPoc.ContactEvents.Consumers.Carwash/Api/CarwashApiServer.cs`
 
-**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.Carwash/API.md`). Request/response contracts, validation, error handling, provider abstraction, deterministic mock provider, and tests are present. A future authoritative membership adapter can replace the mock through dependency injection. This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
+**Status:** ✅ Implemented ahead of the messaging work — Carwash exposes `POST /carwash/v1/verify`, which Pulse or mock Pulse calls (see `src/ServiceBusPoc.ContactEvents.Consumers.Carwash/API.md`). Request/response contracts, validation, error handling, provider abstraction, deterministic mock provider, and tests are present. A future authoritative membership adapter can replace the mock through dependency injection. This HTTP API and the Service Bus consumer in 2.3 are separate integration points.
 
 **Responsibilities:**
 - Accept a membership number and return the verification result.
@@ -160,7 +160,7 @@ dotnet run -- --producer \
 **Deliverable:** Carwash verification endpoint, provider abstraction, mock provider, and request/response contract. Pulse calls Carwash; Carwash does not call Pulse and does not use contact events as the verification backing store.
 
 ### 2.5 Scenario Verifier & Test Harness
-**File:** `src/ServiceBusPoc.Verifier/Services/VerifierService.cs`
+**File:** `src/ServiceBusPoc.ContactEvents.Verifier/Services/VerifierService.cs`
 
 **Status:** ⏳ Stub only — `VerifierService` contains a TODO and currently performs topology validation only; routing scenarios and schema/error scenarios are not implemented.
 
@@ -367,7 +367,7 @@ Document the decision to validate with local emulator before cloud deployment, i
 ### 6.4 API Reference
 **File:** `docs/api.md`
 
-**Status:** ⏳ Not started as a consolidated doc — `src/ServiceBusPoc.Carwash/API.md` documents the Carwash HTTP API in isolation.
+**Status:** ⏳ Not started as a consolidated doc — `src/ServiceBusPoc.ContactEvents.Consumers.Carwash/API.md` documents the Carwash HTTP API in isolation.
 
 - Producer CLI reference
 - Consumer configuration

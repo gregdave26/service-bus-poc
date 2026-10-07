@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Utilities;
-using ServiceBusPoc.Verifier.Services;
+using ServiceBusPoc.ContactEvents.Verifier.Services;
 
 namespace ServiceBusPoc.Tests;
 

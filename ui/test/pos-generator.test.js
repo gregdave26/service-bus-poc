@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateReceipt, validateGenerateRequest } from "../pos/receiptGenerator.js";
-import { getCatalog } from "../pos/catalog.js";
-import { formatReceiptForPsv } from "../pos/receiptExport.js";
+import { generateReceipt, validateGenerateRequest } from "../server/pos/receiptGenerator.js";
+import { getCatalog } from "../server/pos/catalog.js";
+import { formatReceiptForPsv } from "../server/pos/receiptExport.js";
 
 const validRequest = { storeId: "STORE-NORTH", tillId: "TILL-1", operatorId: "OP-100", paymentType: "EFTPOS" };
 

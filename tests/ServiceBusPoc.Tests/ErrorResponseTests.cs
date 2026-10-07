@@ -1,4 +1,4 @@
-using ServiceBusPoc.Carwash.Api.Contracts;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Api.Contracts;
 using System.Text.Json;
 
 namespace ServiceBusPoc.Tests;

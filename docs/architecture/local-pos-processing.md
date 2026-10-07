@@ -32,9 +32,9 @@ dropdowns and product choices always match the server's data.
 
 ### Deterministic, seeded generation
 
-[`ui/pos/rng.js`](../../ui/pos/rng.js) implements Mulberry32, a small seeded PRNG. When a
+[`ui/server/pos/rng.js`](../../ui/server/pos/rng.js) implements Mulberry32, a small seeded PRNG. When a
 request does not specify explicit line items or an explicit customer,
-[`ui/pos/receiptGenerator.js`](../../ui/pos/receiptGenerator.js) seeds it from either a
+[`ui/server/pos/receiptGenerator.js`](../../ui/server/pos/receiptGenerator.js) seeds it from either a
 caller-supplied `seed` or a freshly generated one, then uses it to pick how many line items to
 include, which catalog products/quantities fill them, and the customer's membership/vehicle
 details. Supplying the same seed (and the same store/till/operator/payment type) reproduces an
@@ -44,7 +44,7 @@ itself is an internal generation input only - it is not part of the persisted re
 
 ### Mathematically consistent totals
 
-[`ui/pos/money.js`](../../ui/pos/money.js) converts amounts to integer cents before any
+[`ui/server/pos/money.js`](../../ui/server/pos/money.js) converts amounts to integer cents before any
 arithmetic. Each line's `lineAmount = (quantity * unitPrice) - discount.discountAmount`,
 `gstAmount = round(lineAmount * gstCategory's rate)`, `financials.totalExGst` and
 `financials.totalGst` are the exact sums of the lines' `lineAmount`/`gstAmount`, and
@@ -54,7 +54,7 @@ drift). The receipt's single `payments` entry is generated for the full `totalIn
 
 ### Atomic, normalized persistence with exact JSON preserved
 
-[`ui/pos/receiptRepository.js`](../../ui/pos/receiptRepository.js) persists each generated
+[`ui/server/pos/receiptRepository.js`](../../ui/server/pos/receiptRepository.js) persists each generated
 receipt as one `POS_RECEIPT_EVENT` header row plus one `POS_RECEIPT_LINE_ITEM` row per line,
 wrapped in a single `BEGIN IMMEDIATE` / `COMMIT` transaction (rolled back on any failure) so a
 receipt is never partially written. The tables use the authoritative Cardzoids names and
@@ -114,7 +114,7 @@ The SQLite database lives at `ui/data/pos-events.db` (gitignored; override with
 
 ## PSV export simulation
 
-[`ui/pos/receiptExport.js`](../../ui/pos/receiptExport.js) mirrors the field order and
+[`ui/server/pos/receiptExport.js`](../../ui/server/pos/receiptExport.js) mirrors the field order and
 transformations from `sp_Publish_POSReceipts` in the supplied SQL reference. It emits one type-1
 header record followed by type-2 detail records. The header contains the receipt barcode, event
 ID, invoice date, store, terminal, payment method, EFTPOS reconciliation keys, customer debtor,

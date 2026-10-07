@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
-using ServiceBusPoc.Carwash.Api;
-using ServiceBusPoc.Carwash.Api.Contracts;
-using ServiceBusPoc.Carwash.Services;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Api;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Api.Contracts;
+using ServiceBusPoc.ContactEvents.Consumers.Carwash.Services;
 
 namespace ServiceBusPoc.Tests;
 

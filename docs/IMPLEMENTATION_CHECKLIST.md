@@ -46,8 +46,8 @@
 - [x] Preserved exponential backoff calculation
 
 ### Step 3: Verify Logging Configuration ✅
-- [x] Confirmed `ServiceBusPoc.Producer/Program.cs` uses `.AddStructuredConsoleLogging()`
-- [x] Confirmed `ServiceBusPoc.Insurance/Program.cs` uses `.AddStructuredConsoleLogging()`
+- [x] Confirmed `ServiceBusPoc.ContactEvents.Producer/Program.cs` uses `.AddStructuredConsoleLogging()`
+- [x] Confirmed `ServiceBusPoc.ContactEvents.Consumers.Insurance/Program.cs` uses `.AddStructuredConsoleLogging()`
 - [x] Verified new formatter will be automatically loaded via DI
 
 ## 📋 Acceptance Criteria - ALL MET ✅
@@ -91,8 +91,8 @@
 
 ### Manual Testing (Developer Environment)
 1. Start Service Bus emulator (Docker Compose)
-2. Run producer: `dotnet run` in `ServiceBusPoc.Producer/`
-3. Run consumer: `dotnet run` in `ServiceBusPoc.Insurance/`
+2. Run producer: `dotnet run` in `ServiceBusPoc.ContactEvents.Producer/`
+3. Run consumer: `dotnet run` in `ServiceBusPoc.ContactEvents.Consumers.Insurance/`
 4. **Verify timestamps**: All logs have ISO 8601 timestamp prefix
 5. **Verify retry progression**:
    - See "attempt 1" with [ABOUT TO TRY]

@@ -66,9 +66,9 @@ Events activity flash and the POS Processing flow. Pending stages remain neutral
    `ROSTERING_TEMP_DIR` to override the temporary directory. Selecting an
    uploaded file also enables the same preview; upload and validation behavior is
    unchanged.
-2. **Validate and load batch** sends the file contents to `POST /api/rostering/upload`, validates filenames and columns as one batch, and writes valid mapped rows to `RosteringBatches` and `RosteringRows`. Each loaded row retains both its mapped JSON and complete source JSON.
-3. **Manual extraction** calls `POST /api/rostering/:batchId/extract`. Rows are grouped by source file and sorted by source filename and row number.
-4. Manual extraction generates the provisional ACC/RAC roadside contract. The filename is deterministic in the configured timezone (`ROSTERING_TIMEZONE`, default `UTC`):
+2. **Insert into ODS** sends the file contents to `POST /api/rostering/upload`, validates filenames and columns as one batch, and writes valid mapped rows to `RosteringBatches` and `RosteringRows`. Each loaded row retains both its mapped JSON and complete source JSON.
+3. **Convert to Lineup XML** calls `POST /api/rostering/:batchId/extract`. Rows are grouped by source file and sorted by source filename and row number.
+4. Convert to Lineup XML generates the provisional ACC/RAC roadside contract. The filename is deterministic in the configured timezone (`ROSTERING_TIMEZONE`, default `UTC`):
    `Lineup_RAC_{Start_yyyymmddHHMMSS}_ROADSIDE_{End_yyyymmddHHMMSS}_{nnn}.xml`.
    The API also returns the corresponding zero-byte completion marker name (`.done`); the simulator does not write files.
 

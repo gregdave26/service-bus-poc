@@ -393,7 +393,6 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       })}</Stack>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
         <Button variant="contained" onClick={upload} disabled={busy}>{busy ? "Validating…" : "Validate and load batch"}</Button>
-        <Button variant="contained" onClick={extract} disabled={busy || !result?.valid}>Manual extraction</Button>
       </Stack>
       {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     </Paper>
@@ -438,6 +437,7 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}><Box><Typography variant="h6">Batch validation</Typography><Typography variant="body2" color="text.secondary">{result.rowCount} loaded row{result.rowCount === 1 ? "" : "s"} · {result.batchId}</Typography></Box><Chip label={result.valid ? "Valid and loaded" : "Needs correction"} color={result.valid ? "success" : "error"} /></Stack>
       <Table size="small" aria-label="Rostering validation results"><TableHead><TableRow><TableCell>Input</TableCell><TableCell>File</TableCell><TableCell>Status</TableCell><TableCell>Rows</TableCell><TableCell>Direct load target</TableCell><TableCell>Headers / issue</TableCell></TableRow></TableHead><TableBody>{result.validation.map((item, index) => <TableRow key={`${item.file}-${index}`}><TableCell>{item.label ?? "Batch"}</TableCell><TableCell>{item.file}</TableCell><TableCell>{item.valid ? "Valid" : "Invalid"}</TableCell><TableCell>{item.rowCount ?? "—"}</TableCell><TableCell>{item.mapping?.destinationTable ?? "—"}</TableCell><TableCell>{item.valid ? item.headers.join(", ") : item.error}</TableCell></TableRow>)}</TableBody></Table>
     </Paper>}
+    {result?.valid && <Button sx={{ alignSelf: "flex-start" }} variant="outlined" onClick={extract} disabled={busy}>Manual extraction</Button>}
     {xml && <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography variant="h6">RAC roadside lineup XML</Typography><Typography variant="caption" color="text.secondary">{result.filename} · companion marker: {result.doneFilename} (zero bytes)</Typography></Box><Button onClick={download}>Download XML</Button></Stack><TextField aria-label="Lineup XML preview" value={xml} multiline minRows={12} fullWidth InputProps={{ readOnly: true }} sx={{ mt: 2, "& textarea": { fontFamily: "monospace", fontSize: 12 } }} /></Paper>}
   </Stack>;
 }

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -23,6 +24,11 @@
     <ProjectReference Include="../../src/ContactEvents/Consumers/ParksResorts/ServiceBusPoc.ContactEvents.Consumers.ParksResorts.csproj" />
     <ProjectReference Include="../../src/ContactEvents/Producer/ServiceBusPoc.ContactEvents.Producer.csproj" />
     <ProjectReference Include="../../src/ContactEvents/Verifier/ServiceBusPoc.ContactEvents.Verifier.csproj" />
+    <ProjectReference Include="../../src/DigitalSite/Shared/ServiceBusPoc.DigitalSite.Shared.csproj" />
+    <ProjectReference Include="../../src/DigitalSite/CommerceToolsStub/ServiceBusPoc.DigitalSite.CommerceToolsStub.csproj" />
+    <ProjectReference Include="../../src/DigitalSite/CommerceApi/ServiceBusPoc.DigitalSite.CommerceApi.csproj" />
+    <ProjectReference Include="../../src/DigitalSite/CartProcessor/ServiceBusPoc.DigitalSite.CartProcessor.csproj" />
+    <ProjectReference Include="../../src/DigitalSite/FulfilmentStub/ServiceBusPoc.DigitalSite.FulfilmentStub.csproj" />
   </ItemGroup>
 
   <ItemGroup>

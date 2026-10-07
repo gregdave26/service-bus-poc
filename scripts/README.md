@@ -129,6 +129,12 @@ exited are skipped; other process-stop errors are reported rather than ignored.
 4. **Insurance** — Receives `hasInsurance=true`
 5. **ParksResorts** — Receives `hasParksResorts=true`
 6. **Carwash** — Receives `hasCarwashProduct=true`
+7. **CommerceToolsStub** — commercetools HTTP API subset on http://localhost:5201; publishes CT messages to `commerce.events`
+8. **CommerceApi** — Digital Site backend-for-frontend and Adyen webhook on http://localhost:5200
+9. **CartProcessor** — `commerce.events`/`cart-processor`: creates orders from authorised payments, publishes `ProductHoldingChange`
+10. **FulfilmentStub** — `commerce.events`/`fulfilment-d365-stub`: logs D365 provisioning and completes the order
+
+See [ADR-014](../docs/decisions/014-digital-site-commerce-flow.md) and [`ui/README.md`](../ui/README.md#digital-site-tab).
 
 ---
 
@@ -235,6 +241,13 @@ $env:DOTNET_Environment = "Development"
 
 # Carwash API
 $env:Carwash__ApiPort = "5000"
+
+# Digital Site (run-dashboard.ps1 only; each app also gets its own ServiceBus__TopicName/SubscriptionName)
+$env:CommerceTools__ApiUrl = "http://localhost:5201"
+$env:CommerceTools__ProjectKey = "rac-rsa-poc"
+$env:DIGITAL_SITE_API_BASE_URL = "http://localhost:5200"
+# Set these yourself (never commit them) to use Adyen instead of the stub gateway:
+# $env:DigitalSite__PaymentGateway = "Adyen"; $env:Adyen__MerchantAccount, Adyen__ApiKey, Adyen__ClientKey, Adyen__HmacKey
 ```
 
 ---

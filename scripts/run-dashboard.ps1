@@ -11,6 +11,8 @@
     3. Starts the Dashboard application (HTTP status + event publishing)
     4. Starts the Producer (publishes sample events every 3 seconds)
     5. Starts all 4 Consumers (listen and filter)
+       and the Digital Site commerce apps: commercetools stub, CommerceApi,
+       CartProcessor and FulfilmentStub (see docs/decisions/ADR-014)
     6. Opens the dashboard in your default browser
     7. Keeps all processes running until Ctrl+C is pressed
     
@@ -87,7 +89,7 @@ function Get-RunningDashboardInstances {
         foreach ($process in $processes) {
             $commandLine = [string]$process.CommandLine
             if ([int]$process.ProcessId -ne $PID -and
-                $commandLine -match '(?i)service-bus-poc.*(run-dashboard\.ps1|ui[\\/]+server\.js|ServiceBusPoc\.(Dashboard|Producer|DigitalChannels|Insurance|ParksResorts|Carwash|Verifier))') {
+                $commandLine -match '(?i)service-bus-poc.*(run-dashboard\.ps1|ui[\\/]+server\.js|ServiceBusPoc\.(Dashboard|Producer|DigitalChannels|Insurance|ParksResorts|Carwash|Verifier|DigitalSite\.\w+))') {
                 [PSCustomObject]@{
                     Id = [int]$process.ProcessId
                     ParentId = [int]$process.ParentProcessId
@@ -568,6 +570,14 @@ $env:Dashboard__RequestTimeoutSeconds = "5"
 $env:Dashboard__OfflineAfterSeconds = "15"
 $env:DOTNET_Environment = "Development"
 
+# Digital Site commerce flow (ADR-014). Adyen__* and DigitalSite__PaymentGateway=Adyen come from
+# the user's environment only; without them the CommerceApi uses the stub payment gateway.
+$commerceToolsStubUrl = 'http://localhost:5201'
+$commerceApiUrl = 'http://localhost:5200'
+$env:CommerceTools__ApiUrl = $commerceToolsStubUrl
+$env:CommerceTools__ProjectKey = 'rac-rsa-poc'
+$env:DIGITAL_SITE_API_BASE_URL = $commerceApiUrl
+
 # Enable console logging for all services
 $env:LOGGING__CONSOLE__INCLUDEEXCEPTION = "true"
 $env:LOGGING__CONSOLE__INCLUDESCOPES = "true"
@@ -587,6 +597,10 @@ $apps = @(
     @{ Name = 'Insurance'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Insurance'; Description = 'Receives hasInsurance=true'; SubscriptionName = 'insurance' }
     @{ Name = 'ParksResorts'; Project = 'ServiceBusPoc.ContactEvents.Consumers.ParksResorts'; Description = 'Receives hasParksResorts=true'; SubscriptionName = 'parks-resorts' }
     @{ Name = 'Carwash'; Project = 'ServiceBusPoc.ContactEvents.Consumers.Carwash'; Description = 'Receives hasCarwashProduct=true'; SubscriptionName = 'carwash' }
+    @{ Name = 'CommerceToolsStub'; Project = 'ServiceBusPoc.DigitalSite.CommerceToolsStub'; Description = "commercetools API stub on $commerceToolsStubUrl"; Environment = @{ ASPNETCORE_URLS = $commerceToolsStubUrl; ServiceBus__TopicName = 'commerce.events' } }
+    @{ Name = 'CommerceApi'; Project = 'ServiceBusPoc.DigitalSite.CommerceApi'; Description = "Digital Site BFF on $commerceApiUrl"; Environment = @{ ASPNETCORE_URLS = $commerceApiUrl; DigitalSite__AllowedOrigins = "http://localhost:$DashboardPort" } }
+    @{ Name = 'CartProcessor'; Project = 'ServiceBusPoc.DigitalSite.CartProcessor'; Description = 'Creates orders from authorised payments'; SubscriptionName = 'cart-processor'; Environment = @{ ServiceBus__TopicName = 'commerce.events' } }
+    @{ Name = 'FulfilmentStub'; Project = 'ServiceBusPoc.DigitalSite.FulfilmentStub'; Description = 'D365 F&O provisioning stub'; SubscriptionName = 'fulfilment-d365-stub'; Environment = @{ ServiceBus__TopicName = 'commerce.events' } }
 )
 
 function Start-NodeDashboardWithLogging {
@@ -641,12 +655,20 @@ function Start-AppWithLogging {
         [string]$ProjectPath,
         [string]$ProjectFile,
         [string]$Description,
-        [string]$SubscriptionName = ''
+        [string]$SubscriptionName = '',
+        [hashtable]$Environment = @{}
     )
     
     # Set subscription name if provided (for consumers)
     if ($SubscriptionName) {
         $env:ServiceBus__SubscriptionName = $SubscriptionName
+    }
+
+    # App-specific variables are inherited by the child process, then restored for the next app.
+    $previousEnvironment = @{}
+    foreach ($variable in $Environment.Keys) {
+        $previousEnvironment[$variable] = [Environment]::GetEnvironmentVariable($variable)
+        [Environment]::SetEnvironmentVariable($variable, $Environment[$variable])
     }
     
     try {
@@ -690,6 +712,11 @@ function Start-AppWithLogging {
         Write-Host "  ✗ $Name failed to start: $_" -ForegroundColor Red
         return $null
     }
+    finally {
+        foreach ($variable in $previousEnvironment.Keys) {
+            [Environment]::SetEnvironmentVariable($variable, $previousEnvironment[$variable])
+        }
+    }
 }
 
 # Store the set of all started processes for cleanup (uses $script:allProcesses from trap)
@@ -721,7 +748,8 @@ foreach ($app in $apps) {
     $projectPath = Get-ProjectDirectory $app.Project
     if (Test-Path $projectPath) {
         $projectFile = Join-Path $projectPath "$($app.Project).csproj"
-        $process = Start-AppWithLogging -Name $app.Name -ProjectPath $projectPath -ProjectFile $projectFile -Description $app.Description -SubscriptionName $app.SubscriptionName
+        $appEnvironment = if ($app.Environment) { $app.Environment } else { @{} }
+        $process = Start-AppWithLogging -Name $app.Name -ProjectPath $projectPath -ProjectFile $projectFile -Description $app.Description -SubscriptionName $app.SubscriptionName -Environment $appEnvironment
         
         if ($null -ne $process) {
             $script:allProcesses += $process
@@ -790,6 +818,9 @@ Write-Host "  🟢 Digital Channels - Receives all events (no filter)"
 Write-Host "  🟢 Insurance      - Receives hasInsurance=true"
 Write-Host "  🟢 Parks & Resorts - Receives hasParksResorts=true"
 Write-Host "  🟢 Carwash        - Receives hasCarwashProduct=true"
+Write-Host "  🛒 Digital Site   - commercetools stub ($commerceToolsStubUrl), CommerceApi ($commerceApiUrl),"
+Write-Host "                      CartProcessor and FulfilmentStub on commerce.events"
+Write-Host "                      Payment gateway: $(if ($env:DigitalSite__PaymentGateway) { $env:DigitalSite__PaymentGateway } else { 'Stub' })"
 Write-Host ""
 Write-Host "Usage:" -ForegroundColor Cyan
 Write-Host "  1. Open http://localhost:$DashboardPort in your browser"

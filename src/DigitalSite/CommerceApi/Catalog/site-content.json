@@ -1,0 +1,33 @@
+{
+  "covers": [
+    {
+      "sku": "CLAS",
+      "chip": "Most popular cover for frequent drivers",
+      "perks": ["Covers one vehicle", "100km metro towing", "200km round trip country towing", "Up to $1100 worth of extended benefits¹"]
+    },
+    {
+      "sku": "ULTI",
+      "chip": "For those who drive more than one car",
+      "perks": ["You're covered in any vehicle", "Plus choose one vehicle for anyone to drive", "100km metro towing", "200km round trip country towing", "Hire car", "Up to $1500 worth of extended benefits¹"]
+    },
+    {
+      "sku": "ULPL",
+      "chip": "Suits long distance drivers",
+      "perks": ["You're covered in any vehicle", "Plus choose one vehicle for anyone to drive", "200km metro towing", "300km round trip country towing", "Hire car", "Up to $7000 worth of extended benefits¹"]
+    },
+    {
+      "sku": "STD",
+      "chip": "Suits short distance drivers",
+      "perks": ["Covers one vehicle", "20km metro towing", "80km round trip country towing"]
+    }
+  ],
+  "paymentPlans": [
+    { "id": "Annual", "title": "Pay yearly by card", "chips": ["Set and forget", "Secure card payment"] }
+  ],
+  "vehicles": [
+    { "rego": "1ANURAG", "year": 2022, "make": "Toyota", "model": "Corolla", "body": "Sedan", "transmission": "Automatic", "fuel": "Petrol" },
+    { "rego": "1ABC123", "year": 2019, "make": "Mazda", "model": "CX-5", "body": "Wagon", "transmission": "Automatic", "fuel": "Petrol" },
+    { "rego": "1RAC000", "year": 2024, "make": "Kia", "model": "EV6", "body": "Wagon", "transmission": "Automatic", "fuel": "Electric" },
+    { "rego": "1UTE999", "year": 2017, "make": "Ford", "model": "Ranger", "body": "Utility", "transmission": "Manual", "fuel": "Diesel" }
+  ]
+}

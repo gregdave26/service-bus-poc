@@ -1,0 +1,52 @@
+{
+  "productType": {
+    "id": "1b249661-57fb-420f-aecc-2e9b7741bcbf",
+    "key": "roadside-assistance",
+    "name": "Roadside Assistance"
+  },
+  "shippingMethods": [
+    { "id": "b246fcd6-928d-4686-80f9-f497f12e0e19", "key": "digital", "name": "Digital" }
+  ],
+  "products": [
+    {
+      "id": "5028c3ee-e4d6-45e8-a57d-6e0bb02dffdf",
+      "key": "rsa-standard",
+      "name": "Standard Roadside Assistance",
+      "description": "Essential roadside help for newer vehicles.",
+      "sku": "STD",
+      "levelKey": "level-standard",
+      "levelLabel": "Standard",
+      "centAmount": 21000
+    },
+    {
+      "id": "2aaf39fa-d9e9-4b5c-a335-823408a9b112",
+      "key": "rsa-classic",
+      "name": "Classic Roadside Assistance",
+      "description": "Reliable roadside help for everyday drivers.",
+      "sku": "CLAS",
+      "levelKey": "level-classic",
+      "levelLabel": "Classic",
+      "centAmount": 31000
+    },
+    {
+      "id": "7dc31754-428b-4d78-ab55-6b24b547a11c",
+      "key": "rsa-ultimate",
+      "name": "Ultimate Roadside Assistance",
+      "description": "Extra support when you are further from home.",
+      "sku": "ULTI",
+      "levelKey": "level-ultimate",
+      "levelLabel": "Ultimate",
+      "centAmount": 41000
+    },
+    {
+      "id": "705c3721-c8bb-4e43-a80f-1042772edc59",
+      "key": "rsa-ultimate-plus",
+      "name": "Ultimate Plus Roadside Assistance",
+      "description": "Our most comprehensive cover for regional trips.",
+      "sku": "ULPL",
+      "levelKey": "level-ultimate-plus",
+      "levelLabel": "Ultimate Plus",
+      "centAmount": 51000
+    }
+  ]
+}

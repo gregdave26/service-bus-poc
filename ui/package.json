@@ -15,6 +15,7 @@
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage"
   },
   "dependencies": {
+    "@adyen/adyen-web": "6.46.0",
     "@azure/identity": "^4.10.0",
     "@azure/service-bus": "^7.9.5",
     "@emotion/react": "11.14.0",

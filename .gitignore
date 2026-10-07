@@ -59,3 +59,6 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# commercetools stub state (CommerceToolsStub__DatabasePath default)
+/data/

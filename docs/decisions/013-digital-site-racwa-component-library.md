@@ -1,5 +1,7 @@
 # ADR 013: Digital Site Tab and the RACWA Component Library
 
+> **Update (ADR-014):** the `ui/server/digitalSite` backend described below was replaced by the .NET commerce flow (commercetools API stub, CommerceApi, Adyen Drop-in). The component library decisions still apply.
+
 **Status:** APPROVED (2026-10-07)
 
 ## Context

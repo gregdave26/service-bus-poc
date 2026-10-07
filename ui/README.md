@@ -12,6 +12,9 @@ The Digital Site tab uses `@racwa/react-components`, which is published to GitHu
 
 Then run `npm install`, `npm test`, and `npm start`.
 
+For the complete Digital Site and Adyen configuration guide, see
+[`docs/digital-site-configuration.md`](../docs/digital-site-configuration.md).
+
 
 ## Digital Site tab
 

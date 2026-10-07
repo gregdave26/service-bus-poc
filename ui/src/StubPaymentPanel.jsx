@@ -29,7 +29,7 @@ export function StubPaymentPanel({ checkout, simulatePayment, onResult }) {
     <Stack spacing={2}>
       <Typography sx={{ fontWeight: 500 }}>Stub payment gateway</Typography>
       <Typography variant="body2" color="text.secondary">
-        Adyen is not configured, so no card form is shown. Choose the outcome the payment provider should report for payment {checkout.merchantReference}.
+        Local stub mode is active, so no card details or Adyen credentials are required. Choose the simulated payment outcome for {checkout.merchantReference}.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>

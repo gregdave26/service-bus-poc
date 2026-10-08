@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Seeding/ct-seed.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Seeding/ct-seed.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

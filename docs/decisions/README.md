@@ -22,6 +22,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [011](011-carwash-membercentral-and-events.md) | Carwash MemberCentral and Events | ✅ Approved | MemberCentral verification and Carwash-owned event publishing |
 | [012](012-feature-based-backend-structure.md) | Feature-Based Backend Structure | ✅ Approved | One namespace/folder per feature tab; C# dashboard removed |
 | [013](013-digital-site-racwa-component-library.md) | Digital Site Tab and RACWA Component Library | ✅ Approved | RSA purchase flow using published `@racwa/react-components`; orders publish `ProductHoldingChange` |
+| [014](014-digital-site-commerce-flow.md) | Digital Site Commerce Flow | ✅ Approved | commercetools API stub, Adyen Sessions Drop-in behind a gateway adapter, webhook-driven order creation on `commerce.events` |
 
 ---
 

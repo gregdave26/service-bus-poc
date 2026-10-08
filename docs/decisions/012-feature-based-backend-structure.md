@@ -23,6 +23,7 @@ How do we structure the backend so each tab owns its code and a new tab follows 
 - `src/ContactEvents/Producer` → `ServiceBusPoc.ContactEvents.Producer`
 - `src/ContactEvents/Verifier` → `ServiceBusPoc.ContactEvents.Verifier`
 - `src/ContactEvents/Consumers/{Carwash,DigitalChannels,Insurance,ParksResorts}` → `ServiceBusPoc.ContactEvents.Consumers.<Name>`
+- `src/DigitalSite/{Shared,CommerceToolsStub,CommerceApi,CartProcessor,FulfilmentStub}` → `ServiceBusPoc.DigitalSite.<Name>` (added by ADR-014)
 - `src/ServiceBusPoc.Core` remains shared infrastructure.
 - Folder names are short on purpose: the full project name repeated in the folder pushed `bin` output past the Windows 260-character path limit in deep worktrees.
 - The C# `ServiceBusPoc.Dashboard` project and its tests are deleted. `Core/Dashboard` (heartbeat reporting) stays; consumers report to the Node.js dashboard.
@@ -38,7 +39,7 @@ ui/server/
   contactEvents/      router.js, publisher.js, messageStore.js, messageTypes.js, log.js, index.js
   pos/                router.js, database.js, receipt*.js, catalog.js, log.js, index.js
   rostering/          router.js, batchProcessor.js, inputDefinitions.js, lineup.js, log.js, index.js
-  digitalSite/        router.js, orderService.js, orderRepository.js, database.js, catalog.js, vehicleLookup.js, log.js, index.js
+  digitalSite/        index.js (client config only: the tab calls the .NET CommerceApi in src/DigitalSite, see ADR-014)
 ```
 
 ### Adding a new tab

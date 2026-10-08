@@ -153,7 +153,12 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddServiceBusClient(this IServiceCollection services)
+    /// <summary>
+    /// Registers a single <see cref="ServiceBusClient"/> built from the configured connection string.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddServiceBusClient(this IServiceCollection services)
     {
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(provider =>

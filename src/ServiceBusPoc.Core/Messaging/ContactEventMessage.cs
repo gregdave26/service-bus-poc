@@ -14,6 +14,12 @@ public static class ContactEventMessage
     /// <summary>The envelope data version published by this POC.</summary>
     public const string ContactUpdatedDataVersion = "1.0";
 
+    /// <summary>The envelope type for product holding change events.</summary>
+    public const string ProductHoldingChangeType = "ProductHoldingChange";
+
+    /// <summary>The envelope data version for product holding change events.</summary>
+    public const string ProductHoldingChangeDataVersion = "1.0";
+
     /// <summary>The content type applied to published messages.</summary>
     public const string ContentType = "application/json";
 

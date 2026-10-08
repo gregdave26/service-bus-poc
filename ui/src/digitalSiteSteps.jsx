@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Button, CircularProgress, List, ListItem, ListItemIcon, ListItemText, Stack, Typography } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Box, Button, Chip, CircularProgress, List, ListItem, ListItemIcon, ListItemText, Stack, Typography } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import {
   Card,
@@ -12,15 +12,18 @@ import {
   RacwaRadioListItem,
   RacwaTextInput,
 } from "@racwa/react-components";
-import { formatCurrency, paymentPlanDescription, paymentPlanPrice } from "./digitalSiteFlowState.js";
+import { AdyenDropIn } from "./AdyenDropIn.jsx";
+import { describeCheckoutStatus, formatCurrency } from "./digitalSiteFlowState.js";
+import { StubPaymentPanel } from "./StubPaymentPanel.jsx";
 
 const ROADSIDE_PHONE = "13 11 11";
 const DEMO_REGOS = ["1ANURAG", "1ABC123", "1RAC000", "1UTE999"];
+const STATUS_POLL_INTERVAL_MS = 1500;
 
 export function StepButtons({ onBack, onNext, nextLabel = "Next", nextDisabled, loading }) {
   return <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
     {onBack && <Button variant="outlined" onClick={onBack} disabled={loading}>Back</Button>}
-    <Button variant="contained" onClick={onNext} disabled={nextDisabled || loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}>{nextLabel}</Button>
+    {onNext && <Button variant="contained" onClick={onNext} disabled={nextDisabled || loading} startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}>{nextLabel}</Button>}
   </Stack>;
 }
 
@@ -33,9 +36,29 @@ function Perks({ perks }) {
   </List>;
 }
 
-export function QuickCheckStep({ state, dispatch }) {
+function MemberIdentity({ crmId, onNewMember }) {
+  return <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+    <Typography variant="body2" color="text.secondary">Signed in as mock member</Typography>
+    <Chip size="small" label={crmId} />
+    <Button size="small" onClick={onNewMember}>New member</Button>
+  </Stack>;
+}
+
+function ActiveCartPrompt({ cart, onResume, onDiscard, busy }) {
+  return <RacwaAlertNotification severity="info">
+    <strong>You have an unfinished purchase.</strong> {cart.coverName ?? "Roadside Assistance"} for {formatCurrency(cart.totalPrice)}{cart.vehicle ? ` on ${cart.vehicle.rego}` : ""}.
+    <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+      <Button size="small" variant="contained" onClick={() => onResume(cart)} disabled={busy}>Resume</Button>
+      <Button size="small" variant="outlined" onClick={() => onDiscard(cart)} disabled={busy}>Start fresh</Button>
+    </Stack>
+  </RacwaAlertNotification>;
+}
+
+export function QuickCheckStep({ state, dispatch, activeCart, onNewMember, onResumeCart, onDiscardCart, cartBusy }) {
   return <Stack spacing={3}>
     <Typography variant="h2">A quick check</Typography>
+    <MemberIdentity crmId={state.crmId} onNewMember={onNewMember} />
+    {activeCart && <ActiveCartPrompt cart={activeCart} onResume={onResumeCart} onDiscard={onDiscardCart} busy={cartBusy} />}
     <Typography id="broken-down-label" sx={{ fontWeight: 500 }}>Are you in a breakdown right now?</Typography>
     <RacwaRadioGroup name="isBrokenDown" aria-labelledby="broken-down-label" defaultValue={state.isBrokenDown ?? undefined} onChange={(_event, value) => dispatch({ type: "answerQuickCheck", value })}>
       <RacwaRadioItem value="Yes" label="Yes" />
@@ -109,7 +132,7 @@ export function ConfirmCoverStep({ state, dispatch, covers }) {
         key={cover.id}
         value={cover.id}
         label={cover.name}
-        sublabel={`${formatCurrency(cover.monthlyPrice)} monthly or ${formatCurrency(cover.annualPrice)} yearly · ${cover.chip}`}
+        sublabel={`${formatCurrency(cover.annualPrice)} yearly · ${cover.chip}`}
         footer={<Perks perks={cover.perks} />}
         showFooter
         highlightSelected
@@ -119,46 +142,112 @@ export function ConfirmCoverStep({ state, dispatch, covers }) {
   </Stack>;
 }
 
-export function PaymentPlanStep({ state, dispatch, cover, paymentPlans }) {
+
+export function PaymentPlanStep({ state, dispatch, cart, paymentPlans }) {
   return <Stack spacing={3}>
     <Box>
       <Typography variant="h2">Payment plan</Typography>
       <Typography color="text.secondary">Choose a way to pay that works for you</Typography>
     </Box>
-    <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cover.name} cover</Typography>
+    <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName} cover</Typography>
     <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
       {paymentPlans.map((plan) => <RacwaRadioListItem
         key={plan.id}
         value={plan.id}
-        label={`${plan.title} · ${formatCurrency(paymentPlanPrice(cover, plan.id))}`}
-        sublabel={`${plan.chips.join(" · ")}. ${paymentPlanDescription(cover, plan.id)}`}
+        label={`${plan.title} · ${formatCurrency(cart.totalPrice)}`}
+        sublabel={`${plan.chips.join(" · ")}. Paid today by card.`}
         highlightSelected
       />)}
     </RacwaRadioGroup>
     {state.paymentPlan && <>
-      <RacwaAlertNotification severity="info"><strong>Your cover and cancellation.</strong> Roadside Assistance is a 12 month membership with no refunds for cancellations. Members are committed to the full 12 months, even if paid monthly.</RacwaAlertNotification>
+      <RacwaAlertNotification severity="info"><strong>Your cover and cancellation.</strong> Roadside Assistance is a 12 month membership with no refunds for cancellations.</RacwaAlertNotification>
       <Card background="gray" sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 500 }}>Direct debit authorisation terms</Typography>
-        <Typography variant="body2" color="text.secondary">This is a demo: no payment details are collected and no money is taken.</Typography>
+        <Typography sx={{ fontWeight: 500 }}>Payment authority terms</Typography>
+        <Typography variant="body2" color="text.secondary">You authorise RAC to charge {formatCurrency(cart.totalPrice)} to the card you enter on the next page. Card details are collected by the payment provider and never reach RAC systems.</Typography>
       </Card>
       <RacwaCheckboxGroup key={state.paymentPlan}>
-        <RacwaCheckboxListItem checked={state.acceptedPaymentAuthTerms} label="I've read and agree to the direct debit authorisation terms" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedPaymentAuthTerms", value })} />
+        <RacwaCheckboxListItem checked={state.acceptedPaymentAuthTerms} label="I've read and agree to the payment authority terms" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedPaymentAuthTerms", value })} />
         <RacwaCheckboxListItem checked={state.acceptedRoadsideAssistTerms} label="I've read and agree to the Roadside Assistance Entitlements" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedRoadsideAssistTerms", value })} />
       </RacwaCheckboxGroup>
     </>}
   </Stack>;
 }
 
-export function ConfirmationStep({ order, onRestart }) {
-  const published = order.publishStatus === "published";
+export function PayStep({ state, simulatePayment, onPaymentResult }) {
+  const { checkout } = state;
   return <Stack spacing={3}>
-    <RacwaCardNotification severity="success" title="You're covered" subtitle={`Order ${order.orderId}`}>
-      {order.cover.name} Roadside Assistance · {formatCurrency(order.price.instalmentAmount)} {order.price.frequency}
-      {order.vehicle ? ` · ${order.vehicle.rego}` : ""}
+    <Box>
+      <Typography variant="h2">Payment</Typography>
+      <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} yearly</Typography>
+    </Box>
+    {checkout.gateway === "Adyen"
+      ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} />
+      : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} />}
+  </Stack>;
+}
+
+function useCheckoutStatus(paymentId, getCheckoutStatus, onSettled) {
+  const [status, setStatus] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let timer;
+    let stopped = false;
+    async function poll() {
+      try {
+        const latest = await getCheckoutStatus(paymentId);
+        if (stopped) return;
+        setStatus(latest);
+        setError(null);
+        if (describeCheckoutStatus(latest).done) {
+          onSettled?.();
+          return;
+        }
+      } catch (pollError) {
+        if (stopped) return;
+        setError(pollError.message);
+      }
+      timer = setTimeout(poll, STATUS_POLL_INTERVAL_MS);
+    }
+    poll();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [paymentId, getCheckoutStatus, onSettled]);
+
+  return { status, error };
+}
+
+function StatusDetail({ label, value }) {
+  return value ? <Typography variant="body2"><strong>{label}:</strong> {value}</Typography> : null;
+}
+
+export function ConfirmationStep({ state, getCheckoutStatus, onSettled, onRestart, onTryAgain }) {
+  const { status, error } = useCheckoutStatus(state.checkout.paymentId, getCheckoutStatus, onSettled);
+  const progress = describeCheckoutStatus(status);
+  return <Stack spacing={3}>
+    <RacwaCardNotification severity={progress.severity} title={progress.title} subtitle={status?.orderNumber ? `Order ${status.orderNumber}` : `Payment ${state.checkout.merchantReference}`}>
+      {state.cart?.coverName} Roadside Assistance · {formatCurrency(state.checkout.amount)} yearly
+      {state.cart?.vehicle ? ` · ${state.cart.vehicle.rego}` : ""}
     </RacwaCardNotification>
-    {published
-      ? <RacwaAlertNotification severity="info">ProductHoldingChange event <strong>{order.eventId}</strong> was published to contact.events. Open the Contact Events tab to follow it.</RacwaAlertNotification>
-      : <RacwaAlertNotification severity="warning">The order was saved but the ProductHoldingChange event could not be published: {order.publishError}</RacwaAlertNotification>}
-    <Box><Button variant="contained" onClick={onRestart}>Start another purchase</Button></Box>
+    {!progress.done && <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}><CircularProgress size={16} /><Typography variant="body2" color="text.secondary">Checking with the payment provider and commercetools…</Typography></Stack>}
+    {state.paymentResult && !progress.done && <Typography variant="body2" color="text.secondary">The payment form reported <strong>{state.paymentResult}</strong>. Your cover is confirmed only once the payment notification is processed.</Typography>}
+    {error && <RacwaAlertNotification severity="warning">Could not read the payment status: {error}</RacwaAlertNotification>}
+    {status && <Card background="gray" sx={{ p: 2 }}>
+      <StatusDetail label="Payment" value={status.paymentState} />
+      <StatusDetail label="PSP reference" value={status.pspReference} />
+      <StatusDetail label="Refusal reason" value={status.refusalReason} />
+      <StatusDetail label="Processing result" value={status.processingResult} />
+      <StatusDetail label="Order state" value={status.orderState} />
+      <StatusDetail label="Provisioning" value={status.provisioningStatus} />
+      <StatusDetail label="ProductHoldingChange published" value={status.orderId ? (status.holdingEventPublished ? "Yes" : "Not yet") : null} />
+      <StatusDetail label="Correlation id" value={status.correlationId} />
+    </Card>}
+    {status?.holdingEventPublished && <RacwaAlertNotification severity="info">A ProductHoldingChange event was published to contact.events. Open the Contact Events tab to follow it.</RacwaAlertNotification>}
+    <Stack direction="row" spacing={2}>
+      {status?.paymentState === "Refused" && <Button variant="contained" onClick={onTryAgain}>Try another payment</Button>}
+      <Button variant={status?.paymentState === "Refused" ? "outlined" : "contained"} onClick={onRestart}>Start another purchase</Button>
+    </Stack>
   </Stack>;
 }

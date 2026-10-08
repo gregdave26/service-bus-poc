@@ -178,9 +178,11 @@ test("serves dashboard API resources and publish validation", async () => {
     });
 
     assert.equal(heartbeat.status, 204);
+    assert.equal(heartbeat.headers.get("cache-control"), "no-store");
     assert.equal((await (await fetch(`${baseUrl}/api/status`)).json())[0].serviceName, "Insurance");
     const config = await (await fetch(`${baseUrl}/api/config`)).json();
     assert.ok(config.subscriberLabels);
+    assert.equal(config.digitalSiteApiBaseUrl, process.env.DIGITAL_SITE_API_BASE_URL ?? "http://localhost:5200");
     assert.deepEqual(config.rosteringMappings.ctActiveForecast, {
       sourceTable: "ctActiveForecast",
       destinationTable: "dbo.ActiveForecast",

@@ -523,6 +523,18 @@ try {
     if (-not $nodeExecutable) {
         $nodeExecutable = $nodeCommands | Select-Object -First 1
     }
+
+    if (-not (Test-Path (Join-Path $uiPath 'package.json'))) {
+        throw "Dashboard package manifest not found: $(Join-Path $uiPath 'package.json')"
+    }
+
+    Write-Host "  Installing dashboard dependencies..."
+    $npmOutput = & npm install 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "npm install failed.`n$npmOutput"
+    }
+    Write-Host "  ✓ Dashboard dependencies installed"
+
     $viteCli = Join-Path $uiPath 'node_modules\vite\bin\vite.js'
     if (-not (Test-Path $viteCli)) {
         throw "Vite CLI not found: $viteCli"

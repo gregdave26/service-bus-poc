@@ -29,6 +29,7 @@ export function createApp() {
   app.use(contactEventsRouter);
   app.use(posRouter);
   app.use(rosteringRouter);
+  app.use(digitalSiteRouter);
   return app;
 }
 
@@ -38,4 +39,5 @@ export function logServerInitialized(port) {
   logRostering("server.initialized", { port, logPath: logRostering.logPath });
   logPos("server.initialized", { port, logPath: logPos.logPath });
   logContact("server.initialized", { port, logPath: logContact.logPath });
+  logDigitalSite("server.initialized", { port, logPath: logDigitalSite.logPath });
 }

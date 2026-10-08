@@ -27,7 +27,7 @@ public static class DigitalSiteEndpoints
 
         api.MapGet("/config", (IPaymentGatewayAdapter gateway) => Results.Ok(new { gateway = gateway.Mode.ToString() }));
 
-        api.MapGet("/catalog", async (CatalogService catalog, CancellationToken cancellationToken) =>
+        api.MapGet("/catalog", async (ICatalogProvider catalog, CancellationToken cancellationToken) =>
             Results.Ok(await catalog.GetCatalogAsync(cancellationToken)));
 
         api.MapGet("/vehicles/{rego}", (string rego, VehicleRegister vehicles) =>

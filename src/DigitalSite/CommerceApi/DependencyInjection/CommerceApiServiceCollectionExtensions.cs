@@ -34,8 +34,18 @@ public static class CommerceApiServiceCollectionExtensions
         services.AddCommerceToolsClient(configuration);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(_ => SiteContent.Load(Path.Combine(AppContext.BaseDirectory, SiteContent.FileName)));
+        var catalogProvider = configuration.GetValue<CatalogProviderMode>(
+            $"{DigitalSiteSettings.SectionName}:{nameof(DigitalSiteSettings.CatalogProvider)}");
+        if (catalogProvider == CatalogProviderMode.Local)
+        {
+            services.AddSingleton<ICatalogProvider>(_ =>
+                new LocalCatalogProvider(Path.Combine(AppContext.BaseDirectory, "Catalog", "local-catalog.json")));
+        }
+        else
+        {
+            services.AddScoped<ICatalogProvider, CatalogService>();
+        }
         services.AddSingleton<VehicleRegister>();
-        services.AddScoped<CatalogService>();
         services.AddScoped<MemberCartService>();
         services.AddScoped<CheckoutService>();
         services.AddScoped<NotificationProcessor>();

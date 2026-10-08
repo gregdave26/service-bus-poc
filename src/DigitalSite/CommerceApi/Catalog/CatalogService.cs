@@ -29,7 +29,7 @@ public sealed record CoverOffer(
 public sealed record CatalogResponse(IReadOnlyList<CoverOffer> Covers, IReadOnlyList<PaymentPlanContent> PaymentPlans);
 
 /// <summary>Builds the cover catalog from commercetools products, which own SKUs and prices.</summary>
-public sealed class CatalogService
+public sealed class CatalogService : ICatalogProvider
 {
     /// <summary>The product attribute holding the cover level.</summary>
     public const string LevelAttribute = "Level";

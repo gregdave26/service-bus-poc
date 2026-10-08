@@ -52,11 +52,15 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import FileOpenIcon from "@mui/icons-material/FileOpen";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import { generateRosterFile } from "./rosteringGenerator.js";
 import { PosProcessing } from "./localPosProcessing.jsx";
 import { processFlowColors, processStageSx } from "./processFlowStyles.js";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
+
+// Lazy-loaded so the RACWA component library is only downloaded when the Digital Site tab is opened.
+const DigitalSite = React.lazy(() => import("./digitalSite.jsx").then((module) => ({ default: module.DigitalSite })));
 
 const theme = createTheme({
   palette: {
@@ -68,6 +72,14 @@ const theme = createTheme({
   shape: { borderRadius: 12 },
   typography: { fontFamily: "Inter, Roboto, system-ui, sans-serif" },
 });
+
+const tabTitles = { contact: "Contact Events", pos: "Local Processing", rostering: "Rostering", digitalSite: "Digital Site" };
+
+// Payment redirects return to ?tab=digitalSite so the shopper lands back in the Digital Site flow.
+function initialTab() {
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  return Object.hasOwn(tabTitles, requestedTab ?? "") ? requestedTab : "contact";
+}
 
 const drafts = [
   { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
@@ -91,8 +103,9 @@ const rosteringFilenamePatterns = {
 
 async function getJson(url, options) {
   const response = await fetch(url, options);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`);
+  if (response.status === 204) return null;
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.error || `Request failed (${response.status})`);
   return body;
 }
 
@@ -444,12 +457,16 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
 }
 
 function App() {
-  const [config, setConfig] = useState({ subscriberLabels: {}, producerLabels: {} });
+  const [config, setConfig] = useState({
+    subscriberLabels: {},
+    producerLabels: {},
+    digitalSiteApiBaseUrl: "http://localhost:5200",
+  });
   const [statuses, setStatuses] = useState([]);
   const [messages, setMessages] = useState([]);
   const [posCatalog, setPosCatalog] = useState(null);
   const [posReceipts, setPosReceipts] = useState([]);
-  const [activeTab, setActiveTab] = useState("contact");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [emulator, setEmulator] = useState({ running: false });
   const [selectedService, setSelectedService] = useState(null);
   const [activeService, setActiveService] = useState(null);
@@ -467,7 +484,14 @@ function App() {
   async function refresh() {
     try {
       const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosReceipts] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos/receipts")]);
-      setConfig({ subscriberLabels: nextConfig.subscriberLabels || {}, producerLabels: nextConfig.producerLabels || {}, messageTypes: nextConfig.messageTypes || {}, rosteringMappings: nextConfig.rosteringMappings || {}, rosteringInputDefinitions: nextConfig.rosteringInputDefinitions || {} });
+      setConfig({
+        subscriberLabels: nextConfig.subscriberLabels || {},
+        producerLabels: nextConfig.producerLabels || {},
+        digitalSiteApiBaseUrl: nextConfig.digitalSiteApiBaseUrl || "http://localhost:5200",
+        messageTypes: nextConfig.messageTypes || {},
+        rosteringMappings: nextConfig.rosteringMappings || {},
+        rosteringInputDefinitions: nextConfig.rosteringInputDefinitions || {},
+      });
       setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosReceipts(nextPosReceipts); setError(null);
     } catch (refreshError) { setError(refreshError.message); } finally { setLoading(false); }
   }
@@ -539,9 +563,9 @@ function App() {
   const duplicateEditorName = drafts.some((draft) => draft !== selectedDraft && normalizedName(draft.name) === normalizedName(messageName));
 
   return <Container maxWidth="xl" sx={{ py: 3 }}>
-    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{activeTab === "contact" ? "Contact Events" : activeTab === "pos" ? "Local Processing" : "Rostering"}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
+    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{tabTitles[activeTab]}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button><Button size="small" variant={activeTab === "digitalSite" ? "contained" : "text"} onClick={() => setActiveTab("digitalSite")} role="tab" aria-selected={activeTab === "digitalSite"} startIcon={<StorefrontIcon />}>Digital Site</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
-    {activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) : <>
+    {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) : <>
     <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} receivedFlash={receivedFlashServices.has(service.serviceName)} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>

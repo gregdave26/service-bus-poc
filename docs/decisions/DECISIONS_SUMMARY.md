@@ -20,6 +20,8 @@
 | 8 | Infrastructure as Code | ✅ Bicep templates | Azure-native, clean syntax, purpose-built | [ADR-008](008-bicep-iac.md) |
 | 9 | Carwash integration boundary | Refined by ADR-011 | Pulse calls verification API; Carwash no longer requires contact-event consumption | [ADR-009](009-carwash-integration-boundary.md) |
 | 11 | Carwash membership and events | ✅ MemberCentral + producer | MemberCentral is authoritative; Carwash publishes completed-wash events | [ADR-011](011-carwash-membercentral-and-events.md) |
+| 13 | Digital Site tab | ✅ `@racwa/react-components` | Cut-down RSA purchase flow; orders publish `ProductHoldingChange` | [ADR-013](013-digital-site-racwa-component-library.md) |
+| 14 | Digital Site commerce flow | ✅ CT API stub + Adyen Sessions Drop-in | Cart/order in commercetools; verified webhook drives event-driven order creation | [ADR-014](014-digital-site-commerce-flow.md) |
 
 ---
 

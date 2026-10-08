@@ -4,7 +4,7 @@
 
 ## Context
 
-The UI has three tabs: Contact Events, Local (POS) Processing and Rostering. The backend was organised by technical role: four consumer projects sat beside Core and Producer in `src/`, and `ui/server.js` (~850 lines) mixed dashboard, contact-event, POS and rostering code. A legacy C# `ServiceBusPoc.Dashboard` duplicated the Node.js dashboard (see `DASHBOARD_NODEJS_MIGRATION.md`).
+The UI has three tabs: Contact Events, Local (POS) Processing and Rostering (a fourth, Digital Site, was added later — see ADR-013). The backend was organised by technical role: four consumer projects sat beside Core and Producer in `src/`, and `ui/server.js` (~850 lines) mixed dashboard, contact-event, POS and rostering code. A legacy C# `ServiceBusPoc.Dashboard` duplicated the Node.js dashboard (see `DASHBOARD_NODEJS_MIGRATION.md`).
 
 ## Problem Statement
 
@@ -23,6 +23,7 @@ How do we structure the backend so each tab owns its code and a new tab follows 
 - `src/ContactEvents/Producer` → `ServiceBusPoc.ContactEvents.Producer`
 - `src/ContactEvents/Verifier` → `ServiceBusPoc.ContactEvents.Verifier`
 - `src/ContactEvents/Consumers/{Carwash,DigitalChannels,Insurance,ParksResorts}` → `ServiceBusPoc.ContactEvents.Consumers.<Name>`
+- `src/DigitalSite/{Shared,CommerceToolsStub,CommerceApi,CartProcessor,FulfilmentStub}` → `ServiceBusPoc.DigitalSite.<Name>` (added by ADR-014)
 - `src/ServiceBusPoc.Core` remains shared infrastructure.
 - Folder names are short on purpose: the full project name repeated in the folder pushed `bin` output past the Windows 260-character path limit in deep worktrees.
 - The C# `ServiceBusPoc.Dashboard` project and its tests are deleted. `Core/Dashboard` (heartbeat reporting) stays; consumers report to the Node.js dashboard.
@@ -38,6 +39,7 @@ ui/server/
   contactEvents/      router.js, publisher.js, messageStore.js, messageTypes.js, log.js, index.js
   pos/                router.js, database.js, receipt*.js, catalog.js, log.js, index.js
   rostering/          router.js, batchProcessor.js, inputDefinitions.js, lineup.js, log.js, index.js
+  digitalSite/        index.js (client config only: the tab calls the .NET CommerceApi in src/DigitalSite, see ADR-014)
 ```
 
 ### Adding a new tab

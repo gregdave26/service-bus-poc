@@ -129,6 +129,85 @@ public sealed class ContactEventPublisherTests
             () => publisher.PublishContactUpdatedAsync(ValidContact(), "crm"));
     }
 
+    [Fact]
+    public async Task PublishProductHoldingChangeAsync_ValidHolding_SendsUnflaggedEnvelope()
+    {
+        var sender = new Mock<IServiceBusSender>();
+        ServiceBusMessage? sent = null;
+        sender.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceBusMessage, CancellationToken>((message, _) => sent = message)
+            .Returns(Task.CompletedTask);
+        var publisher = new ContactEventPublisher(
+            sender.Object, Mock.Of<ILogger<ContactEventPublisher>>(), TimeProvider.System);
+
+        var eventId = await publisher.PublishProductHoldingChangeAsync(
+            ValidHoldingChange(), "digital-site", "correlation-2");
+
+        Assert.Equal(eventId, sent!.MessageId);
+        Assert.Equal("correlation-2", sent.CorrelationId);
+        Assert.Equal(ContactEventMessage.ProductHoldingChangeType, sent.Subject);
+        Assert.Equal(false, sent.ApplicationProperties[ContactEventMessage.HasInsuranceProperty]);
+        Assert.Equal(false, sent.ApplicationProperties[ContactEventMessage.HasParksResortsProperty]);
+        Assert.Equal(false, sent.ApplicationProperties[ContactEventMessage.HasCarwashProductProperty]);
+        using var document = JsonDocument.Parse(sent.Body.ToString());
+        var root = document.RootElement;
+        Assert.Equal(ContactEventMessage.ProductHoldingChangeType, root.GetProperty("type").GetString());
+        Assert.Equal(ContactEventMessage.ProductHoldingChangeDataVersion, root.GetProperty("dataVersion").GetString());
+        Assert.Equal("roadside-assistance", root.GetProperty("data").GetProperty("productType").GetString());
+        Assert.Equal("RSA-1", root.GetProperty("data").GetProperty("holdingId").GetString());
+        Assert.Equal("CLAS", root.GetProperty("data").GetProperty("holdingData").GetProperty("coverSku").GetString());
+    }
+
+    [Fact]
+    public async Task PublishProductHoldingChangeAsync_InvalidProductType_ThrowsWithoutSending()
+    {
+        var sender = new Mock<IServiceBusSender>();
+        var publisher = new ContactEventPublisher(
+            sender.Object, Mock.Of<ILogger<ContactEventPublisher>>(), TimeProvider.System);
+        var holdingChange = ValidHoldingChange();
+        holdingChange.ProductType = "boats";
+
+        var error = await Assert.ThrowsAsync<ValidationException>(
+            () => publisher.PublishProductHoldingChangeAsync(holdingChange, "digital-site"));
+
+        Assert.StartsWith("Product holding change payload is invalid", error.Message);
+        sender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PublishProductHoldingChangeAsync_MissingArguments_Throw()
+    {
+        var publisher = CreatePublisher();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => publisher.PublishProductHoldingChangeAsync(null!, "digital-site"));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => publisher.PublishProductHoldingChangeAsync(ValidHoldingChange(), ""));
+    }
+
+    [Fact]
+    public async Task PublishProductHoldingChangeAsync_ServiceBusFailure_RethrowsException()
+    {
+        var sender = new Mock<IServiceBusSender>();
+        sender.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ServiceBusException("send failed", ServiceBusFailureReason.GeneralError));
+        var publisher = new ContactEventPublisher(
+            sender.Object, Mock.Of<ILogger<ContactEventPublisher>>(), TimeProvider.System);
+
+        await Assert.ThrowsAsync<ServiceBusException>(
+            () => publisher.PublishProductHoldingChangeAsync(ValidHoldingChange(), "digital-site"));
+    }
+
+    private static ProductHoldingChangeData ValidHoldingChange() =>
+        new()
+        {
+            ContactId = "CRM-12345678",
+            HoldingId = "RSA-1",
+            ProductType = ProductHoldingChangeData.ProductTypes.RoadsideAssistance,
+            Action = ProductHoldingChangeData.Actions.Created,
+            HoldingData = new Dictionary<string, object?> { ["coverSku"] = "CLAS" }
+        };
+
     private static ContactEventPublisher CreatePublisher() =>
         new(
             Mock.Of<IServiceBusSender>(),

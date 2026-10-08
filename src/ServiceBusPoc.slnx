@@ -1,4 +1,20 @@
 <Solution>
+  <Folder Name="/DigitalSite/" />
+  <Folder Name="/DigitalSite/CartProcessor/">
+    <Project Path="DigitalSite/CartProcessor/ServiceBusPoc.DigitalSite.CartProcessor.csproj" />
+  </Folder>
+  <Folder Name="/DigitalSite/CommerceApi/">
+    <Project Path="DigitalSite/CommerceApi/ServiceBusPoc.DigitalSite.CommerceApi.csproj" />
+  </Folder>
+  <Folder Name="/DigitalSite/CommerceToolsStub/">
+    <Project Path="DigitalSite/CommerceToolsStub/ServiceBusPoc.DigitalSite.CommerceToolsStub.csproj" />
+  </Folder>
+  <Folder Name="/DigitalSite/FulfilmentStub/">
+    <Project Path="DigitalSite/FulfilmentStub/ServiceBusPoc.DigitalSite.FulfilmentStub.csproj" />
+  </Folder>
+  <Folder Name="/DigitalSite/Shared/">
+    <Project Path="DigitalSite/Shared/ServiceBusPoc.DigitalSite.Shared.csproj" />
+  </Folder>
   <Project Path="../tests/ServiceBusPoc.Tests/ServiceBusPoc.Tests.csproj" />
   <Project Path="ContactEvents/Consumers/Carwash/ServiceBusPoc.ContactEvents.Consumers.Carwash.csproj" />
   <Project Path="ServiceBusPoc.Core/ServiceBusPoc.Core.csproj" />

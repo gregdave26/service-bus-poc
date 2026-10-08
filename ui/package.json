@@ -15,18 +15,59 @@
     "test:coverage": "node --test --test-concurrency=1 --experimental-test-coverage"
   },
   "dependencies": {
+    "@adyen/adyen-web": "6.46.0",
     "@azure/identity": "^4.10.0",
     "@azure/service-bus": "^7.9.5",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@mui/icons-material": "^7.3.1",
-    "@mui/material": "^7.3.1",
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.0",
+    "@fortawesome/fontawesome-common-types": "7.2.0",
+    "@fortawesome/fontawesome-svg-core": "7.2.0",
+    "@fortawesome/free-brands-svg-icons": "7.2.0",
+    "@fortawesome/free-regular-svg-icons": "7.2.0",
+    "@fortawesome/free-solid-svg-icons": "7.2.0",
+    "@fortawesome/react-fontawesome": "3.2.0",
+    "@mui/icons-material": "7.3.10",
+    "@mui/material": "7.3.10",
+    "@mui/system": "7.3.10",
+    "@mui/utils": "7.3.10",
+    "@mui/x-date-pickers": "8.27.2",
+    "@racwa/react-components": "12.0.3",
+    "@racwa/styles": "8.0.33",
+    "@racwa/validation": "7.0.26",
+    "date-fns": "4.1.0",
     "express": "^5.1.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "framer-motion": "11.3.29",
+    "lodash": "4.18.1",
+    "luxon": "3.3.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-dropzone": "14.2.3",
+    "react-number-format": "5.2.2",
+    "react-snap-carousel": "0.5.1",
+    "tslib": "2.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.2",
     "vite": "^7.1.5"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom",
+    "framer-motion": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-number-format": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-snap-carousel": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-dropzone": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }

@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { contactEventsClientConfig, contactEventsRouter, logContact } from "./contactEvents/index.js";
-import { digitalSiteClientConfig } from "./digitalSite/index.js";
+import { digitalSiteClientConfig, digitalSiteRouter, logDigitalSite } from "./digitalSite/index.js";
 import { logPos, posRouter } from "./pos/index.js";
 import { logRostering, rosteringClientConfig, rosteringRouter } from "./rostering/index.js";
 import { uiRoot } from "./shared/paths.js";

@@ -47,6 +47,8 @@ function run(actions, state = createInitialFlowState(CRM_ID)) {
 
 function detailsAndVehicleState() {
   return run([
+    { type: "chooseCover", value: "RSA-CLASSIC" },
+    { type: "next" },
     ...Object.entries(personalDetails).map(([field, value]) => ({ type: "changePersonalDetails", field, value })),
     { type: "chooseVehicleSearch", value: "RegoLookup" },
     { type: "changeRego", value: "1anurag " },
@@ -61,9 +63,14 @@ test("generates mock CRM ids in the CommerceApi format", () => {
   assert.match(createInitialFlowState().crmId, /^CRM-\d{8}$/);
 });
 
-test("starts at Your details with the RAC-style three-stage stepper", () => {
+test("starts at cover selection before the three-stage stepper", () => {
   const state = createInitialFlowState(CRM_ID);
-  assert.equal(state.page, "yourDetails");
+  assert.equal(state.page, "coverSelection");
+  assert.equal(canContinue(state), false);
+  assert.equal(flowReducer(state, { type: "chooseCover", value: "RSA-CLASSIC" }).coverId, "RSA-CLASSIC");
+  assert.equal(canContinue(flowReducer(state, { type: "chooseCover", value: "RSA-CLASSIC" })), true);
+  const selected = flowReducer(state, { type: "chooseCover", value: "RSA-CLASSIC" });
+  assert.equal(flowReducer(selected, { type: "next" }).page, "yourDetails");
   assert.deepEqual(stepperIndexFor("yourDetails"), 0);
   assert.deepEqual(stepperIndexFor("confirmPay"), 1);
   assert.deepEqual(stepperIndexFor("finished"), 2);
@@ -92,7 +99,7 @@ test("creates a cart request without the removed breakdown gate", () => {
 test("moves from Your details to Confirm & pay", () => {
   const state = detailsAndVehicleState();
   assert.equal(flowReducer(state, { type: "next" }).page, "confirmPay");
-  assert.equal(flowReducer(createInitialFlowState(CRM_ID), { type: "next" }).page, "yourDetails");
+  assert.equal(flowReducer(createInitialFlowState(CRM_ID), { type: "next" }).page, "coverSelection");
   assert.equal(flowReducer(state, { type: "cartSaved", cart: savedCart }).page, "confirmPay");
 });
 
@@ -166,7 +173,7 @@ test("changing payment plan clears previously accepted terms", () => {
 
 test("restores only recognised flow states", () => {
   const state = createInitialFlowState(CRM_ID);
-  assert.equal(restoreFlowState(JSON.stringify(state)).page, "yourDetails");
+  assert.equal(restoreFlowState(JSON.stringify(state)).page, "coverSelection");
   assert.equal(restoreFlowState(JSON.stringify({ ...state, page: "quickCheck" })), null);
   assert.equal(restoreFlowState("not json"), null);
 });

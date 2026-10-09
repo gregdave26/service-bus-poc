@@ -1,4 +1,4 @@
-export const PAGES = ["yourDetails", "confirmPay", "finished"];
+export const PAGES = ["coverSelection", "yourDetails", "confirmPay", "finished"];
 
 export const STEPPER_STEPS = [
   { name: "Your details", page: "yourDetails" },
@@ -27,7 +27,7 @@ export function generateCrmId(random = Math.random) {
 
 export function createInitialFlowState(crmId = generateCrmId()) {
   return {
-    page: "yourDetails",
+    page: "coverSelection",
     crmId,
     personalDetails: {
       title: "",
@@ -62,6 +62,8 @@ function hasCompletePersonalDetails(personalDetails) {
 
 export function canContinue(state) {
   switch (state.page) {
+    case "coverSelection":
+      return state.coverId !== null;
     case "yourDetails":
       return hasCompletePersonalDetails(state.personalDetails)
         && (state.vehicle.searchChoice === "Skip"
@@ -168,6 +170,7 @@ export function flowReducer(state, action) {
       return state.page === "finished" ? { ...state, page: "confirmPay", checkout: null, paymentResult: null } : state;
     case "next":
       if (!canContinue(state)) return state;
+      if (state.page === "coverSelection") return { ...state, page: "yourDetails" };
       return state.page === "yourDetails" ? { ...state, page: "confirmPay" } : state;
     case "back":
       return state.page === "confirmPay" ? { ...state, page: "yourDetails", checkout: null } : state;

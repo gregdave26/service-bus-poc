@@ -12,6 +12,7 @@ import {
   RacwaRadioListItem,
   RacwaTextInput,
 } from "@racwa/react-components";
+import { colors } from "@racwa/styles";
 import { AdyenDropIn } from "./AdyenDropIn.jsx";
 import { describeCheckoutStatus, formatCurrency } from "./digitalSiteFlowState.js";
 import { StubPaymentPanel } from "./StubPaymentPanel.jsx";
@@ -34,6 +35,112 @@ function Perks({ perks }) {
       <ListItemText primary={perk} />
     </ListItem>)}
   </List>;
+}
+
+const COVER_FEATURES = [
+  ["Car covered", ["✓", "✓", "✓", "✓"]],
+  ["Person covered", ["", "", "✓", "✓"]],
+  ["Unlimited callouts", ["✓", "✓", "✓", "✓"]],
+  ["Free metro towing", ["25km", "100km", "100km", "200km"]],
+  ["Taxi", ["", "up to $55", "up to $55", "up to $100"]],
+  ["Locksmith", ["", "up to $165", "up to $165", "up to $200"]],
+  ["Trailer / caravan towing", ["", "✓", "✓", "✓"]],
+  ["Free fuel", ["", "", "", "up to $50"]],
+  ["24 hours a day, 7 days a week", ["✓", "✓", "✓", "✓"]],
+  ["Vehicle recovery", ["", "✓", "✓", "✓"]],
+];
+
+const COVER_ORDER = ["STD", "CLAS", "ULTI", "ULPL"];
+
+export function CoverSelectionStep({ state, dispatch, covers }) {
+  const orderedCovers = COVER_ORDER
+    .map((id) => covers.find((cover) => cover.id === id))
+    .filter(Boolean);
+
+  return <Stack spacing={3}>
+    <Typography variant="h2" sx={{ textAlign: "center" }}>Your choice of cover options</Typography>
+    <Box sx={{ width: "100%", overflow: "visible" }}>
+      <Box sx={{ width: "100%" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "92px repeat(4, minmax(0, 1fr))", sm: "140px repeat(4, minmax(0, 1fr))" }, alignItems: "stretch" }}>
+          <Box />
+          {orderedCovers.map((cover) => <Card
+            key={cover.id}
+            background="gray"
+            sx={{
+              borderRadius: 0,
+              padding: { xs: "0.5rem !important", sm: "0.75rem !important" },
+              margin: "0 !important",
+              width: "auto !important",
+              textAlign: "center",
+              border: "1px solid white",
+              bgcolor: cover.id === "CLAS" ? colors.racYellow : colors.racGrayLight,
+              color: colors.dieselDeepest,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: { xs: 0.5, sm: 0.75 },
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                minHeight: { xs: "1rem", sm: "1.2rem" },
+                display: "block",
+                color: colors.dieselDeepest,
+                visibility: cover.id === "CLAS" ? "visible" : "hidden",
+              }}
+            >
+              Most popular
+            </Typography>
+            <Typography
+              variant="h4"
+              sx={{
+                minHeight: { xs: "2rem", sm: "1.8rem" },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                fontSize: { xs: "0.62rem", sm: "0.8rem" },
+                lineHeight: 1.1,
+                overflowWrap: "anywhere",
+                m: 0,
+              }}
+            >
+              {cover.name}
+            </Typography>
+            <Typography variant="h3" sx={{ fontSize: { xs: "0.85rem", sm: "1.25rem" }, lineHeight: 1, m: 0, whiteSpace: "nowrap" }}>{formatCurrency(cover.annualPrice / 12)}<Typography component="span" variant="caption" sx={{ fontSize: { xs: "0.45rem", sm: "0.6rem" } }}> /month</Typography></Typography>
+            <Typography variant="caption" sx={{ fontSize: { xs: "0.5rem", sm: "0.65rem" }, lineHeight: 1.1, m: 0 }}>or {formatCurrency(cover.annualPrice)} /yr</Typography>
+            <Typography variant="body2" sx={{ minHeight: { xs: "2.2rem", sm: "2.5rem" }, mt: 0, fontSize: { xs: "0.52rem", sm: "0.68rem" }, lineHeight: 1.15, m: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{cover.chip}</Typography>
+          </Card>)}
+          {COVER_FEATURES.flatMap(([feature, values]) => [
+            <Box key={`${feature}-label`} sx={{ p: { xs: 0.5, sm: 1 }, bgcolor: colors.subtleBg, color: colors.dieselDeepest, fontSize: { xs: "0.58rem", sm: "0.8rem" }, overflowWrap: "anywhere" }}>{feature}</Box>,
+            ...values.map((value, index) => <Box key={`${feature}-${index}`} sx={{ p: { xs: 0.5, sm: 1 }, textAlign: "center", bgcolor: index === 1 ? colors.racGrayLight : colors.subtleBg, color: colors.dieselDeepest, fontSize: { xs: "0.6rem", sm: "0.8rem" }, overflowWrap: "anywhere", borderLeft: "1px solid white" }}>{value}</Box>),
+          ])}
+          <Box />
+          {orderedCovers.map((cover) => <Button
+            key={`${cover.id}-join`}
+            variant={state.coverId === cover.id ? "contained" : "outlined"}
+            onClick={() => dispatch({ type: "chooseCover", value: cover.id })}
+            sx={{
+              m: 1,
+              borderColor: colors.dieselDeep,
+              color: state.coverId === cover.id ? colors.dieselDeepest : colors.dieselDeep,
+              bgcolor: state.coverId === cover.id ? colors.racYellow : colors.dieselDeepest,
+              "&:hover": { bgcolor: state.coverId === cover.id ? colors.racYellowLight : colors.dieselDeep },
+            }}
+          >
+            Join now
+          </Button>)}
+        </Box>
+      </Box>
+    </Box>
+    <Typography variant="caption" color="text.secondary">
+      Benefits are subject to the Roadside Assistance Entitlements, terms and conditions.
+    </Typography>
+    <Typography variant="body2" sx={{ textAlign: "center" }}>
+      <strong>Are you currently broken down?</strong> Please note an extra fee may apply if you need assistance within 48 hours of joining.
+    </Typography>
+  </Stack>;
 }
 
 function MemberIdentity({ crmId, onNewMember }) {
@@ -73,6 +180,50 @@ export function QuickCheckStep({ state, dispatch, activeCart, onNewMember, onRes
   </Stack>;
 }
 
+const PERSONAL_FIELDS = [
+  ["title", "Title"],
+  ["firstName", "First name"],
+  ["lastName", "Last name"],
+  ["dateOfBirth", "Date of birth"],
+  ["email", "Email address"],
+  ["phone", "Phone number"],
+  ["addressLine1", "Street address"],
+  ["suburb", "Suburb"],
+  ["state", "State"],
+  ["postcode", "Postcode"],
+];
+
+function PersonalDetails({ state, dispatch }) {
+  return <Stack spacing={2}>
+    <Typography variant="h3">Your personal details</Typography>
+    <Typography color="text.secondary">Tell us who will hold the Roadside Assistance membership.</Typography>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+      {PERSONAL_FIELDS.map(([field, label]) => <RacwaTextInput
+        key={field}
+        id={`personal-${field}`}
+        label={label}
+        type={field === "dateOfBirth" ? "date" : field === "email" ? "email" : field === "phone" ? "tel" : "text"}
+        value={state.personalDetails[field]}
+        onChange={(event) => dispatch({ type: "changePersonalDetails", field, value: event.target.value })}
+        inputProps={field === "postcode" ? { maxLength: 4, inputMode: "numeric" } : undefined}
+      />)}
+    </Box>
+  </Stack>;
+}
+
+export function YourDetailsStep({ state, dispatch, lookupVehicle, ...members }) {
+  return <Stack spacing={4}>
+    <Box>
+      <Typography variant="h2">Your details</Typography>
+      <Typography color="text.secondary">Join RAC Roadside Assistance by entering your details, vehicle and cover.</Typography>
+    </Box>
+    <MemberIdentity crmId={state.crmId} onNewMember={members.onNewMember} />
+    {members.activeCart && <ActiveCartPrompt cart={members.activeCart} onResume={members.onResumeCart} onDiscard={members.onDiscardCart} busy={members.cartBusy} />}
+    <PersonalDetails state={state} dispatch={dispatch} />
+    <VehicleDetailsStep state={state} dispatch={dispatch} lookupVehicle={lookupVehicle} />
+  </Stack>;
+}
+
 export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   const [lookupError, setLookupError] = useState(null);
   const [searching, setSearching] = useState(false);
@@ -88,6 +239,7 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
     } finally {
       setSearching(false);
     }
+
   }
 
   return <Stack spacing={3}>
@@ -118,6 +270,12 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
     </Stack>}
     {searchChoice === "Skip" && <RacwaAlertNotification severity="info">No problem. You can add your vehicle to your membership later in myRAC.</RacwaAlertNotification>}
   </Stack>;
+}
+
+export function ConfirmPayStep({ state, dispatch, paymentPlans, simulatePayment, onPaymentResult }) {
+  return state.checkout
+    ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} />
+    : <PaymentPlanStep state={state} dispatch={dispatch} cart={state.cart} paymentPlans={paymentPlans} />;
 }
 
 export function ConfirmCoverStep({ state, dispatch, covers }) {

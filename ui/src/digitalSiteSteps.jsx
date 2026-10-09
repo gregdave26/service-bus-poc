@@ -86,7 +86,10 @@ export function CoverSelectionStep({ state, dispatch, covers }) {
               sx={{
                 minHeight: { xs: "1rem", sm: "1.2rem" },
                 display: "block",
-                color: colors.dieselDeepest,
+                bgcolor: cover.id === "CLAS" ? "#182d3c" : "transparent",
+                color: cover.id === "CLAS" ? colors.white : colors.dieselDeepest,
+                px: cover.id === "CLAS" ? 1 : 0,
+                py: cover.id === "CLAS" ? 0.25 : 0,
                 visibility: cover.id === "CLAS" ? "visible" : "hidden",
               }}
             >
@@ -119,14 +122,33 @@ export function CoverSelectionStep({ state, dispatch, covers }) {
           <Box />
           {orderedCovers.map((cover) => <Button
             key={`${cover.id}-join`}
-            variant={state.coverId === cover.id ? "contained" : "outlined"}
+            className={cover.id === "CLAS" ? "ct-recommended" : undefined}
+            variant="contained"
             onClick={() => dispatch({ type: "chooseCover", value: cover.id })}
             sx={{
-              m: 1,
-              borderColor: colors.dieselDeep,
-              color: state.coverId === cover.id ? colors.dieselDeepest : colors.dieselDeep,
-              bgcolor: state.coverId === cover.id ? colors.racYellow : colors.dieselDeepest,
-              "&:hover": { bgcolor: state.coverId === cover.id ? colors.racYellowLight : colors.dieselDeep },
+              m: 0,
+              minWidth: 0,
+              minHeight: 0,
+              bgcolor: state.coverId === cover.id ? "#ffd100" : "#33424d",
+              color: state.coverId === cover.id ? "#33424d" : colors.white,
+              border: `1px solid ${state.coverId === cover.id ? "#e6bc00" : "#29353e"}`,
+              padding: { xs: "5px 10px", sm: "10px 18px" },
+              fontSize: { xs: "14px", sm: "16px" },
+              fontWeight: 400,
+              lineHeight: "20px",
+              borderRadius: { xs: "2px", sm: "3px" },
+              boxShadow: "none",
+              textTransform: "none",
+              "&:hover": {
+                bgcolor: state.coverId === cover.id ? "#e3be0a" : "#415462",
+                color: state.coverId === cover.id ? "#4f5543" : colors.white,
+                borderColor: state.coverId === cover.id ? "#e9bf00" : "#29353e",
+                boxShadow: "none",
+              },
+              "&:focus-visible": {
+                outline: `2px solid ${colors.focusBlue}`,
+                outlineOffset: 2,
+              },
             }}
           >
             Join now

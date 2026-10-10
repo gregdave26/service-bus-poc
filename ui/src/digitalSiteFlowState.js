@@ -41,7 +41,7 @@ export function createInitialFlowState(crmId = generateCrmId()) {
       state: "WA",
       postcode: "",
     },
-    vehicle: { searchChoice: null, rego: "", details: null },
+    vehicle: { searchChoice: "Skip", rego: "", year: "", make: "", model: "", body: "", details: null },
     coverId: null,
     paymentPlan: null,
     acceptedPaymentAuthTerms: false,
@@ -130,8 +130,16 @@ function resumeFrom(state, cart) {
     ...state,
     page: "yourDetails",
     vehicle: isLookup
-      ? { searchChoice: "RegoLookup", rego: cart.vehicle.rego, details: cart.vehicle }
-      : { searchChoice: "Skip", rego: "", details: null },
+      ? {
+        searchChoice: "RegoLookup",
+        rego: cart.vehicle.rego,
+        year: cart.vehicle.year ?? "",
+        make: cart.vehicle.make ?? "",
+        model: cart.vehicle.model ?? "",
+        body: cart.vehicle.body ?? "",
+        details: cart.vehicle,
+      }
+      : { searchChoice: "Skip", rego: "", year: "", make: "", model: "", body: "", details: null },
     personalDetails: cart.personalDetails ?? state.personalDetails,
     coverId: cart.coverId,
     cart,
@@ -151,9 +159,42 @@ export function flowReducer(state, action) {
     case "chooseVehicleSearch":
       return { ...state, vehicle: { ...state.vehicle, searchChoice: action.value } };
     case "changeRego":
-      return { ...state, vehicle: { ...state.vehicle, rego: action.value, details: null } };
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          searchChoice: action.value.trim() ? "RegoLookup" : "Skip",
+          rego: action.value,
+          year: "",
+          make: "",
+          model: "",
+          body: "",
+          details: null,
+        },
+      };
+    case "changeVehicleField":
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          [action.field]: action.value,
+          ...(action.field === "make" ? { model: "", body: "" } : {}),
+          ...(action.field === "model" ? { body: "" } : {}),
+        },
+      };
     case "vehicleFound":
-      return { ...state, vehicle: { ...state.vehicle, details: action.vehicle } };
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          searchChoice: "RegoLookup",
+          details: action.vehicle,
+          year: action.vehicle.year == null ? "" : String(action.vehicle.year),
+          make: action.vehicle.make?.toUpperCase() ?? "",
+          model: action.vehicle.model ?? "",
+          body: action.vehicle.body ?? "",
+        },
+      };
     case "chooseCover":
       return { ...state, coverId: action.value };
     case "cartSaved":
@@ -201,6 +242,22 @@ const currencyFormatter = new Intl.NumberFormat("en-AU", { style: "currency", cu
 
 export function formatCurrency(amount) {
   return currencyFormatter.format(amount);
+}
+
+export function paymentPlanPrice(cart, cover, paymentPlanId) {
+  const fallback = cart?.totalPrice ?? 0;
+  if (paymentPlanId === "Monthly") {
+    return {
+      amount: cover?.monthlyPrice ?? fallback,
+      frequency: "month",
+      annualTotal: cover?.monthlyTotal,
+    };
+  }
+  return {
+    amount: cover?.annualPrice ?? fallback,
+    frequency: "year",
+    annualTotal: cover?.annualPrice ?? fallback,
+  };
 }
 
 const PAYMENT_PROGRESS = {

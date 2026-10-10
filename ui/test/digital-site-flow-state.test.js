@@ -8,6 +8,7 @@ import {
   flowReducer,
   formatCurrency,
   generateCrmId,
+  paymentPlanPrice,
   restoreFlowState,
   stepperIndexFor,
   toCheckoutRequest,
@@ -75,6 +76,58 @@ test("starts at cover selection before the three-stage stepper", () => {
   assert.deepEqual(stepperIndexFor("confirmPay"), 1);
   assert.deepEqual(stepperIndexFor("finished"), 2);
   assert.equal(stepperIndexFor("quickCheck"), -1);
+});
+
+test("Join now selects the cover and opens Your details", () => {
+  const state = createInitialFlowState(CRM_ID);
+  const afterJoinNow = run([
+    { type: "chooseCover", value: "RSA-ULTIMATE" },
+    { type: "next" },
+  ], state);
+
+  assert.equal(afterJoinNow.coverId, "RSA-ULTIMATE");
+  assert.equal(afterJoinNow.page, "yourDetails");
+});
+
+test("vehicle details are optional and preserve entered vehicle fields", () => {
+  const state = createInitialFlowState(CRM_ID);
+  assert.equal(state.vehicle.searchChoice, "Skip");
+  const changed = run([
+    { type: "changeVehicleField", field: "year", value: "2020" },
+    { type: "changeVehicleField", field: "make", value: "Toyota" },
+  ], state);
+
+  assert.equal(changed.vehicle.year, "2020");
+  assert.equal(changed.vehicle.make, "Toyota");
+  assert.equal(canContinue(changed), false);
+});
+
+test("changing the vehicle make clears dependent model and body fields", () => {
+  const state = {
+    ...createInitialFlowState(CRM_ID),
+    vehicle: { searchChoice: "Skip", rego: "", year: "2022", make: "Toyota", model: "Corolla", body: "Sedan", details: null },
+  };
+  const changed = flowReducer(state, { type: "changeVehicleField", field: "make", value: "Mazda" });
+
+  assert.equal(changed.vehicle.make, "Mazda");
+  assert.equal(changed.vehicle.model, "");
+  assert.equal(changed.vehicle.body, "");
+});
+
+test("vehicle lookup selects the returned vehicle fields", () => {
+  const state = createInitialFlowState(CRM_ID);
+  const returnedVehicle = { ...foundVehicle, year: 2022, make: "Toyota", model: "Corolla", body: "Sedan" };
+  const found = flowReducer(state, { type: "vehicleFound", vehicle: returnedVehicle });
+
+  assert.deepEqual(found.vehicle, {
+    searchChoice: "RegoLookup",
+    rego: "",
+    year: "2022",
+    make: "TOYOTA",
+    model: "Corolla",
+    body: "Sedan",
+    details: returnedVehicle,
+  });
 });
 
 test("requires personal details, vehicle choice, and cover before continuing", () => {
@@ -183,4 +236,12 @@ test("formats prices and describes checkout status", () => {
   assert.equal(describeCheckoutStatus(null).title, "Waiting for payment confirmation");
   assert.equal(describeCheckoutStatus({ paymentState: "Refused" }).done, true);
   assert.equal(describeCheckoutStatus({ paymentState: "Authorised", provisioningStatus: "Provisioned" }).title, "You're covered");
+});
+
+test("calculates payment plan prices from the selected cover", () => {
+  const cart = { totalPrice: 310 };
+  const cover = { monthlyPrice: 28.55, monthlyTotal: 345.6, annualPrice: 310 };
+  assert.deepEqual(paymentPlanPrice(cart, cover, "Monthly"), { amount: 28.55, frequency: "month", annualTotal: 345.6 });
+  assert.deepEqual(paymentPlanPrice(cart, cover, "Annual"), { amount: 310, frequency: "year", annualTotal: 310 });
+  assert.deepEqual(paymentPlanPrice(cart, undefined, "Annual"), { amount: 310, frequency: "year", annualTotal: 310 });
 });

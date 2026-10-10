@@ -46,7 +46,7 @@ function CurrentStep({ state, dispatch, catalog, api, members, payment }) {
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
     case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} {...members} />;
-    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }

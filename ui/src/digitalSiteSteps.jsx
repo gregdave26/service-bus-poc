@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Chip, CircularProgress, List, ListItem, ListItemIcon, ListItemText, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, FormControl, FormControlLabel, FormLabel, List, ListItem, ListItemIcon, ListItemText, MenuItem, Radio, RadioGroup, Stack, TextField, Typography } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import {
   Card,
@@ -14,7 +14,7 @@ import {
 } from "@racwa/react-components";
 import { colors } from "@racwa/styles";
 import { AdyenDropIn } from "./AdyenDropIn.jsx";
-import { describeCheckoutStatus, formatCurrency } from "./digitalSiteFlowState.js";
+import { describeCheckoutStatus, formatCurrency, paymentPlanPrice } from "./digitalSiteFlowState.js";
 import { StubPaymentPanel } from "./StubPaymentPanel.jsx";
 
 const ROADSIDE_PHONE = "13 11 11";
@@ -51,6 +51,23 @@ const COVER_FEATURES = [
 ];
 
 const COVER_ORDER = ["STD", "CLAS", "ULTI", "ULPL"];
+const VEHICLE_MAKES = [
+  "FORD", "HOLDEN", "HONDA", "HYUNDAI", "KIA", "MAZDA", "MITSUBISHI", "NISSAN", "SUBARU", "TOYOTA",
+  "ABARTH", "ALFA ROMEO", "ASTON MARTIN", "AUDI", "BENTLEY", "BMW", "CATERHAM", "CHRYSLER", "CHERY",
+  "CITROEN", "DODGE", "FERRARI", "FIAT", "FREIGHTLINER", "GEELY", "GREAT WALL", "HINO", "HSV",
+  "INTERNATIONAL", "ISUZU", "IVECO", "JAGUAR", "JEEP", "KENWORTH", "LAMBORGHINI", "LEXUS", "LOTUS",
+  "LAND ROVER", "MACK", "MAHINDRA", "MAN", "MASERATI", "MAYBACH", "McLAREN", "MERCEDES-BENZ",
+  "MORGAN", "MITSUBISHI FUSO", "MINI", "OKA", "PEUGEOT", "PORSCHE", "PROTON", "RANGE ROVER",
+  "RENAULT", "RFW", "ROLLS-ROYCE", "SAAB", "SCANIA", "SKODA", "SMART", "SSANGYONG", "STERLING",
+  "SUZUKI", "TATA", "UD", "VOLVO", "VOLKSWAGEN", "WESTERN STAR",
+];
+const VEHICLE_MODELS = {
+  FORD: ["Ranger"],
+  KIA: ["EV6"],
+  MAZDA: ["CX-5"],
+  TOYOTA: ["Corolla"],
+};
+const VEHICLE_BODY_TYPES = ["SUV", "Sedan", "4WD", "Ute", "Wagon", "Hatchback", "Coupe", "Convertible", "Van", "Truck"];
 
 export function CoverSelectionStep({ state, dispatch, covers }) {
   const orderedCovers = COVER_ORDER
@@ -124,7 +141,10 @@ export function CoverSelectionStep({ state, dispatch, covers }) {
             key={`${cover.id}-join`}
             className={cover.id === "CLAS" ? "ct-recommended" : undefined}
             variant="contained"
-            onClick={() => dispatch({ type: "chooseCover", value: cover.id })}
+            onClick={() => {
+              dispatch({ type: "chooseCover", value: cover.id });
+              dispatch({ type: "next" });
+            }}
             sx={{
               m: 0,
               minWidth: 0,
@@ -203,7 +223,6 @@ export function QuickCheckStep({ state, dispatch, activeCart, onNewMember, onRes
 }
 
 const PERSONAL_FIELDS = [
-  ["title", "Title"],
   ["firstName", "First name"],
   ["lastName", "Last name"],
   ["dateOfBirth", "Date of birth"],
@@ -219,6 +238,34 @@ function PersonalDetails({ state, dispatch }) {
   return <Stack spacing={2}>
     <Typography variant="h3">Your personal details</Typography>
     <Typography color="text.secondary">Tell us who will hold the Roadside Assistance membership.</Typography>
+    <FormControl component="fieldset">
+      <FormLabel component="legend" required>Title</FormLabel>
+      <RadioGroup
+        row
+        name="title"
+        value={state.personalDetails.title}
+        onChange={(event) => dispatch({ type: "changePersonalDetails", field: "title", value: event.target.value })}
+        sx={{ gap: 1, flexWrap: "wrap" }}
+      >
+        {[["Mr", "Mr"], ["Mrs", "Mrs"], ["Miss", "Miss"], ["Ms", "Ms"], ["Doctor", "Dr"], ["Mx", "Mx"]].map(([value, label]) => <FormControlLabel
+          key={value}
+          value={value}
+          control={<Radio sx={{ display: "none" }} />}
+          label={label}
+          sx={{
+            m: 0,
+            px: 2,
+            py: 1,
+            border: "1px solid",
+            borderColor: state.personalDetails.title === value ? "primary.main" : "divider",
+            borderRadius: 1,
+            bgcolor: state.personalDetails.title === value ? "action.selected" : "background.paper",
+            cursor: "pointer",
+            "& .MuiFormControlLabel-label": { fontWeight: state.personalDetails.title === value ? 500 : 400 },
+          }}
+        />)}
+      </RadioGroup>
+    </FormControl>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
       {PERSONAL_FIELDS.map(([field, label]) => <RacwaTextInput
         key={field}
@@ -250,6 +297,15 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   const [lookupError, setLookupError] = useState(null);
   const [searching, setSearching] = useState(false);
   const { searchChoice, rego, details } = state.vehicle;
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1959 }, (_value, index) => currentYear - index);
+  const selectOptions = (field) => {
+    if (field === "make") return VEHICLE_MAKES;
+    if (field === "model") return VEHICLE_MODELS[state.vehicle.make] ?? [];
+    if (field === "body") return VEHICLE_BODY_TYPES;
+    const value = state.vehicle[field];
+    return value ? [value] : [];
+  };
 
   async function findVehicle() {
     setSearching(true);
@@ -265,39 +321,74 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   }
 
   return <Stack spacing={3}>
-    <Typography variant="h2">Your vehicle</Typography>
-    <Typography id="vehicle-search-label" sx={{ fontWeight: 500 }}>How would you like to add your vehicle?</Typography>
-    <RacwaRadioGroup name="searchChoice" aria-labelledby="vehicle-search-label" defaultValue={searchChoice ?? undefined} onChange={(_event, value) => dispatch({ type: "chooseVehicleSearch", value })}>
-      <RacwaRadioItem value="RegoLookup" label="Find my vehicle by registration" />
-      <RacwaRadioItem value="Skip" label="Skip for now" />
-    </RacwaRadioGroup>
-    {searchChoice === "RegoLookup" && <Stack spacing={2}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "flex-end" } }}>
-        <RacwaTextInput
-          id="rego"
-          label="Registration number"
-          sublabel={`Demo regos: ${DEMO_REGOS.join(", ")}`}
-          value={rego}
-          error={Boolean(lookupError)}
-          helperText={lookupError ?? undefined}
-          onChange={(event) => { setLookupError(null); dispatch({ type: "changeRego", value: event.target.value }); }}
-          onKeyDown={(event) => { if (event.key === "Enter" && rego.trim()) findVehicle(); }}
-          inputProps={{ maxLength: 10 }}
-        />
-        <Button variant="outlined" onClick={findVehicle} disabled={!rego.trim() || searching}>Find vehicle</Button>
+    <Box>
+      <Typography variant="h2">Vehicle details <Typography component="small" variant="body2">(Optional)</Typography></Typography>
+      <RacwaAlertNotification severity="info">Don’t have the vehicle details with you? Let us know another time.</RacwaAlertNotification>
+    </Box>
+    <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: { xs: 2, sm: 3 } }}>
+      <Typography variant="subtitle2" sx={{ mb: 2 }}>Demo vehicle lookup</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        For demo purposes only. The actual RAC website does not provide vehicle lookup.
+      </Typography>
+      <Stack spacing={2}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "flex-end" } }}>
+          <RacwaTextInput
+            id="rego"
+            label="Vehicle plate number"
+            sublabel={`Demo regos: ${DEMO_REGOS.join(", ")}`}
+            value={rego}
+            error={Boolean(lookupError)}
+            helperText={lookupError ?? undefined}
+            onChange={(event) => { setLookupError(null); dispatch({ type: "changeRego", value: event.target.value }); }}
+            onKeyDown={(event) => { if (event.key === "Enter" && rego.trim()) findVehicle(); }}
+            inputProps={{ maxLength: 9 }}
+          />
+          <Button variant="outlined" onClick={findVehicle} disabled={!rego.trim() || searching}>Find vehicle</Button>
+        </Stack>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+          <TextField
+            select
+            label="Year"
+            value={state.vehicle.year}
+            InputLabelProps={{ shrink: true }}
+            onChange={(event) => dispatch({ type: "changeVehicleField", field: "year", value: event.target.value })}
+          >
+            <MenuItem value="">Select...</MenuItem>
+            {years.map((year) => <MenuItem key={year} value={String(year)}>{year}</MenuItem>)}
+          </TextField>
+          {[
+            ["make", "Make"],
+            ["model", "Model"],
+            ["body", "Body type"],
+          ].map(([field, label]) => <TextField
+            key={field}
+            select
+            label={label}
+            value={state.vehicle[field]}
+            InputLabelProps={{ shrink: true }}
+            disabled={field === "make"
+              ? !state.vehicle.year
+              : field === "model"
+                ? !state.vehicle.make
+                : !state.vehicle.model}
+            onChange={(event) => dispatch({ type: "changeVehicleField", field, value: event.target.value })}
+          >
+            <MenuItem value="">Select...</MenuItem>
+            {selectOptions(field).map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+          </TextField>)}
+        </Box>
+        {details && <RacwaCardNotification severity="success" title={`${details.year} ${details.make}`.toUpperCase()} subtitle={`${details.rego} · ${details.model} ${details.body} ${details.transmission} ${details.fuel}`.toUpperCase()}>
+          Is this your vehicle? You can change it any time before checkout.
+        </RacwaCardNotification>}
       </Stack>
-      {details && <RacwaCardNotification severity="success" title={`${details.year} ${details.make}`.toUpperCase()} subtitle={`${details.rego} · ${details.model} ${details.body} ${details.transmission} ${details.fuel}`.toUpperCase()}>
-        Is this your vehicle? You can change it any time before checkout.
-      </RacwaCardNotification>}
-    </Stack>}
-    {searchChoice === "Skip" && <RacwaAlertNotification severity="info">No problem. You can add your vehicle to your membership later in myRAC.</RacwaAlertNotification>}
+    </Box>
   </Stack>;
 }
 
-export function ConfirmPayStep({ state, dispatch, paymentPlans, simulatePayment, onPaymentResult }) {
+export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult }) {
   return state.checkout
     ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} />
-    : <PaymentPlanStep state={state} dispatch={dispatch} cart={state.cart} paymentPlans={paymentPlans} />;
+    : <PaymentPlanStep state={state} dispatch={dispatch} cart={state.cart} covers={covers} paymentPlans={paymentPlans} />;
 }
 
 export function ConfirmCoverStep({ state, dispatch, covers }) {
@@ -323,19 +414,35 @@ export function ConfirmCoverStep({ state, dispatch, covers }) {
 }
 
 
-export function PaymentPlanStep({ state, dispatch, cart, paymentPlans }) {
+export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans }) {
+  const cover = covers?.find((candidate) => candidate.id === cart?.coverId);
+  const vehicle = cart?.vehicle;
+  const selectedPlan = paymentPlans.find((plan) => plan.id === state.paymentPlan);
+  const selectedPlanPrice = selectedPlan && paymentPlanPrice(cart, cover, selectedPlan.id);
   return <Stack spacing={3}>
     <Box>
-      <Typography variant="h2">Payment plan</Typography>
-      <Typography color="text.secondary">Choose a way to pay that works for you</Typography>
+      <Typography variant="h2">Confirm &amp; pay</Typography>
+      <Typography color="text.secondary">Review your cover and choose a way to pay</Typography>
     </Box>
-    <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName} cover</Typography>
+    <Card background="gray" sx={{ p: 2 }}>
+      <Stack spacing={1}>
+        <Typography variant="h3" sx={{ fontSize: "1.25rem" }}>Your selected cover</Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.5, sm: 3 }} sx={{ justifyContent: "space-between" }}>
+          <Typography><strong>{cart.coverName ?? cover?.name ?? "Roadside Assistance"}</strong></Typography>
+          <Typography>{formatCurrency(cover?.annualPrice ?? cart.totalPrice)} per year</Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          {vehicle ? `Vehicle: ${vehicle.rego} · ${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}` : "Vehicle details can be added later in myRAC."}
+        </Typography>
+      </Stack>
+    </Card>
+    <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName ?? cover?.name} cover</Typography>
     <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
       {paymentPlans.map((plan) => <RacwaRadioListItem
         key={plan.id}
         value={plan.id}
-        label={`${plan.title} · ${formatCurrency(cart.totalPrice)}`}
-        sublabel={`${plan.chips.join(" · ")}. Paid today by card.`}
+        label={`${plan.title} · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).amount)} / ${paymentPlanPrice(cart, cover, plan.id).frequency}`}
+        sublabel={`${plan.chips.join(" · ")}${paymentPlanPrice(cart, cover, plan.id).annualTotal ? ` · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).annualTotal)} total per year` : ""}. Paid today by card.`}
         highlightSelected
       />)}
     </RacwaRadioGroup>
@@ -343,7 +450,7 @@ export function PaymentPlanStep({ state, dispatch, cart, paymentPlans }) {
       <RacwaAlertNotification severity="info"><strong>Your cover and cancellation.</strong> Roadside Assistance is a 12 month membership with no refunds for cancellations.</RacwaAlertNotification>
       <Card background="gray" sx={{ p: 2 }}>
         <Typography sx={{ fontWeight: 500 }}>Payment authority terms</Typography>
-        <Typography variant="body2" color="text.secondary">You authorise RAC to charge {formatCurrency(cart.totalPrice)} to the card you enter on the next page. Card details are collected by the payment provider and never reach RAC systems.</Typography>
+        <Typography variant="body2" color="text.secondary">You authorise RAC to charge {formatCurrency(selectedPlanPrice?.amount ?? cart.totalPrice)} per {selectedPlanPrice?.frequency ?? "year"} to the card you enter on the next page. Card details are collected by the payment provider and never reach RAC systems.</Typography>
       </Card>
       <RacwaCheckboxGroup key={state.paymentPlan}>
         <RacwaCheckboxListItem checked={state.acceptedPaymentAuthTerms} label="I've read and agree to the payment authority terms" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedPaymentAuthTerms", value })} />
@@ -355,10 +462,11 @@ export function PaymentPlanStep({ state, dispatch, cart, paymentPlans }) {
 
 export function PayStep({ state, simulatePayment, onPaymentResult }) {
   const { checkout } = state;
+  const plan = state.paymentPlan === "Monthly" ? "monthly" : "annual";
   return <Stack spacing={3}>
     <Box>
       <Typography variant="h2">Payment</Typography>
-      <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} yearly</Typography>
+      <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {checkout.gateway === "Adyen"
       ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} />

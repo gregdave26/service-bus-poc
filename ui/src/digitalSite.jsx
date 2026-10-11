@@ -42,10 +42,10 @@ function takeRedirectResult() {
   return redirectResult;
 }
 
-function CurrentStep({ state, dispatch, catalog, api, members, payment }) {
+function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading }) {
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
-    case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} {...members} />;
+    case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
     case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
@@ -133,7 +133,7 @@ function DigitalSiteFlow({ api }) {
 
   const nextActions = { yourDetails: saveCart, confirmPay: startCheckout };
   const onNext = nextActions[state.page] ?? (() => dispatch({ type: "next" }));
-  const showButtons = state.page !== "finished" && state.page !== "coverSelection" && !state.checkout;
+  const showButtons = state.page !== "finished" && state.page !== "coverSelection" && state.page !== "yourDetails" && !state.checkout;
   const isOutsideStepper = state.page === "coverSelection" || state.page === "finished";
 
   return <Stack spacing={3}>
@@ -162,7 +162,7 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} />
             {showButtons && <StepButtons
               onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}

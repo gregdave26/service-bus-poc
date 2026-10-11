@@ -364,7 +364,7 @@ function CoverSelector({ state, dispatch, covers }) {
   </Box>;
 }
 
-export function YourDetailsStep({ state, dispatch, lookupVehicle, covers, ...members }) {
+export function YourDetailsStep({ state, dispatch, lookupVehicle, covers, onContinue, continueDisabled, loading, ...members }) {
   return <Stack spacing={4}>
     <Box>
       <Typography variant="h2">Your details</Typography>
@@ -375,6 +375,7 @@ export function YourDetailsStep({ state, dispatch, lookupVehicle, covers, ...mem
     <CoverSelector state={state} dispatch={dispatch} covers={covers} />
     <PersonalDetails state={state} dispatch={dispatch} />
     <VehicleDetailsStep state={state} dispatch={dispatch} lookupVehicle={lookupVehicle} />
+    <StepButtons onNext={onContinue} nextLabel="Continue" nextDisabled={continueDisabled} loading={loading} />
   </Stack>;
 }
 

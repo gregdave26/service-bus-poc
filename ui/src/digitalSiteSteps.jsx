@@ -280,7 +280,91 @@ function PersonalDetails({ state, dispatch }) {
   </Stack>;
 }
 
-export function YourDetailsStep({ state, dispatch, lookupVehicle, ...members }) {
+function CoverSelector({ state, dispatch, covers }) {
+  const selectableCovers = ["CLAS", "ULTI"]
+    .map((id) => covers.find((cover) => cover.id === id))
+    .filter(Boolean);
+
+  return <Box>
+    <Typography variant="h3">Choose your cover</Typography>
+    <Typography color="text.secondary" sx={{ mb: 2 }}>Select the cover that best suits your needs.</Typography>
+    <Box role="radiogroup" aria-label="Choose your cover" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
+      {selectableCovers.map((cover) => {
+        const isSelected = state.coverId === cover.id;
+        const attributes = cover.id === "CLAS"
+          ? [
+            <><strong>100km</strong> towing</>,
+            <><strong>Up to 2 tows</strong> per incident</>,
+          ]
+          : [
+            <><strong>100km</strong> metro towing</>,
+            <><strong>Any vehicle</strong> covered</>,
+          ];
+
+        return <Box
+          key={cover.id}
+          component="label"
+          className={`upsell-initial${isSelected ? " active" : ""}`}
+          sx={{
+            position: "relative",
+            display: "block",
+            minWidth: 0,
+            cursor: "pointer",
+            "&:focus-within .upsell-tile": {
+              outline: `2px solid ${colors.focusBlue}`,
+              outlineOffset: 2,
+            },
+          }}
+        >
+          <Box
+            component="input"
+            type="radio"
+            name="product"
+            value={cover.id}
+            checked={isSelected}
+            onChange={() => dispatch({ type: "chooseCover", value: cover.id })}
+            sx={{
+              position: "absolute",
+              opacity: 0,
+              width: 1,
+              height: 1,
+              pointerEvents: "none",
+            }}
+          />
+          <Box
+            component="span"
+            className="upsell-tile"
+            sx={{
+              display: "block",
+              height: "auto",
+              p: "12px 20px",
+              bgcolor: isSelected ? colors.dieselDeepest : colors.white,
+              color: isSelected ? colors.white : colors.dieselDeepest,
+              border: "2px solid",
+              borderColor: isSelected ? colors.racYellow : colors.dieselDeepest,
+              borderRadius: 0,
+              boxShadow: isSelected ? `inset 0 -4px 0 ${colors.racYellow}` : "none",
+              transition: "border-color 120ms ease, box-shadow 120ms ease",
+            }}
+          >
+            <Box component="span" className="upsell-option-title" sx={{ display: "block", color: isSelected ? colors.racYellow : colors.dieselDeepest, fontSize: "1.15rem", fontWeight: 700, lineHeight: 1.2, mb: 0.5 }}>
+              {cover.name}
+            </Box>
+            <Box component="span" className="upsell-option-offered" sx={{ display: "none" }} />
+            <Box component="span" className="upsell-option-chosen" sx={{ display: "grid", gap: 0.35 }}>
+              <Box component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>
+                <strong>{formatCurrency(cover.annualPrice)} a year</strong> or <strong>{formatCurrency(cover.monthlyPrice)} a month</strong>
+              </Box>
+              {attributes.map((attribute, index) => <Box key={index} component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>{attribute}</Box>)}
+            </Box>
+          </Box>
+        </Box>;
+      })}
+    </Box>
+  </Box>;
+}
+
+export function YourDetailsStep({ state, dispatch, lookupVehicle, covers, ...members }) {
   return <Stack spacing={4}>
     <Box>
       <Typography variant="h2">Your details</Typography>
@@ -288,6 +372,7 @@ export function YourDetailsStep({ state, dispatch, lookupVehicle, ...members }) 
     </Box>
     <MemberIdentity crmId={state.crmId} onNewMember={members.onNewMember} />
     {members.activeCart && <ActiveCartPrompt cart={members.activeCart} onResume={members.onResumeCart} onDiscard={members.onDiscardCart} busy={members.cartBusy} />}
+    <CoverSelector state={state} dispatch={dispatch} covers={covers} />
     <PersonalDetails state={state} dispatch={dispatch} />
     <VehicleDetailsStep state={state} dispatch={dispatch} lookupVehicle={lookupVehicle} />
   </Stack>;

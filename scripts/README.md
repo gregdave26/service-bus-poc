@@ -115,6 +115,18 @@ exited are skipped; other process-stop errors are reported rather than ignored.
 .\run-dashboard.ps1 -NoEmulator
 ```
 
+The emulator startup reuses existing containers and local images. It does not
+pull the `latest` images on every run. To explicitly refresh the images:
+
+```powershell
+cd ..\infra\servicebus
+docker compose pull
+docker compose up -d
+```
+
+Pressing `Ctrl+C` in `run-dashboard.ps1` still stops and removes the emulator
+containers as part of normal cleanup.
+
 **Output:**
 - 🟢 Dashboard HTTP server on http://localhost:5100
 - 🔵 Producer publishing sample events every 3 seconds

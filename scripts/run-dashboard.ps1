@@ -442,14 +442,7 @@ if (-not $NoEmulator) {
     
     Push-Location (Split-Path $composePath)
     try {
-        # Check for existing containers
-        $existing = docker-compose ps --quiet 2>$null
-        if ($existing) {
-            Write-Host "  Stopping existing containers..." -ForegroundColor Gray
-            docker-compose down | Out-Null
-        }
-        
-        Write-Host "  Starting containers..."
+        Write-Host "  Starting or reusing containers..."
         $null = docker-compose up -d
         Write-Host "  ✓ Emulator started"
 

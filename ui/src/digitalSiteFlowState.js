@@ -43,6 +43,7 @@ export function createInitialFlowState(crmId = generateCrmId()) {
     },
     vehicle: { searchChoice: "Skip", rego: "", year: "", make: "", model: "", body: "", details: null },
     coverId: null,
+    paymentType: "DirectDebit",
     paymentPlan: null,
     acceptedPaymentAuthTerms: false,
     acceptedRoadsideAssistTerms: false,
@@ -197,6 +198,14 @@ export function flowReducer(state, action) {
       };
     case "chooseCover":
       return { ...state, coverId: action.value };
+    case "choosePaymentType":
+      return {
+        ...state,
+        paymentType: action.value,
+        paymentPlan: action.value === "SinglePayment" ? null : state.paymentPlan,
+        acceptedPaymentAuthTerms: false,
+        acceptedRoadsideAssistTerms: false,
+      };
     case "cartSaved":
       return { ...state, cart: action.cart, page: "confirmPay" };
     case "choosePaymentPlan":

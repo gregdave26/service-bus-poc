@@ -175,6 +175,18 @@ test("requires payment plan and terms on Confirm & pay", () => {
   });
 });
 
+test("tracks payment type and clears direct debit choices for single payment", () => {
+  const state = run([
+    { type: "choosePaymentPlan", value: "Annual" },
+    { type: "choosePaymentType", value: "SinglePayment" },
+  ]);
+
+  assert.equal(state.paymentType, "SinglePayment");
+  assert.equal(state.paymentPlan, null);
+  assert.equal(state.acceptedPaymentAuthTerms, false);
+  assert.equal(state.acceptedRoadsideAssistTerms, false);
+});
+
 test("payment submission moves to Finished and retry returns to Confirm & pay", () => {
   const ready = run([
     { type: "cartSaved", cart: savedCart },

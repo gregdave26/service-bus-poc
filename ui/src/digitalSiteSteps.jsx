@@ -539,6 +539,40 @@ function DetailsOverview({ state, dispatch, cover }) {
   </Box>;
 }
 
+function PaymentTypeSelector({ state, dispatch }) {
+  const paymentTypes = [["DirectDebit", "Direct Debit"], ["SinglePayment", "Single Payment"]];
+
+  return <>
+    <Typography id="payment-type-label" sx={{ fontWeight: 500 }}>How would you like to pay for your 12 month cover?</Typography>
+    <RadioGroup
+      name="paymentType"
+      aria-labelledby="payment-type-label"
+      row
+      value={state.paymentType}
+      onChange={(_event, value) => dispatch({ type: "choosePaymentType", value })}
+      sx={{ gap: 1, flexWrap: "wrap" }}
+    >
+      {paymentTypes.map(([value, label]) => <FormControlLabel
+        key={value}
+        value={value}
+        control={<Radio sx={{ display: "none" }} />}
+        label={label}
+        sx={{
+          m: 0,
+          px: 2,
+          py: 1,
+          border: "1px solid",
+          borderColor: state.paymentType === value ? "primary.main" : "divider",
+          borderRadius: 1,
+          bgcolor: state.paymentType === value ? "action.selected" : "background.paper",
+          cursor: "pointer",
+          "& .MuiFormControlLabel-label": { fontWeight: state.paymentType === value ? 500 : 400 },
+        }}
+      />)}
+    </RadioGroup>
+  </>;
+}
+
 export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans }) {
   const cover = covers?.find((candidate) => candidate.id === cart?.coverId);
   const selectedPlan = paymentPlans.find((plan) => plan.id === state.paymentPlan);
@@ -549,16 +583,23 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans })
       <Typography color="text.secondary">Review your cover and choose a way to pay</Typography>
     </Box>
     <DetailsOverview state={state} dispatch={dispatch} cover={cover} />
-    <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName ?? cover?.name} cover</Typography>
-    <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
-      {paymentPlans.map((plan) => <RacwaRadioListItem
-        key={plan.id}
-        value={plan.id}
-        label={`${plan.title} · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).amount)} / ${paymentPlanPrice(cart, cover, plan.id).frequency}`}
-        sublabel={`${plan.chips.join(" · ")}${paymentPlanPrice(cart, cover, plan.id).annualTotal ? ` · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).annualTotal)} total per year` : ""}. Paid today by card.`}
-        highlightSelected
-      />)}
-    </RacwaRadioGroup>
+    <PaymentTypeSelector state={state} dispatch={dispatch} />
+    {state.paymentType === "DirectDebit"
+      ? <>
+        <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName ?? cover?.name} cover</Typography>
+        <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
+          {paymentPlans.map((plan) => <RacwaRadioListItem
+            key={plan.id}
+            value={plan.id}
+            label={`${plan.title} · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).amount)} / ${paymentPlanPrice(cart, cover, plan.id).frequency}`}
+            sublabel={`${plan.chips.join(" · ")}${paymentPlanPrice(cart, cover, plan.id).annualTotal ? ` · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).annualTotal)} total per year` : ""}. Paid today by card.`}
+            highlightSelected
+          />)}
+        </RacwaRadioGroup>
+      </>
+      : <RacwaAlertNotification severity="info">
+        <strong>Single payment selected.</strong> The full cover amount will be paid by card.
+      </RacwaAlertNotification>}
     {state.paymentPlan && <>
       <RacwaAlertNotification severity="info"><strong>Your cover and cancellation.</strong> Roadside Assistance is a 12 month membership with no refunds for cancellations.</RacwaAlertNotification>
       <Card background="gray" sx={{ p: 2 }}>

@@ -499,10 +499,48 @@ export function ConfirmCoverStep({ state, dispatch, covers }) {
   </Stack>;
 }
 
+function DetailsOverview({ state, dispatch, cover }) {
+  const { personalDetails, vehicle } = state;
+  const fullName = [personalDetails.title, personalDetails.firstName, personalDetails.lastName]
+    .filter(Boolean)
+    .join(" ");
+  const address = [personalDetails.addressLine1, personalDetails.suburb, personalDetails.state, personalDetails.postcode]
+    .filter(Boolean)
+    .join(", ");
+  const vehicleDescription = [vehicle.year, vehicle.make, vehicle.model, vehicle.body]
+    .filter(Boolean)
+    .join(" ");
+  const hasVehicle = vehicle.searchChoice === "RegoLookup" || vehicleDescription;
+
+  return <Box sx={{ bgcolor: colors.subtleBg, p: { xs: 2, sm: 3 } }}>
+    <Box component="dl" sx={{ m: 0, "& dt": { fontWeight: 600, mt: 2, "&:first-of-type": { mt: 0 } }, "& dd": { m: 0, mt: 0.5 } }}>
+      <Typography component="dt">Selected cover</Typography>
+      <Typography component="dd"><strong>{cover?.name ?? state.cart?.coverName ?? "Roadside Assistance"}</strong></Typography>
+      <Typography component="dd">12 months cover</Typography>
+
+      <Typography component="dt">Your details</Typography>
+      <Typography component="dd"><strong>{fullName || "Member details"}</strong></Typography>
+      {personalDetails.dateOfBirth && <Typography component="dd">{personalDetails.dateOfBirth}</Typography>}
+      {address && <Typography component="dd">{address}</Typography>}
+      {personalDetails.phone && <Typography component="dd">{personalDetails.phone}</Typography>}
+      {personalDetails.email && <Typography component="dd">{personalDetails.email}</Typography>}
+
+      <Typography component="dt">Vehicle details</Typography>
+      {hasVehicle
+        ? <>
+          {vehicleDescription && <Typography component="dd"><strong>{vehicleDescription.toUpperCase()}</strong></Typography>}
+          {vehicle.rego && <Typography component="dd">{vehicle.rego}</Typography>}
+        </>
+        : <Typography component="dd">No vehicle details provided</Typography>}
+    </Box>
+    <Button variant="outlined" onClick={() => dispatch({ type: "back" })} sx={{ mt: 3 }}>
+      Edit details
+    </Button>
+  </Box>;
+}
 
 export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans }) {
   const cover = covers?.find((candidate) => candidate.id === cart?.coverId);
-  const vehicle = cart?.vehicle;
   const selectedPlan = paymentPlans.find((plan) => plan.id === state.paymentPlan);
   const selectedPlanPrice = selectedPlan && paymentPlanPrice(cart, cover, selectedPlan.id);
   return <Stack spacing={3}>
@@ -510,18 +548,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans })
       <Typography variant="h2">Confirm &amp; pay</Typography>
       <Typography color="text.secondary">Review your cover and choose a way to pay</Typography>
     </Box>
-    <Card background="gray" sx={{ p: 2 }}>
-      <Stack spacing={1}>
-        <Typography variant="h3" sx={{ fontSize: "1.25rem" }}>Your selected cover</Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={{ xs: 0.5, sm: 3 }} sx={{ justifyContent: "space-between" }}>
-          <Typography><strong>{cart.coverName ?? cover?.name ?? "Roadside Assistance"}</strong></Typography>
-          <Typography>{formatCurrency(cover?.annualPrice ?? cart.totalPrice)} per year</Typography>
-        </Stack>
-        <Typography variant="body2" color="text.secondary">
-          {vehicle ? `Vehicle: ${vehicle.rego} · ${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}` : "Vehicle details can be added later in myRAC."}
-        </Typography>
-      </Stack>
-    </Card>
+    <DetailsOverview state={state} dispatch={dispatch} cover={cover} />
     <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName ?? cover?.name} cover</Typography>
     <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
       {paymentPlans.map((plan) => <RacwaRadioListItem

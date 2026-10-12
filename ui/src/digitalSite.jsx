@@ -42,11 +42,11 @@ function takeRedirectResult() {
   return redirectResult;
 }
 
-function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading }) {
+function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity }) {
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
     case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
-    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onCardValidity={onCardValidity} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }
@@ -112,7 +112,7 @@ function DigitalSiteFlow({ api }) {
   });
 
   const startCheckout = () => run(async () => {
-    dispatch({ type: "checkoutStarted", checkout: await api.startCheckout(toCheckoutRequest(state, returnUrl())) });
+    dispatch({ type: "checkoutStarted", checkout: state.paymentSession ?? await api.startCheckout(toCheckoutRequest(state, returnUrl())) });
   });
 
   const discardCart = (cart) => run(async () => {
@@ -122,6 +122,7 @@ function DigitalSiteFlow({ api }) {
   });
 
   const onPaymentResult = useCallback((resultCode) => dispatch({ type: "paymentSubmitted", resultCode }), []);
+  const onCardValidity = useCallback((value) => dispatch({ type: "cardReadinessChanged", value }), []);
 
   const members = {
     activeCart: activeCarts.find((cart) => cart.id !== state.cart?.id) ?? null,
@@ -162,11 +163,11 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} />
             {showButtons && <StepButtons
               onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}
-              nextLabel={state.page === "yourDetails" ? "Continue" : "Continue to payment"}
+              nextLabel={state.page === "yourDetails" ? "Continue" : "Make Payment >"}
               nextDisabled={!canContinue(state)}
               loading={busy}
             />}

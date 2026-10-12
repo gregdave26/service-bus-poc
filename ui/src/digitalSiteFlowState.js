@@ -45,6 +45,9 @@ export function createInitialFlowState(crmId = generateCrmId()) {
     coverId: null,
     paymentType: "DirectDebit",
     paymentPlan: null,
+    paymentMethod: null,
+    paymentSession: null,
+    cardReady: false,
     acceptedPaymentAuthTerms: false,
     acceptedRoadsideAssistTerms: false,
     cart: null,
@@ -72,8 +75,10 @@ export function canContinue(state) {
         && state.coverId !== null;
     case "confirmPay":
       return state.cart !== null
-        && state.paymentPlan !== null
-        && state.acceptedPaymentAuthTerms
+        && state.paymentType === "DirectDebit"
+        && state.paymentPlan === "Annual"
+        && state.paymentMethod === "Card"
+        && state.cardReady
         && state.acceptedRoadsideAssistTerms;
     default:
       return false;
@@ -203,13 +208,30 @@ export function flowReducer(state, action) {
         ...state,
         paymentType: action.value,
         paymentPlan: action.value === "SinglePayment" ? null : state.paymentPlan,
+        paymentMethod: null,
+        paymentSession: null,
+        cardReady: false,
         acceptedPaymentAuthTerms: false,
         acceptedRoadsideAssistTerms: false,
       };
     case "cartSaved":
       return { ...state, cart: action.cart, page: "confirmPay" };
     case "choosePaymentPlan":
-      return { ...state, paymentPlan: action.value, acceptedPaymentAuthTerms: false, acceptedRoadsideAssistTerms: false };
+      return {
+        ...state,
+        paymentPlan: action.value,
+        paymentMethod: null,
+        paymentSession: null,
+        cardReady: false,
+        acceptedPaymentAuthTerms: false,
+        acceptedRoadsideAssistTerms: false,
+      };
+    case "choosePaymentMethod":
+      return { ...state, paymentMethod: action.value, paymentSession: null, cardReady: false };
+    case "paymentSessionPrepared":
+      return { ...state, paymentSession: action.session, cardReady: false };
+    case "cardReadinessChanged":
+      return { ...state, cardReady: action.value };
     case "acceptTerms":
       return { ...state, [action.field]: action.value };
     case "checkoutStarted":

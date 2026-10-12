@@ -156,13 +156,14 @@ test("moves from Your details to Confirm & pay", () => {
   assert.equal(flowReducer(state, { type: "cartSaved", cart: savedCart }).page, "confirmPay");
 });
 
-test("requires payment plan and terms on Confirm & pay", () => {
+test("requires annual card details and roadside terms on Confirm & pay", () => {
   const state = flowReducer(detailsAndVehicleState(), { type: "cartSaved", cart: savedCart });
   assert.equal(canContinue(state), false);
   const ready = run([
     { type: "cartSaved", cart: savedCart },
     { type: "choosePaymentPlan", value: "Annual" },
-    { type: "acceptTerms", field: "acceptedPaymentAuthTerms", value: true },
+    { type: "choosePaymentMethod", value: "Card" },
+    { type: "cardReadinessChanged", value: true },
     { type: "acceptTerms", field: "acceptedRoadsideAssistTerms", value: true },
   ], detailsAndVehicleState());
   assert.equal(canContinue(ready), true);
@@ -170,7 +171,7 @@ test("requires payment plan and terms on Confirm & pay", () => {
     cartId: "cart-1",
     crmId: CRM_ID,
     returnUrl: "http://localhost:5100/?tab=digitalSite",
-    acceptedPaymentAuthTerms: true,
+    acceptedPaymentAuthTerms: false,
     acceptedRoadsideAssistTerms: true,
   });
 });

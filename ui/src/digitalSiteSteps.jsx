@@ -471,10 +471,17 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   </Stack>;
 }
 
-export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult }) {
+export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onCardValidity }) {
   return state.checkout
     ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} />
-    : <PaymentPlanStep state={state} dispatch={dispatch} cart={state.cart} covers={covers} paymentPlans={paymentPlans} />;
+    : <PaymentPlanStep
+      state={state}
+      dispatch={dispatch}
+      cart={state.cart}
+      covers={covers}
+      paymentPlans={paymentPlans}
+      onCardValidity={onCardValidity}
+    />;
 }
 
 export function ConfirmCoverStep({ state, dispatch, covers }) {
@@ -573,10 +580,107 @@ function PaymentTypeSelector({ state, dispatch }) {
   </>;
 }
 
-export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans }) {
+function PaymentMethodSelector({ state, dispatch }) {
+  return <>
+    <Typography id="payment-method-label" sx={{ fontWeight: 500 }}>Select payment method</Typography>
+    <RadioGroup
+      name="paymentMethod"
+      aria-labelledby="payment-method-label"
+      row
+      value={state.paymentMethod ?? ""}
+      onChange={(_event, value) => dispatch({ type: "choosePaymentMethod", value })}
+      sx={{ gap: 1, flexWrap: "wrap" }}
+    >
+      <FormControlLabel
+        value="Card"
+        control={<Radio sx={{ display: "none" }} />}
+        label="Card"
+        sx={{
+          m: 0,
+          px: 2,
+          py: 1,
+          border: "1px solid",
+          borderColor: state.paymentMethod === "Card" ? "primary.main" : "divider",
+          borderRadius: 1,
+          bgcolor: state.paymentMethod === "Card" ? "action.selected" : "background.paper",
+          cursor: "pointer",
+          "& .MuiFormControlLabel-label": { fontWeight: state.paymentMethod === "Card" ? 500 : 400 },
+        }}
+      />
+    </RadioGroup>
+  </>;
+}
+
+function PaymentFrequencySelector({ state, dispatch, cart, cover, paymentPlans }) {
+  return <>
+    <Typography color="text.secondary">
+      Never miss a payment. Enjoy the convenience of automatic annual or monthly payments via direct debit.
+    </Typography>
+    <Typography id="payment-frequency-label" sx={{ fontWeight: 500 }}>Select payment frequency</Typography>
+    <RadioGroup
+      name="paymentPlan"
+      aria-labelledby="payment-frequency-label"
+      row
+      value={state.paymentPlan ?? ""}
+      onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })}
+      sx={{ gap: 1, flexWrap: "wrap" }}
+    >
+      {paymentPlans.map((plan) => {
+        const price = paymentPlanPrice(cart, cover, plan.id);
+        const label = plan.id === "Annual"
+          ? `${formatCurrency(price.amount)} Annual`
+          : `${formatCurrency(price.amount)} Monthly`;
+        return <FormControlLabel
+          key={plan.id}
+          value={plan.id}
+          control={<Radio sx={{ display: "none" }} />}
+          label={label}
+          sx={{
+            m: 0,
+            px: 2,
+            py: 1,
+            border: "1px solid",
+            borderColor: state.paymentPlan === plan.id ? "primary.main" : "divider",
+            borderRadius: 1,
+            bgcolor: state.paymentPlan === plan.id ? "action.selected" : "background.paper",
+            cursor: "pointer",
+            "& .MuiFormControlLabel-label": { fontWeight: state.paymentPlan === plan.id ? 500 : 400 },
+          }}
+        />;
+      })}
+    </RadioGroup>
+  </>;
+}
+
+export function CreditCardPlaceholder({ onValidity }) {
+  const [fields, setFields] = useState({ cardholder: "", number: "", expiry: "", cvc: "" });
+  const isComplete = Object.values(fields).every((value) => value.trim());
+
+  useEffect(() => {
+    onValidity(isComplete);
+  }, [isComplete, onValidity]);
+
+  const updateField = (field) => (event) => setFields((current) => ({ ...current, [field]: event.target.value }));
+
+  return <Card background="gray" sx={{ p: 2 }}>
+    <Typography sx={{ fontWeight: 500 }}>Credit card details</Typography>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      Adyen secure card fields will be displayed here.
+    </Typography>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "2fr 1fr" }, gap: 2 }}>
+      <TextField label="Name on card" value={fields.cardholder} InputLabelProps={{ shrink: true }} onChange={updateField("cardholder")} />
+      <TextField label="Card number" value={fields.number} InputLabelProps={{ shrink: true }} onChange={updateField("number")} inputProps={{ inputMode: "numeric" }} />
+      <TextField label="Expiry date" value={fields.expiry} InputLabelProps={{ shrink: true }} onChange={updateField("expiry")} placeholder="MM/YY" />
+      <TextField label="CVC" value={fields.cvc} InputLabelProps={{ shrink: true }} onChange={updateField("cvc")} inputProps={{ inputMode: "numeric" }} />
+    </Box>
+  </Card>;
+}
+
+export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, onCardValidity }) {
   const cover = covers?.find((candidate) => candidate.id === cart?.coverId);
   const selectedPlan = paymentPlans.find((plan) => plan.id === state.paymentPlan);
   const selectedPlanPrice = selectedPlan && paymentPlanPrice(cart, cover, selectedPlan.id);
+
   return <Stack spacing={3}>
     <Box>
       <Typography variant="h2">Confirm &amp; pay</Typography>
@@ -586,28 +690,23 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans })
     <PaymentTypeSelector state={state} dispatch={dispatch} />
     {state.paymentType === "DirectDebit"
       ? <>
-        <Typography id="payment-plan-label" sx={{ fontWeight: 500 }}>Choose your payment plan for {cart.coverName ?? cover?.name} cover</Typography>
-        <RacwaRadioGroup name="paymentPlan" aria-labelledby="payment-plan-label" defaultValue={state.paymentPlan ?? undefined} onChange={(_event, value) => dispatch({ type: "choosePaymentPlan", value })} sx={{ gap: 2 }}>
-          {paymentPlans.map((plan) => <RacwaRadioListItem
-            key={plan.id}
-            value={plan.id}
-            label={`${plan.title} · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).amount)} / ${paymentPlanPrice(cart, cover, plan.id).frequency}`}
-            sublabel={`${plan.chips.join(" · ")}${paymentPlanPrice(cart, cover, plan.id).annualTotal ? ` · ${formatCurrency(paymentPlanPrice(cart, cover, plan.id).annualTotal)} total per year` : ""}. Paid today by card.`}
-            highlightSelected
-          />)}
-        </RacwaRadioGroup>
+        <PaymentFrequencySelector state={state} dispatch={dispatch} cart={cart} cover={cover} paymentPlans={paymentPlans} />
+        {state.paymentPlan === "Annual" && <PaymentMethodSelector state={state} dispatch={dispatch} />}
+        {state.paymentMethod === "Card" && <Box>
+          <CreditCardPlaceholder onValidity={onCardValidity} />
+          {selectedPlanPrice && <Card background="gray" sx={{ p: 2, mt: 2 }}>
+            <Typography sx={{ fontWeight: 500 }}>Payment summary</Typography>
+            <Typography variant="body2"><strong>{formatCurrency(selectedPlanPrice.amount)}</strong> will be debited within the next 48 hours.</Typography>
+          </Card>}
+        </Box>}
       </>
       : <RacwaAlertNotification severity="info">
         <strong>Single payment selected.</strong> The full cover amount will be paid by card.
       </RacwaAlertNotification>}
     {state.paymentPlan && <>
       <RacwaAlertNotification severity="info"><strong>Your cover and cancellation.</strong> Roadside Assistance is a 12 month membership with no refunds for cancellations.</RacwaAlertNotification>
-      <Card background="gray" sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 500 }}>Payment authority terms</Typography>
-        <Typography variant="body2" color="text.secondary">You authorise RAC to charge {formatCurrency(selectedPlanPrice?.amount ?? cart.totalPrice)} per {selectedPlanPrice?.frequency ?? "year"} to the card you enter on the next page. Card details are collected by the payment provider and never reach RAC systems.</Typography>
-      </Card>
       <RacwaCheckboxGroup key={state.paymentPlan}>
-        <RacwaCheckboxListItem checked={state.acceptedPaymentAuthTerms} label="I've read and agree to the payment authority terms" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedPaymentAuthTerms", value })} />
+        {state.paymentMethod === "BankAccount" && <RacwaCheckboxListItem checked={state.acceptedPaymentAuthTerms} label="I've read and agree to the payment authority terms" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedPaymentAuthTerms", value })} />}
         <RacwaCheckboxListItem checked={state.acceptedRoadsideAssistTerms} label="I've read and agree to the Roadside Assistance Entitlements" onChange={(_event, value) => dispatch({ type: "acceptTerms", field: "acceptedRoadsideAssistTerms", value })} />
       </RacwaCheckboxGroup>
     </>}

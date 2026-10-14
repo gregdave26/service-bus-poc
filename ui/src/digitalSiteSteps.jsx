@@ -471,7 +471,7 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   </Stack>;
 }
 
-export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onCardValidity }) {
+export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onCardValidity, paymentGateway }) {
   return state.checkout
     ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} />
     : <PaymentPlanStep
@@ -481,6 +481,7 @@ export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulate
       covers={covers}
       paymentPlans={paymentPlans}
       onCardValidity={onCardValidity}
+      paymentGateway={paymentGateway}
     />;
 }
 
@@ -676,7 +677,7 @@ export function CreditCardPlaceholder({ onValidity }) {
   </Card>;
 }
 
-export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, onCardValidity }) {
+export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, onCardValidity, paymentGateway }) {
   const cover = covers?.find((candidate) => candidate.id === cart?.coverId);
   const selectedPlan = paymentPlans.find((plan) => plan.id === state.paymentPlan);
   const selectedPlanPrice = selectedPlan && paymentPlanPrice(cart, cover, selectedPlan.id);
@@ -693,7 +694,9 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
         <PaymentFrequencySelector state={state} dispatch={dispatch} cart={cart} cover={cover} paymentPlans={paymentPlans} />
         {state.paymentPlan === "Annual" && <PaymentMethodSelector state={state} dispatch={dispatch} />}
         {state.paymentMethod === "Card" && <Box>
-          <CreditCardPlaceholder onValidity={onCardValidity} />
+          {paymentGateway === "Adyen" && state.paymentSession?.gateway === "Adyen"
+            ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={() => {}} onValidity={onCardValidity} />
+            : <CreditCardPlaceholder onValidity={onCardValidity} />}
           {selectedPlanPrice && <Card background="gray" sx={{ p: 2, mt: 2 }}>
             <Typography sx={{ fontWeight: 500 }}>Payment summary</Typography>
             <Typography variant="body2"><strong>{formatCurrency(selectedPlanPrice.amount)}</strong> will be debited within the next 48 hours.</Typography>

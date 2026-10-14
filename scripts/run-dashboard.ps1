@@ -74,6 +74,20 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
+
+$dotenvPath = Join-Path $projectRoot '.env'
+if (Test-Path -LiteralPath $dotenvPath) {
+    foreach ($line in Get-Content -LiteralPath $dotenvPath) {
+        $trimmedLine = $line.Trim()
+        if ($trimmedLine -and -not $trimmedLine.StartsWith('#') -and $trimmedLine.Contains('=')) {
+            $name, $value = $trimmedLine.Split('=', 2)
+            if ($name.Trim()) {
+                [Environment]::SetEnvironmentVariable($name.Trim(), $value.Trim())
+            }
+        }
+    }
+}
+
 function Get-ProjectDirectory {
     param([string]$ProjectName)
     $projectFile = Get-ChildItem -Path $srcPath -Recurse -Filter "$ProjectName.csproj" | Select-Object -First 1

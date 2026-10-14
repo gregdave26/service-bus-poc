@@ -42,11 +42,11 @@ function takeRedirectResult() {
   return redirectResult;
 }
 
-function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity }) {
+function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity, paymentGateway }) {
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
     case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
-    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onCardValidity={onCardValidity} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }
@@ -58,6 +58,7 @@ function DigitalSiteFlow({ api }) {
   const [history, setHistory] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [paymentGateway, setPaymentGateway] = useState("Stub");
   const { crmId } = state;
 
   const refreshMember = useCallback(() => {
@@ -74,6 +75,43 @@ function DigitalSiteFlow({ api }) {
   useEffect(() => {
     api.getCatalog().then(setCatalog).catch((catalogError) => setError(catalogError.message));
   }, [api]);
+
+  useEffect(() => {
+    api.getConfig().then((config) => setPaymentGateway(config.gateway ?? "Stub")).catch((configError) => setError(configError.message));
+  }, [api]);
+
+  useEffect(() => {
+    if (paymentGateway !== "Adyen"
+      || state.paymentType !== "DirectDebit"
+      || state.paymentPlan !== "Annual"
+      || state.paymentMethod !== "Card"
+      || !state.acceptedRoadsideAssistTerms
+      || state.paymentSession) return;
+
+    let cancelled = false;
+    setBusy(true);
+    setError(null);
+    api.startCheckout(toCheckoutRequest(state, returnUrl()))
+      .then((session) => {
+        if (!cancelled) dispatch({ type: "paymentSessionPrepared", session });
+      })
+      .catch((sessionError) => {
+        if (!cancelled) setError(`Adyen is unavailable, so the standard card form is being used. ${sessionError.message}`);
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [
+    api,
+    paymentGateway,
+    state.acceptedRoadsideAssistTerms,
+    state.paymentMethod,
+    state.paymentPlan,
+    state.paymentSession,
+    state.paymentType,
+  ]);
 
   useEffect(refreshMember, [refreshMember]);
 
@@ -163,7 +201,7 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />
             {showButtons && <StepButtons
               onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}

@@ -127,6 +127,8 @@ export function toCheckoutRequest(state, returnUrl) {
     returnUrl,
     acceptedPaymentAuthTerms: state.acceptedPaymentAuthTerms,
     acceptedRoadsideAssistTerms: state.acceptedRoadsideAssistTerms,
+    paymentType: state.paymentType,
+    paymentMethod: state.paymentMethod,
   };
 }
 

@@ -139,6 +139,25 @@ public sealed class CommerceApiEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Checkout_CardDoesNotRequirePaymentAuthorisationTerms()
+    {
+        var cart = await CreateCartAsync("STD");
+
+        var response = await _client.PostAsJsonAsync(
+            $"{Api}/checkout/session",
+            new StartCheckoutRequest(
+                cart.Id,
+                CrmId,
+                $"{CommerceApiFactory.AllowedOrigin}/digital-site",
+                false,
+                true,
+                "DirectDebit",
+                "Card"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AuthorisedPayment_CreatesOneOrderPublishesHoldingAndProvisions()
     {
         var cart = await CreateCartAsync("CLAS");

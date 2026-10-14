@@ -173,6 +173,8 @@ test("requires annual card details and roadside terms on Confirm & pay", () => {
     returnUrl: "http://localhost:5100/?tab=digitalSite",
     acceptedPaymentAuthTerms: false,
     acceptedRoadsideAssistTerms: true,
+    paymentType: "DirectDebit",
+    paymentMethod: "Card",
   });
 });
 

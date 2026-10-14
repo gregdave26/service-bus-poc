@@ -8,12 +8,16 @@ namespace ServiceBusPoc.DigitalSite.CommerceApi.Checkout;
 /// <param name="ReturnUrl">Where a redirect payment method returns the shopper.</param>
 /// <param name="AcceptedPaymentAuthTerms">Whether the payment authority terms were accepted.</param>
 /// <param name="AcceptedRoadsideAssistTerms">Whether the Roadside Assistance terms were accepted.</param>
+/// <param name="PaymentType">The selected payment type.</param>
+/// <param name="PaymentMethod">The selected payment method.</param>
 public sealed record StartCheckoutRequest(
     string? CartId,
     string? CrmId,
     string? ReturnUrl,
     bool AcceptedPaymentAuthTerms,
-    bool AcceptedRoadsideAssistTerms);
+    bool AcceptedRoadsideAssistTerms,
+    string? PaymentType = null,
+    string? PaymentMethod = null);
 
 /// <summary>Everything the browser needs to mount the payment form.</summary>
 /// <param name="PaymentId">The commercetools payment id.</param>

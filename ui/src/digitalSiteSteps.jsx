@@ -694,7 +694,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
         <PaymentFrequencySelector state={state} dispatch={dispatch} cart={cart} cover={cover} paymentPlans={paymentPlans} />
         {state.paymentPlan === "Annual" && <PaymentMethodSelector state={state} dispatch={dispatch} />}
         {state.paymentMethod === "Card" && <Box>
-          {paymentGateway === "Adyen" && state.paymentSession?.gateway === "Adyen"
+          {["Adyen", "AdyenComponent"].includes(paymentGateway) && ["Adyen", "AdyenComponent"].includes(state.paymentSession?.gateway)
             ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={() => {}} onValidity={onCardValidity} />
             : <CreditCardPlaceholder onValidity={onCardValidity} />}
           {selectedPlanPrice && <Card background="gray" sx={{ p: 2, mt: 2 }}>
@@ -724,7 +724,7 @@ export function PayStep({ state, simulatePayment, onPaymentResult }) {
       <Typography variant="h2">Payment</Typography>
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
-    {checkout.gateway === "Adyen"
+    {["Adyen", "AdyenComponent"].includes(checkout.gateway)
       ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} />
       : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} />}
   </Stack>;

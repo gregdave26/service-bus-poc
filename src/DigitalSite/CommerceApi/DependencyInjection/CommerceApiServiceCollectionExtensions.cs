@@ -57,9 +57,9 @@ public static class CommerceApiServiceCollectionExtensions
             .WithMethods("GET", "POST", "PUT", "DELETE")
             .WithHeaders("Content-Type")));
 
-        if (siteSettings.PaymentGateway == PaymentGatewayMode.Adyen)
+        if (siteSettings.PaymentGateway is PaymentGatewayMode.Adyen or PaymentGatewayMode.AdyenComponent)
         {
-            builder.AddAdyenGateway();
+            builder.AddAdyenGateway(siteSettings.PaymentGateway);
         }
         else
         {
@@ -71,13 +71,13 @@ public static class CommerceApiServiceCollectionExtensions
         return siteSettings.PaymentGateway;
     }
 
-    private static void AddAdyenGateway(this WebApplicationBuilder builder)
+    private static void AddAdyenGateway(this WebApplicationBuilder builder, PaymentGatewayMode mode)
     {
         builder.Services
             .AddOptions<AdyenSettings>()
             .Bind(builder.Configuration.GetSection(AdyenSettings.SectionName))
             .ValidateDataAnnotations()
-            .Validate(HasRequiredAdyenSettings, "Adyen MerchantAccount, ClientKey, HmacKey, and either ApiKey or ApimSubscriptionKey with CheckoutApiUrl, are required when PaymentGateway is Adyen")
+            .Validate(settings => HasRequiredAdyenSettings(settings, mode), "Adyen MerchantAccount, ClientKey, and either ApiKey or ApimSubscriptionKey with CheckoutApiUrl are required; HmacKey is also required for full Adyen mode")
             .ValidateOnStart();
 
         var adyen = builder.Configuration.GetSection(AdyenSettings.SectionName).Get<AdyenSettings>() ?? new AdyenSettings();
@@ -107,10 +107,10 @@ public static class CommerceApiServiceCollectionExtensions
         builder.Services.AddScoped<IPaymentGatewayAdapter, AdyenPaymentAdapter>();
     }
 
-    private static bool HasRequiredAdyenSettings(AdyenSettings settings) =>
+    private static bool HasRequiredAdyenSettings(AdyenSettings settings, PaymentGatewayMode mode) =>
         !string.IsNullOrWhiteSpace(settings.MerchantAccount)
         && !string.IsNullOrWhiteSpace(settings.ClientKey)
-        && !string.IsNullOrWhiteSpace(settings.HmacKey)
+        && (mode == PaymentGatewayMode.AdyenComponent || !string.IsNullOrWhiteSpace(settings.HmacKey))
         && (settings.UsesApim
             ? !string.IsNullOrWhiteSpace(settings.CheckoutApiUrl)
             : !string.IsNullOrWhiteSpace(settings.ApiKey));

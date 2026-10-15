@@ -138,6 +138,27 @@ public sealed class AdyenPaymentAdapterTests
     }
 
     [Fact]
+    public async Task AdyenComponentMode_IsSelectedWithoutWebhookCredentials()
+    {
+        using var commerceTools = new CommerceToolsStubFactory();
+        using var api = new CommerceApiFactory(
+            commerceTools,
+            new Dictionary<string, string?>
+            {
+                ["DigitalSite:PaymentGateway"] = "AdyenComponent",
+                ["Adyen:MerchantAccount"] = "RACWAAccountECOM",
+                ["Adyen:ApiKey"] = "key",
+                ["Adyen:ClientKey"] = "test_CLIENT",
+            },
+            services => services.AddSingleton(_payments.Object));
+        using var client = api.CreateClient();
+
+        var config = await client.GetStringAsync("/api/digital-site/config");
+
+        Assert.Contains("AdyenComponent", config, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AdyenMode_RequiresCredentials()
     {
         using var commerceTools = new CommerceToolsStubFactory();

@@ -81,7 +81,7 @@ function DigitalSiteFlow({ api }) {
   }, [api]);
 
   useEffect(() => {
-    if (paymentGateway !== "Adyen"
+    if (!["Adyen", "AdyenComponent"].includes(paymentGateway)
       || state.paymentType !== "DirectDebit"
       || state.paymentPlan !== "Annual"
       || state.paymentMethod !== "Card"

@@ -9,5 +9,8 @@ public enum PaymentGatewayMode
     Stub,
 
     /// <summary>The Adyen Checkout API (directly or through APIM).</summary>
-    Adyen
+    Adyen,
+
+    /// <summary>The Adyen Checkout API for local browser-component testing without webhooks.</summary>
+    AdyenComponent
 }

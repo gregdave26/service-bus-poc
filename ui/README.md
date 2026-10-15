@@ -47,7 +47,7 @@ The **Member history** panel lists the commercetools active carts and orders for
 | Variable | Where | Default | Purpose |
 | --- | --- | --- | --- |
 | `DIGITAL_SITE_API_BASE_URL` | Node dashboard | `http://localhost:5200` | CommerceApi URL given to the browser |
-| `DigitalSite__PaymentGateway` | CommerceApi | `Stub` | `Stub` or `Adyen` (feature toggle) |
+| `DigitalSite__PaymentGateway` | CommerceApi | `Stub` | `Stub`, `AdyenComponent` (local Card Component), or `Adyen` (full payment mode) |
 | `DigitalSite__AllowedOrigins` | CommerceApi | `http://localhost:5100` | CORS origins (comma-separated) |
 | `CommerceTools__ApiUrl` / `__ProjectKey` | CommerceApi, processors | — / `rac-rsa-poc` | commercetools (stub) API |
 | `CommerceTools__AuthUrl`, `__ClientId`, `__ClientSecret`, `__Scope` | CommerceApi, processors | unset | OAuth client credentials for a real commercetools project |

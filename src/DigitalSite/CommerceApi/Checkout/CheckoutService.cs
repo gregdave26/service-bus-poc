@@ -51,12 +51,13 @@ public sealed class CheckoutService
     public async Task<CheckoutSessionResponse> StartCheckoutAsync(StartCheckoutRequest request, CancellationToken cancellationToken)
     {
         MemberCartService.EnsureValidCrmId(request.CrmId);
-        if (!request.AcceptedPaymentAuthTerms)
+        var requiresPaymentAuthTerms = !string.Equals(request.PaymentMethod, "Card", StringComparison.OrdinalIgnoreCase);
+        if (requiresPaymentAuthTerms && !request.AcceptedPaymentAuthTerms)
         {
             throw DigitalSiteRequestException.BadRequest("Payment authorisation terms must be accepted");
         }
 
-        if (!request.AcceptedRoadsideAssistTerms)
+        if (!request.PrepareOnly && !request.AcceptedRoadsideAssistTerms)
         {
             throw DigitalSiteRequestException.BadRequest("Roadside Assistance terms must be accepted");
         }

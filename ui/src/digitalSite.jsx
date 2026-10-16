@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { Alert, Box, CircularProgress, Paper, Stack } from "@mui/material";
+import { Alert, Box, CircularProgress, GlobalStyles, Paper, Stack } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { RacwaStepperTemplate, theme as racwaTheme } from "@racwa/react-components";
+import { fontFaces } from "@racwa/styles";
 import { completeAdyenRedirect } from "./AdyenDropIn.jsx";
 import { createDigitalSiteApi } from "./digitalSiteApi.js";
 import {
@@ -18,7 +19,7 @@ import {
   toCreateCartRequest,
   toUpdateCartRequest,
 } from "./digitalSiteFlowState.js";
-import { ConfirmationStep, ConfirmCoverStep, PaymentPlanStep, PayStep, QuickCheckStep, StepButtons, VehicleDetailsStep } from "./digitalSiteSteps.jsx";
+import { ConfirmationStep, ConfirmPayStep, CoverSelectionStep, StepButtons, YourDetailsStep } from "./digitalSiteSteps.jsx";
 import { MemberHistory } from "./MemberHistory.jsx";
 
 const REDIRECT_RESULT_PARAM = "redirectResult";
@@ -41,13 +42,11 @@ function takeRedirectResult() {
   return redirectResult;
 }
 
-function CurrentStep({ state, dispatch, catalog, api, members, payment }) {
+function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity, paymentGateway }) {
   switch (state.page) {
-    case "quickCheck": return <QuickCheckStep state={state} dispatch={dispatch} {...members} />;
-    case "vehicleDetails": return <VehicleDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} />;
-    case "confirmCover": return <ConfirmCoverStep state={state} dispatch={dispatch} covers={catalog.covers} />;
-    case "paymentPlan": return <PaymentPlanStep state={state} dispatch={dispatch} cart={state.cart} paymentPlans={catalog.paymentPlans} />;
-    case "pay": return <PayStep state={state} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} />;
+    case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
+    case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }
@@ -59,6 +58,7 @@ function DigitalSiteFlow({ api }) {
   const [history, setHistory] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [paymentGateway, setPaymentGateway] = useState("Stub");
   const { crmId } = state;
 
   const refreshMember = useCallback(() => {
@@ -75,6 +75,41 @@ function DigitalSiteFlow({ api }) {
   useEffect(() => {
     api.getCatalog().then(setCatalog).catch((catalogError) => setError(catalogError.message));
   }, [api]);
+
+  useEffect(() => {
+    api.getConfig().then((config) => setPaymentGateway(config.gateway ?? "Stub")).catch((configError) => setError(configError.message));
+  }, [api]);
+
+  useEffect(() => {
+    if (!["Adyen", "AdyenComponent"].includes(paymentGateway)
+      || state.paymentType !== "DirectDebit"
+      || state.paymentPlan !== "Annual"
+      || state.paymentMethod !== "Card"
+      || state.paymentSession) return;
+
+    let cancelled = false;
+    setBusy(true);
+    setError(null);
+    api.startCheckout(toCheckoutRequest(state, returnUrl(), true))
+      .then((session) => {
+        if (!cancelled) dispatch({ type: "paymentSessionPrepared", session });
+      })
+      .catch((sessionError) => {
+        if (!cancelled) setError(`Adyen is unavailable, so the standard card form is being used. ${sessionError.message}`);
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [
+    api,
+    paymentGateway,
+    state.paymentMethod,
+    state.paymentPlan,
+    state.paymentSession,
+    state.paymentType,
+  ]);
 
   useEffect(refreshMember, [refreshMember]);
 
@@ -113,7 +148,7 @@ function DigitalSiteFlow({ api }) {
   });
 
   const startCheckout = () => run(async () => {
-    dispatch({ type: "checkoutStarted", checkout: await api.startCheckout(toCheckoutRequest(state, returnUrl())) });
+    dispatch({ type: "checkoutStarted", checkout: state.paymentSession ?? await api.startCheckout(toCheckoutRequest(state, returnUrl())) });
   });
 
   const discardCart = (cart) => run(async () => {
@@ -123,6 +158,7 @@ function DigitalSiteFlow({ api }) {
   });
 
   const onPaymentResult = useCallback((resultCode) => dispatch({ type: "paymentSubmitted", resultCode }), []);
+  const onCardValidity = useCallback((value) => dispatch({ type: "cardReadinessChanged", value }), []);
 
   const members = {
     activeCart: activeCarts.find((cart) => cart.id !== state.cart?.id) ?? null,
@@ -132,14 +168,28 @@ function DigitalSiteFlow({ api }) {
     cartBusy: busy,
   };
 
-  const nextActions = { confirmCover: saveCart, paymentPlan: startCheckout };
+  const nextActions = { yourDetails: saveCart, confirmPay: startCheckout };
   const onNext = nextActions[state.page] ?? (() => dispatch({ type: "next" }));
-  const showButtons = state.page !== "confirmation";
-  const isOutsideStepper = state.page === "quickCheck" || state.page === "confirmation";
+  const showButtons = state.page !== "finished" && state.page !== "coverSelection" && state.page !== "yourDetails" && !state.checkout;
+  const isOutsideStepper = state.page === "coverSelection" || state.page === "finished";
 
   return <Stack spacing={3}>
     <ThemeProvider theme={racwaTheme}>
-      <Paper variant="outlined" sx={{ overflow: "hidden", position: "relative", minHeight: 640, bgcolor: "background.default" }} aria-label="RACWA digital site">
+      <GlobalStyles styles={{ "@font-face": fontFaces }} />
+      <Paper
+        variant="outlined"
+        sx={{
+          overflow: "hidden",
+          position: "relative",
+          minHeight: 640,
+          bgcolor: "background.default",
+          fontFamily: "'Stag Sans Web', Helvetica, Arial, sans-serif",
+          "& *, & input, & button, & textarea, & select": {
+            fontFamily: "inherit",
+          },
+        }}
+        aria-label="RACWA digital site"
+      >
         <RacwaStepperTemplate
           sidebarTitle="Join Roadside Assistance"
           steps={STEPPER_STEPS}
@@ -149,11 +199,11 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />
             {showButtons && <StepButtons
-              onBack={state.page === "quickCheck" ? undefined : () => dispatch({ type: "back" })}
+              onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}
-              nextLabel={state.page === "paymentPlan" ? "Continue to payment" : "Next"}
+              nextLabel={state.page === "yourDetails" ? "Continue" : "Make Payment >"}
               nextDisabled={!canContinue(state)}
               loading={busy}
             />}

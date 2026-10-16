@@ -3,6 +3,7 @@ using Adyen.Checkout.Services;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.DigitalSite.CommerceApi.Notifications;
+using ServiceBusPoc.DigitalSite.Shared.CommerceTools.Models;
 
 namespace ServiceBusPoc.DigitalSite.CommerceApi.Payments;
 
@@ -13,7 +14,7 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
     private readonly AdyenSettings _adyenSettings;
     private readonly DigitalSiteSettings _siteSettings;
     private readonly CommerceToolsSettings _commerceToolsSettings;
-    private readonly AdyenNotificationReader _notificationReader;
+    private readonly AdyenNotificationReader? _notificationReader;
     private readonly ILogger<AdyenPaymentAdapter> _logger;
 
     /// <summary>Initializes a new instance of the <see cref="AdyenPaymentAdapter"/> class.</summary>
@@ -33,12 +34,33 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
         _adyenSettings = adyenSettings.Value;
         _siteSettings = siteSettings.Value;
         _commerceToolsSettings = commerceToolsSettings.Value;
-        _notificationReader = new AdyenNotificationReader(_adyenSettings.HmacKey!);
+        _notificationReader = string.IsNullOrWhiteSpace(_adyenSettings.HmacKey)
+            ? null
+            : new AdyenNotificationReader(_adyenSettings.HmacKey);
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public PaymentGatewayMode Mode => PaymentGatewayMode.Adyen;
+    public PaymentGatewayMode Mode =>
+        _siteSettings.PaymentGateway == PaymentGatewayMode.AdyenComponent
+            ? PaymentGatewayMode.AdyenComponent
+            : PaymentGatewayMode.Adyen;
+
+    /// <summary>Verifies that the configured Adyen credentials and endpoint can create a Checkout session.</summary>
+    public async Task CheckConnectivityAsync(CancellationToken cancellationToken)
+    {
+        await CreateCheckoutSessionAsync(
+            new CheckoutSessionRequest(
+                "startup-connectivity-check",
+                "startup-connectivity-check",
+                $"RSA-startup-{Guid.NewGuid():N}",
+                Money.FromCents(_siteSettings.Currency, 1),
+                _siteSettings.AllowedOriginList.FirstOrDefault() ?? "http://localhost",
+                "startup-connectivity-check",
+                null,
+                null),
+            cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<CheckoutSession> CreateCheckoutSessionAsync(CheckoutSessionRequest request, CancellationToken cancellationToken)
@@ -108,7 +130,9 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
     }
 
     /// <inheritdoc />
-    public WebhookVerification VerifyWebhook(string payload) => _notificationReader.Verify(payload);
+    public WebhookVerification VerifyWebhook(string payload) =>
+        _notificationReader?.Verify(payload)
+        ?? throw new PaymentGatewayException("Adyen webhooks are not enabled in component-only mode");
 
     /// <inheritdoc />
     public PaymentUpdate MapWebhookToPaymentUpdate(PaymentNotification notification) =>

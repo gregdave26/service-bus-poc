@@ -18,7 +18,7 @@ function checkoutConfiguration(checkout, onResult, onError) {
 }
 
 // Card data and 3D Secure stay inside Adyen's iframes; the browser result is only an interim status.
-export function AdyenDropIn({ checkout, onResult }) {
+export function AdyenDropIn({ checkout, onResult, onValidity, showPayButton = true }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,7 +29,11 @@ export function AdyenDropIn({ checkout, onResult }) {
     AdyenCheckout(checkoutConfiguration(checkout, onResult, setError))
       .then((adyenCheckout) => {
         if (cancelled) return;
-        dropin = new Dropin(adyenCheckout, { paymentMethodComponents: [Card] }).mount(containerRef.current);
+        dropin = new Dropin(adyenCheckout, {
+          paymentMethodComponents: [Card],
+          showPayButton,
+          onChange: (state) => onValidity?.(state.isValid === true),
+        }).mount(containerRef.current);
       })
       .catch((initialiseError) => setError(initialiseError.message))
       .finally(() => setLoading(false));

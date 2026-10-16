@@ -34,12 +34,26 @@ public static class CommerceApiServiceCollectionExtensions
         services.AddCommerceToolsClient(configuration);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(_ => SiteContent.Load(Path.Combine(AppContext.BaseDirectory, SiteContent.FileName)));
+        var catalogProvider = configuration.GetValue<CatalogProviderMode>(
+            $"{DigitalSiteSettings.SectionName}:{nameof(DigitalSiteSettings.CatalogProvider)}");
+        if (catalogProvider == CatalogProviderMode.Local)
+        {
+            services.AddSingleton<ICatalogProvider>(_ =>
+                new LocalCatalogProvider(Path.Combine(AppContext.BaseDirectory, "Catalog", "local-catalog.json")));
+        }
+        else
+        {
+            services.AddScoped<ICatalogProvider, CatalogService>();
+        }
         services.AddSingleton<VehicleRegister>();
-        services.AddScoped<CatalogService>();
         services.AddScoped<MemberCartService>();
         services.AddScoped<CheckoutService>();
         services.AddScoped<NotificationProcessor>();
         services.AddScoped<AdyenNotificationModule>();
+        services.AddScoped<StubPaymentSimulator>();
+        services.AddSingleton<PaymentGatewayRuntimeState>(serviceProvider =>
+            new PaymentGatewayRuntimeState(
+                serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DigitalSiteSettings>>().Value.PaymentGateway));
 
         var siteSettings = configuration.GetSection(DigitalSiteSettings.SectionName).Get<DigitalSiteSettings>() ?? new DigitalSiteSettings();
         services.AddCors(options => options.AddPolicy(CorsPolicy, policy => policy
@@ -47,27 +61,31 @@ public static class CommerceApiServiceCollectionExtensions
             .WithMethods("GET", "POST", "PUT", "DELETE")
             .WithHeaders("Content-Type")));
 
-        if (siteSettings.PaymentGateway == PaymentGatewayMode.Adyen)
+        if (siteSettings.PaymentGateway is PaymentGatewayMode.Adyen or PaymentGatewayMode.AdyenComponent)
         {
-            builder.AddAdyenGateway();
+            builder.AddAdyenGateway(siteSettings.PaymentGateway);
+            services.AddSingleton<StubPaymentGateway>();
+            services.AddScoped<AdyenPaymentAdapter>();
+            services.AddScoped<RuntimePaymentGatewayAdapter>();
+            services.AddScoped<IPaymentGatewayAdapter>(provider => provider.GetRequiredService<RuntimePaymentGatewayAdapter>());
+            services.AddHostedService<AdyenConnectivityStartupCheck>();
         }
         else
         {
             services.AddSingleton<StubPaymentGateway>();
             services.AddSingleton<IPaymentGatewayAdapter>(provider => provider.GetRequiredService<StubPaymentGateway>());
-            services.AddScoped<StubPaymentSimulator>();
         }
 
         return siteSettings.PaymentGateway;
     }
 
-    private static void AddAdyenGateway(this WebApplicationBuilder builder)
+    private static void AddAdyenGateway(this WebApplicationBuilder builder, PaymentGatewayMode mode)
     {
         builder.Services
             .AddOptions<AdyenSettings>()
             .Bind(builder.Configuration.GetSection(AdyenSettings.SectionName))
             .ValidateDataAnnotations()
-            .Validate(HasRequiredAdyenSettings, "Adyen MerchantAccount, ClientKey, HmacKey, and either ApiKey or ApimSubscriptionKey with CheckoutApiUrl, are required when PaymentGateway is Adyen")
+            .Validate(settings => HasRequiredAdyenSettings(settings, mode), "Adyen MerchantAccount, ClientKey, and either ApiKey or ApimSubscriptionKey with CheckoutApiUrl are required; HmacKey is also required for full Adyen mode")
             .ValidateOnStart();
 
         var adyen = builder.Configuration.GetSection(AdyenSettings.SectionName).Get<AdyenSettings>() ?? new AdyenSettings();
@@ -97,10 +115,10 @@ public static class CommerceApiServiceCollectionExtensions
         builder.Services.AddScoped<IPaymentGatewayAdapter, AdyenPaymentAdapter>();
     }
 
-    private static bool HasRequiredAdyenSettings(AdyenSettings settings) =>
+    private static bool HasRequiredAdyenSettings(AdyenSettings settings, PaymentGatewayMode mode) =>
         !string.IsNullOrWhiteSpace(settings.MerchantAccount)
         && !string.IsNullOrWhiteSpace(settings.ClientKey)
-        && !string.IsNullOrWhiteSpace(settings.HmacKey)
+        && (mode == PaymentGatewayMode.AdyenComponent || !string.IsNullOrWhiteSpace(settings.HmacKey))
         && (settings.UsesApim
             ? !string.IsNullOrWhiteSpace(settings.CheckoutApiUrl)
             : !string.IsNullOrWhiteSpace(settings.ApiKey));

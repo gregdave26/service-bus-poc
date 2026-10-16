@@ -21,7 +21,7 @@ public sealed partial class MemberCartService
     public const string SkipLookup = "Skip";
 
     private readonly ICommerceToolsClient _commerceTools;
-    private readonly CatalogService _catalog;
+    private readonly ICatalogProvider _catalog;
     private readonly VehicleRegister _vehicles;
     private readonly DigitalSiteSettings _settings;
     private readonly ILogger<MemberCartService> _logger;
@@ -34,7 +34,7 @@ public sealed partial class MemberCartService
     /// <param name="logger">The logger.</param>
     public MemberCartService(
         ICommerceToolsClient commerceTools,
-        CatalogService catalog,
+        ICatalogProvider catalog,
         VehicleRegister vehicles,
         IOptions<DigitalSiteSettings> settings,
         ILogger<MemberCartService> logger)

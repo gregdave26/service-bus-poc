@@ -1,13 +1,25 @@
-export const PAGES = ["quickCheck", "vehicleDetails", "confirmCover", "paymentPlan", "pay", "confirmation"];
+export const PAGES = ["coverSelection", "yourDetails", "confirmPay", "finished"];
 
 export const STEPPER_STEPS = [
-  { name: "Vehicle details", page: "vehicleDetails" },
-  { name: "Confirm your cover", page: "confirmCover" },
-  { name: "Payment plan", page: "paymentPlan" },
-  { name: "Payment", page: "pay" },
+  { name: "Your details", page: "yourDetails" },
+  { name: "Confirm & pay", page: "confirmPay" },
+  { name: "Finished", page: "finished" },
 ];
 
 export const FLOW_STORAGE_KEY = "digitalSite.flow";
+
+const REQUIRED_PERSONAL_DETAILS = [
+  "title",
+  "firstName",
+  "lastName",
+  "dateOfBirth",
+  "email",
+  "phone",
+  "addressLine1",
+  "suburb",
+  "state",
+  "postcode",
+];
 
 export function generateCrmId(random = Math.random) {
   return `CRM-${String(Math.floor(random() * 100_000_000)).padStart(8, "0")}`;
@@ -15,12 +27,27 @@ export function generateCrmId(random = Math.random) {
 
 export function createInitialFlowState(crmId = generateCrmId()) {
   return {
-    page: "quickCheck",
+    page: "coverSelection",
     crmId,
-    isBrokenDown: null,
-    vehicle: { searchChoice: null, rego: "", details: null },
+    personalDetails: {
+      title: "",
+      firstName: "",
+      lastName: "",
+      dateOfBirth: "",
+      email: "",
+      phone: "",
+      addressLine1: "",
+      suburb: "",
+      state: "WA",
+      postcode: "",
+    },
+    vehicle: { searchChoice: "Skip", rego: "", year: "", make: "", model: "", body: "", details: null },
     coverId: null,
+    paymentType: "DirectDebit",
     paymentPlan: null,
+    paymentMethod: null,
+    paymentSession: null,
+    cardReady: false,
     acceptedPaymentAuthTerms: false,
     acceptedRoadsideAssistTerms: false,
     cart: null,
@@ -30,21 +57,29 @@ export function createInitialFlowState(crmId = generateCrmId()) {
 }
 
 export function stepperIndexFor(page) {
-  if (page === "confirmation") return STEPPER_STEPS.length;
   return STEPPER_STEPS.findIndex((step) => step.page === page);
+}
+
+function hasCompletePersonalDetails(personalDetails) {
+  return REQUIRED_PERSONAL_DETAILS.every((field) => personalDetails[field]?.trim());
 }
 
 export function canContinue(state) {
   switch (state.page) {
-    case "quickCheck":
-      return state.isBrokenDown === "No";
-    case "vehicleDetails":
-      return state.vehicle.searchChoice === "Skip"
-        || (state.vehicle.searchChoice === "RegoLookup" && state.vehicle.details !== null);
-    case "confirmCover":
+    case "coverSelection":
       return state.coverId !== null;
-    case "paymentPlan":
-      return state.cart !== null && state.paymentPlan !== null && state.acceptedPaymentAuthTerms && state.acceptedRoadsideAssistTerms;
+    case "yourDetails":
+      return hasCompletePersonalDetails(state.personalDetails)
+        && (state.vehicle.searchChoice === "Skip"
+          || (state.vehicle.searchChoice === "RegoLookup" && state.vehicle.details !== null))
+        && state.coverId !== null;
+    case "confirmPay":
+      return state.cart !== null
+        && state.paymentType === "DirectDebit"
+        && state.paymentPlan === "Annual"
+        && state.paymentMethod === "Card"
+        && state.cardReady
+        && state.acceptedRoadsideAssistTerms;
     default:
       return false;
   }
@@ -61,41 +96,60 @@ export function cartMatchesSelection(state) {
   const selected = toVehicleSelection(state.vehicle);
   return state.cart.coverId === state.coverId
     && state.cart.vehicleSearchChoice === selected.searchChoice
-    && (state.cart.vehicle?.rego ?? null) === (selected.rego?.replace(/\s+/g, "").toUpperCase() ?? null);
+    && (state.cart.vehicle?.rego ?? null) === (selected.rego?.replace(/\s+/g, "").toUpperCase() ?? null)
+    && JSON.stringify(state.cart.personalDetails ?? null) === JSON.stringify(state.personalDetails);
 }
 
 export function toCreateCartRequest(state) {
-  return { crmId: state.crmId, isBrokenDown: state.isBrokenDown, vehicle: toVehicleSelection(state.vehicle), coverId: state.coverId };
+  return {
+    crmId: state.crmId,
+    isBrokenDown: "No",
+    personalDetails: state.personalDetails,
+    vehicle: toVehicleSelection(state.vehicle),
+    coverId: state.coverId,
+  };
 }
 
 export function toUpdateCartRequest(state) {
-  return { crmId: state.crmId, version: state.cart.version, vehicle: toVehicleSelection(state.vehicle), coverId: state.coverId };
+  return {
+    crmId: state.crmId,
+    version: state.cart.version,
+    personalDetails: state.personalDetails,
+    vehicle: toVehicleSelection(state.vehicle),
+    coverId: state.coverId,
+  };
 }
 
-export function toCheckoutRequest(state, returnUrl) {
+export function toCheckoutRequest(state, returnUrl, prepareOnly = false) {
   return {
     cartId: state.cart.id,
     crmId: state.crmId,
     returnUrl,
     acceptedPaymentAuthTerms: state.acceptedPaymentAuthTerms,
     acceptedRoadsideAssistTerms: state.acceptedRoadsideAssistTerms,
+    paymentType: state.paymentType,
+    paymentMethod: state.paymentMethod,
+    prepareOnly,
   };
-}
-
-function movePage(state, offset) {
-  const nextPage = PAGES[PAGES.indexOf(state.page) + offset];
-  return nextPage ? { ...state, page: nextPage } : state;
 }
 
 function resumeFrom(state, cart) {
   const isLookup = cart.vehicleSearchChoice === "RegoLookup" && cart.vehicle;
   return {
     ...state,
-    page: "confirmCover",
-    isBrokenDown: "No",
+    page: "yourDetails",
     vehicle: isLookup
-      ? { searchChoice: "RegoLookup", rego: cart.vehicle.rego, details: cart.vehicle }
-      : { searchChoice: "Skip", rego: "", details: null },
+      ? {
+        searchChoice: "RegoLookup",
+        rego: cart.vehicle.rego,
+        year: cart.vehicle.year ?? "",
+        make: cart.vehicle.make ?? "",
+        model: cart.vehicle.model ?? "",
+        body: cart.vehicle.body ?? "",
+        details: cart.vehicle,
+      }
+      : { searchChoice: "Skip", rego: "", year: "", make: "", model: "", body: "", details: null },
+    personalDetails: cart.personalDetails ?? state.personalDetails,
     coverId: cart.coverId,
     cart,
   };
@@ -103,8 +157,8 @@ function resumeFrom(state, cart) {
 
 export function flowReducer(state, action) {
   switch (action.type) {
-    case "answerQuickCheck":
-      return { ...state, isBrokenDown: action.value };
+    case "changePersonalDetails":
+      return { ...state, personalDetails: { ...state.personalDetails, [action.field]: action.value } };
     case "newMember":
       return createInitialFlowState(action.crmId);
     case "resumeCart":
@@ -114,33 +168,91 @@ export function flowReducer(state, action) {
     case "chooseVehicleSearch":
       return { ...state, vehicle: { ...state.vehicle, searchChoice: action.value } };
     case "changeRego":
-      return { ...state, vehicle: { ...state.vehicle, rego: action.value, details: null } };
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          searchChoice: action.value.trim() ? "RegoLookup" : "Skip",
+          rego: action.value,
+          year: "",
+          make: "",
+          model: "",
+          body: "",
+          details: null,
+        },
+      };
+    case "changeVehicleField":
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          [action.field]: action.value,
+          ...(action.field === "make" ? { model: "", body: "" } : {}),
+          ...(action.field === "model" ? { body: "" } : {}),
+        },
+      };
     case "vehicleFound":
-      return { ...state, vehicle: { ...state.vehicle, details: action.vehicle } };
+      return {
+        ...state,
+        vehicle: {
+          ...state.vehicle,
+          searchChoice: "RegoLookup",
+          details: action.vehicle,
+          year: action.vehicle.year == null ? "" : String(action.vehicle.year),
+          make: action.vehicle.make?.toUpperCase() ?? "",
+          model: action.vehicle.model ?? "",
+          body: action.vehicle.body ?? "",
+        },
+      };
     case "chooseCover":
       return { ...state, coverId: action.value };
+    case "choosePaymentType":
+      return {
+        ...state,
+        paymentType: action.value,
+        paymentPlan: action.value === "SinglePayment" ? null : state.paymentPlan,
+        paymentMethod: null,
+        paymentSession: null,
+        cardReady: false,
+        acceptedPaymentAuthTerms: false,
+        acceptedRoadsideAssistTerms: false,
+      };
     case "cartSaved":
-      return { ...state, cart: action.cart, page: "paymentPlan" };
-    // Live flow behaviour: the authorisation wording depends on the plan, so consent must be given again.
+      return { ...state, cart: action.cart, page: "confirmPay" };
     case "choosePaymentPlan":
-      return { ...state, paymentPlan: action.value, acceptedPaymentAuthTerms: false, acceptedRoadsideAssistTerms: false };
+      return {
+        ...state,
+        paymentPlan: action.value,
+        paymentMethod: null,
+        paymentSession: null,
+        cardReady: false,
+        acceptedPaymentAuthTerms: false,
+        acceptedRoadsideAssistTerms: false,
+      };
+    case "choosePaymentMethod":
+      return { ...state, paymentMethod: action.value, paymentSession: null, cardReady: false };
+    case "paymentSessionPrepared":
+      return { ...state, paymentSession: action.session, cardReady: false };
+    case "cardReadinessChanged":
+      return { ...state, cardReady: action.value };
     case "acceptTerms":
       return { ...state, [action.field]: action.value };
     case "checkoutStarted":
-      return { ...state, page: "pay", checkout: action.checkout, paymentResult: null };
-    // The browser result is only an interim status; the order is confirmed from the backend status.
+      return { ...state, checkout: action.checkout, paymentResult: null, page: "confirmPay" };
     case "paymentSubmitted":
-      return state.checkout ? { ...state, page: "confirmation", paymentResult: action.resultCode ?? null } : state;
+      return state.checkout ? { ...state, page: "finished", paymentResult: action.resultCode ?? null } : state;
     case "retryPayment":
-      return state.page === "confirmation" ? { ...state, page: "paymentPlan", checkout: null, paymentResult: null } : state;
+      return state.page === "finished" ? { ...state, page: "confirmPay", checkout: null, paymentResult: null } : state;
     case "next":
-      return canContinue(state) && state.page !== "confirmCover" && state.page !== "paymentPlan" ? movePage(state, 1) : state;
+      if (!canContinue(state)) return state;
+      if (state.page === "coverSelection") return { ...state, page: "yourDetails" };
+      return state.page === "yourDetails" ? { ...state, page: "confirmPay" } : state;
     case "back":
-      return state.page === "confirmation" || state.page === "quickCheck" ? state : { ...movePage(state, -1), checkout: null };
+      return state.page === "confirmPay" ? { ...state, page: "yourDetails", checkout: null } : state;
     case "goToStep": {
       const target = STEPPER_STEPS[action.index]?.page;
       const isEarlierStep = target && action.index < stepperIndexFor(state.page);
-      return isEarlierStep && state.page !== "confirmation" ? { ...state, page: target, checkout: null } : state;
+      return isEarlierStep && state.page !== "finished" ? { ...state, page: target, checkout: null } : state;
     }
     case "restart":
       return createInitialFlowState(state.crmId);
@@ -164,6 +276,22 @@ const currencyFormatter = new Intl.NumberFormat("en-AU", { style: "currency", cu
 
 export function formatCurrency(amount) {
   return currencyFormatter.format(amount);
+}
+
+export function paymentPlanPrice(cart, cover, paymentPlanId) {
+  const fallback = cart?.totalPrice ?? 0;
+  if (paymentPlanId === "Monthly") {
+    return {
+      amount: cover?.monthlyPrice ?? fallback,
+      frequency: "month",
+      annualTotal: cover?.monthlyTotal,
+    };
+  }
+  return {
+    amount: cover?.annualPrice ?? fallback,
+    frequency: "year",
+    annualTotal: cover?.annualPrice ?? fallback,
+  };
 }
 
 const PAYMENT_PROGRESS = {

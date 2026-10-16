@@ -12,7 +12,7 @@ the `scripts` directory; each script resolves paths relative to its own location
 - Docker Desktop (for emulator)
 - 4 GB free disk space (for emulator container)
 - For emulator checks, Docker Desktop must be running with Linux containers and the
-  emulator EULA accepted in `infra/servicebus/.env`.
+  emulator EULA accepted in the repository-root `.env`.
 - SDK-based checks use the local emulator connection string by default. Set
   `ServiceBus__ConnectionString` to override it; no credentials are committed.
 
@@ -51,6 +51,29 @@ unavailable, an entity is missing, or a filter is wrong.
 Checks Docker before starting the compose services, then runs the Verifier's SDK
 probe. The probe creates a sender and message batch without publishing a message.
 It uses no temporary project, downloaded package, or generated source file.
+
+### `test-adyen-connectivity.ps1` — Adyen Checkout Connectivity Probe
+
+Tests the configured Adyen Checkout `/sessions` endpoint without starting the
+Commerce API. It loads the repository-root `.env` by default and sends a
+one-cent synthetic session request using either `Adyen__ApiKey` or the optional
+APIM subscription-key settings. It reports the HTTP status and response body
+without printing credential values.
+
+```powershell
+.\test-adyen-connectivity.ps1
+```
+
+The script exits with code `0` for a successful session response and `1` when
+Adyen rejects the request or cannot be reached. A successful probe creates only
+a short-lived Checkout session; it does not authorise a payment.
+
+`run-dashboard.ps1` automatically runs this probe before starting services when
+`DigitalSite__PaymentGateway` is `Adyen` or `AdyenComponent`. The environment,
+merchant account, endpoint, authentication method, and HTTP result are written
+to the console and the run-dashboard transcript under `logs/`; credential values
+are not printed. A failed probe is reported but does not prevent the local stack
+from starting, because CommerceApi performs its own Stub fallback.
 
 ### `check-emulator-status.ps1` — Diagnostics
 

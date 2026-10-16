@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <Content Update="Catalog/site-content.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Catalog/local-catalog.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

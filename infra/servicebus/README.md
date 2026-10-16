@@ -22,9 +22,17 @@ Defined declaratively in [config.json](./config.json), following the [official e
 
 ```powershell
 cd infra/servicebus
-Copy-Item .env.example .env
+Copy-Item ..\..\.env.example ..\..\.env
 # Edit .env: set ACCEPT_EULA=Y and a strong SQL_PASSWORD
-docker compose up -d
+docker compose --env-file ..\..\.env up -d
+```
+
+Compose reuses existing containers and local images by default. To explicitly
+refresh the emulator images before starting:
+
+```powershell
+docker compose --env-file ..\..\.env pull
+docker compose --env-file ..\..\.env up -d
 ```
 
 Compose reuses existing containers and local images by default. To explicitly
@@ -42,7 +50,7 @@ The emulator listens on:
 Stop and remove containers:
 
 ```powershell
-docker compose down
+docker compose --env-file ..\..\.env down
 ```
 
 ## Connecting from .NET apps

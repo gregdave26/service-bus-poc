@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -116,6 +117,7 @@ public sealed class AdyenPaymentAdapterTests
     [Fact]
     public async Task AdyenMode_IsSelectedByConfiguration()
     {
+        SetupConnectivitySuccess();
         using var commerceTools = new CommerceToolsStubFactory();
         using var api = new CommerceApiFactory(
             commerceTools,
@@ -131,10 +133,34 @@ public sealed class AdyenPaymentAdapterTests
         using var client = api.CreateClient();
 
         var config = await client.GetStringAsync("/api/digital-site/config");
-        var stubRoute = await client.PostAsync("/api/digital-site/checkout/stub/p1/notify", new StringContent("{}"));
+        var stubRoute = await client.PostAsync(
+            "/api/digital-site/checkout/stub/p1/notify",
+            new StringContent("{}", Encoding.UTF8, "application/json"));
 
         Assert.Contains("Adyen", config, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.NotFound, stubRoute.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdyenComponentMode_IsSelectedWithoutWebhookCredentials()
+    {
+        SetupConnectivitySuccess();
+        using var commerceTools = new CommerceToolsStubFactory();
+        using var api = new CommerceApiFactory(
+            commerceTools,
+            new Dictionary<string, string?>
+            {
+                ["DigitalSite:PaymentGateway"] = "AdyenComponent",
+                ["Adyen:MerchantAccount"] = "RACWAAccountECOM",
+                ["Adyen:ApiKey"] = "key",
+                ["Adyen:ClientKey"] = "test_CLIENT",
+            },
+            services => services.AddSingleton(_payments.Object));
+        using var client = api.CreateClient();
+
+        var config = await client.GetStringAsync("/api/digital-site/config");
+
+        Assert.Contains("AdyenComponent", config, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -153,6 +179,16 @@ public sealed class AdyenPaymentAdapterTests
             Options.Create(new DigitalSiteSettings()),
             Options.Create(new CommerceToolsSettings { ProjectKey = "rac-rsa-poc" }),
             NullLogger<AdyenPaymentAdapter>.Instance);
+
+    private void SetupConnectivitySuccess()
+    {
+        var response = new Mock<ISessionsApiResponse>();
+        response.SetupGet(r => r.IsCreated).Returns(true);
+        response.Setup(r => r.Created()).Returns(new CreateCheckoutSessionResponse { Id = "startup", SessionData = "data" });
+        _payments
+            .Setup(p => p.SessionsAsync(It.IsAny<CreateCheckoutSessionRequest>(), It.IsAny<Adyen.Core.Client.RequestOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response.Object);
+    }
 
     private static CheckoutSessionRequest SessionRequest() =>
         new("c1", "p1", "RSA-1", Money.FromCents("AUD", 31000), "http://localhost:5100/digital-site", "corr", "CRM-12345678", "CLAS");

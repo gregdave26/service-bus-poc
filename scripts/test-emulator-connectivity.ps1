@@ -12,6 +12,7 @@ Set-StrictMode -Version Latest
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
+$envFilePath = Join-Path $projectRoot '.env'
 
 Write-Host "Starting emulator connectivity test..." -ForegroundColor Cyan
 
@@ -26,14 +27,14 @@ if ($LASTEXITCODE -ne 0) {
 $composeDirectory = Split-Path -Parent $composePath
 Push-Location $composeDirectory
 try {
-    $existing = & docker compose -f $composePath ps --quiet 2>$null
+    $existing = & docker compose --env-file $envFilePath -f $composePath ps --quiet 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to inspect the emulator containers."
     }
 
     if (-not $existing) {
         Write-Host "Starting emulator containers..."
-        & docker compose -f $composePath up -d
+        & docker compose --env-file $envFilePath -f $composePath up -d
         if ($LASTEXITCODE -ne 0) {
             throw "docker compose up failed with exit code $LASTEXITCODE."
         }

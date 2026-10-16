@@ -74,6 +74,27 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $srcPath = Join-Path $projectRoot 'src'
+$envFilePath = Join-Path $projectRoot '.env'
+
+$dotenvPath = Join-Path $projectRoot '.env'
+if (Test-Path -LiteralPath $dotenvPath) {
+    foreach ($line in Get-Content -LiteralPath $dotenvPath) {
+        $trimmedLine = $line.Trim()
+        if ($trimmedLine -and -not $trimmedLine.StartsWith('#') -and $trimmedLine.Contains('=')) {
+            $name, $value = $trimmedLine.Split('=', 2)
+            if ($name.Trim()) {
+                $environmentValue = $value.Trim()
+                $hasSingleQuotes = $environmentValue.StartsWith("'") -and $environmentValue.EndsWith("'")
+                $hasDoubleQuotes = $environmentValue.StartsWith('"') -and $environmentValue.EndsWith('"')
+                if ($hasSingleQuotes -or $hasDoubleQuotes) {
+                    $environmentValue = $environmentValue.Substring(1, $environmentValue.Length - 2)
+                }
+                [Environment]::SetEnvironmentVariable($name.Trim(), $environmentValue)
+            }
+        }
+    }
+}
+
 function Get-ProjectDirectory {
     param([string]$ProjectName)
     $projectFile = Get-ChildItem -Path $srcPath -Recurse -Filter "$ProjectName.csproj" | Select-Object -First 1
@@ -134,6 +155,32 @@ function Get-RunningDashboardInstances {
             }
         }
     ) | Sort-Object Id -Unique
+}
+
+function Invoke-AdyenConnectivityCheck {
+    $configuredGateway = $env:DigitalSite__PaymentGateway
+    if ($configuredGateway -notin @('Adyen', 'AdyenComponent')) {
+        Write-Host "  Adyen connectivity check skipped (payment gateway: $(if ($configuredGateway) { $configuredGateway } else { 'Stub' }))" -ForegroundColor DarkGray
+        return
+    }
+
+    $probeScript = Join-Path $PSScriptRoot 'test-adyen-connectivity.ps1'
+    if (-not (Test-Path -LiteralPath $probeScript -PathType Leaf)) {
+        Write-Host "  ✗ Adyen connectivity check unavailable: $probeScript was not found" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "  Checking Adyen connectivity before starting services..." -ForegroundColor Yellow
+    try {
+        & $probeScript -EnvironmentFile $envFilePath
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  ⚠ Adyen connectivity check failed; CommerceApi will apply its normal Stub fallback." -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host "  ✗ Adyen connectivity check could not run: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  CommerceApi will apply its normal Stub fallback." -ForegroundColor Yellow
+    }
 }
 
 function Test-DashboardPortAvailable {
@@ -346,7 +393,7 @@ function Invoke-Cleanup {
         
         if (Test-Path $composePath) {
             Push-Location $composePath
-            docker-compose down 2>&1 | ForEach-Object { Write-Host "    $_" }
+            docker-compose --env-file $envFilePath down 2>&1 | ForEach-Object { Write-Host "    $_" }
             Pop-Location
             Write-Host "  ✓ Docker containers stopped and removed"
         }
@@ -443,7 +490,7 @@ if (-not $NoEmulator) {
     Push-Location (Split-Path $composePath)
     try {
         Write-Host "  Starting or reusing containers..."
-        $null = docker-compose up -d
+        $null = docker-compose --env-file $envFilePath up -d
         Write-Host "  ✓ Emulator started"
 
         $emulatorTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
@@ -453,6 +500,7 @@ if (-not $NoEmulator) {
             -FilePath 'docker-compose' `
             -ArgumentList @(
                 '-f', $composePath,
+                '--env-file', $envFilePath,
                 'logs', '--follow', '--no-color', '--timestamps',
                 'emulator', 'sqledge'
             ) `
@@ -587,6 +635,8 @@ $env:DIGITAL_SITE_API_BASE_URL = $commerceApiUrl
 $env:LOGGING__CONSOLE__INCLUDEEXCEPTION = "true"
 $env:LOGGING__CONSOLE__INCLUDESCOPES = "true"
 $env:LOGGING__LOGGERENABLED = "true"
+
+Invoke-AdyenConnectivityCheck
 
 Write-Host "  ✓ Environment configured"
 Write-Host ""
@@ -773,12 +823,12 @@ Write-Host ""
 # Step 5: Wait for dashboard to be ready
 Write-Host "STEP 5: Waiting for dashboard to be ready..." -ForegroundColor Yellow
 $dashboardReady = $false
-$maxAttempts = 30
+$maxAttempts = 60
 $attempt = 0
 
 while (-not $dashboardReady -and $attempt -lt $maxAttempts) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:$DashboardPort" -TimeoutSec 1 -ErrorAction SilentlyContinue
+        $response = Invoke-WebRequest -Uri "http://localhost:$DashboardPort" -TimeoutSec 2 -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
             $dashboardReady = $true
             Write-Host "  ✓ Dashboard is ready"

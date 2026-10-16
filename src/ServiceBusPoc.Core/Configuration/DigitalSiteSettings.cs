@@ -10,6 +10,9 @@ public sealed class DigitalSiteSettings
     /// <summary>The configuration section name.</summary>
     public const string SectionName = "DigitalSite";
 
+    /// <summary>Gets or sets the catalog provider used by the Digital Site.</summary>
+    public CatalogProviderMode CatalogProvider { get; set; } = CatalogProviderMode.CommerceTools;
+
     /// <summary>Gets or sets the payment gateway feature toggle.</summary>
     public PaymentGatewayMode PaymentGateway { get; set; } = PaymentGatewayMode.Stub;
 

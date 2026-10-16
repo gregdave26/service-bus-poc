@@ -29,6 +29,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
+$envFilePath = Join-Path $projectRoot '.env'
 
 Write-Host "Stopping Service Bus POC processes for: $projectRoot" -ForegroundColor Cyan
 
@@ -89,7 +90,7 @@ if (Test-Path $composePath) {
     Push-Location $composeDirectory
     try {
         if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run docker-compose down')) {
-            docker-compose down
+            docker-compose --env-file $envFilePath down
         }
     }
     finally {

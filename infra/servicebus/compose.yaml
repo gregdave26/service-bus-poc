@@ -3,7 +3,7 @@ services:
   emulator:
     container_name: "servicebus-emulator"
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
-    pull_policy: always
+    pull_policy: missing
     volumes:
       - "./config.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
     ports:

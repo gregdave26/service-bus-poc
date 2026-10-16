@@ -27,6 +27,14 @@ Copy-Item .env.example .env
 docker compose up -d
 ```
 
+Compose reuses existing containers and local images by default. To explicitly
+refresh the emulator images before starting:
+
+```powershell
+docker compose pull
+docker compose up -d
+```
+
 The emulator listens on:
 - `localhost:5672` — AMQP (used by the .NET apps via the Service Bus SDK)
 - `localhost:5300` (configurable) — management/health-check HTTP API

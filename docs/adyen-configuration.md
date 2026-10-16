@@ -248,3 +248,21 @@ The three sensitive values are:
 - Any APIM subscription key, if used
 
 Never paste those secrets into chat, source files, pull requests, screenshots, or committed configuration.
+
+Test Credit Card Data:
+For the Adyen test environment, use Adyen’s test card values—not a real card.
+A standard Visa test card is:
+
+|Field	|Value|
+|Card number	|4111 1111 1111 1111|
+|Expiry date	|Any future date, for example 03/30|
+|CVC/CVV	|737|
+|Cardholder name|	Any name, for example Test Shopper|
+
+You can also try a Mastercard:
+
+|Field	|Value|
+|Card number	|5555 5555 5555 4444|
+|Expiry date	|03/30|
+|CVC/CVV	737|
+|Cardholder name|	Test Shopper|

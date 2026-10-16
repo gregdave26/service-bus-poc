@@ -120,7 +120,7 @@ export function toUpdateCartRequest(state) {
   };
 }
 
-export function toCheckoutRequest(state, returnUrl) {
+export function toCheckoutRequest(state, returnUrl, prepareOnly = false) {
   return {
     cartId: state.cart.id,
     crmId: state.crmId,
@@ -129,6 +129,7 @@ export function toCheckoutRequest(state, returnUrl) {
     acceptedRoadsideAssistTerms: state.acceptedRoadsideAssistTerms,
     paymentType: state.paymentType,
     paymentMethod: state.paymentMethod,
+    prepareOnly,
   };
 }
 

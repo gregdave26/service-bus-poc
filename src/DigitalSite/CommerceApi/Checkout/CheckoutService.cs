@@ -57,7 +57,7 @@ public sealed class CheckoutService
             throw DigitalSiteRequestException.BadRequest("Payment authorisation terms must be accepted");
         }
 
-        if (!request.AcceptedRoadsideAssistTerms)
+        if (!request.PrepareOnly && !request.AcceptedRoadsideAssistTerms)
         {
             throw DigitalSiteRequestException.BadRequest("Roadside Assistance terms must be accepted");
         }

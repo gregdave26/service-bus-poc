@@ -20,6 +20,7 @@ import { StubPaymentPanel } from "./StubPaymentPanel.jsx";
 const ROADSIDE_PHONE = "13 11 11";
 const DEMO_REGOS = ["1ANURAG", "1ABC123", "1RAC000", "1UTE999"];
 const STATUS_POLL_INTERVAL_MS = 1500;
+const NOOP = () => {};
 
 export function StepButtons({ onBack, onNext, nextLabel = "Next", nextDisabled, loading }) {
   return <Stack direction="row" spacing={2} sx={{ mt: 4 }}>
@@ -695,7 +696,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
         {state.paymentPlan === "Annual" && <PaymentMethodSelector state={state} dispatch={dispatch} />}
         {state.paymentMethod === "Card" && <Box>
           {["Adyen", "AdyenComponent"].includes(paymentGateway) && ["Adyen", "AdyenComponent"].includes(state.paymentSession?.gateway)
-            ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={() => {}} onValidity={onCardValidity} />
+            ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={NOOP} onValidity={onCardValidity} />
             : <CreditCardPlaceholder onValidity={onCardValidity} />}
           {selectedPlanPrice && <Card background="gray" sx={{ p: 2, mt: 2 }}>
             <Typography sx={{ fontWeight: 500 }}>Payment summary</Typography>

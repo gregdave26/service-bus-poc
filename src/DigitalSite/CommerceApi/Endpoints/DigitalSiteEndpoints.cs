@@ -72,11 +72,20 @@ public static class DigitalSiteEndpoints
         api.MapGet("/checkout/status/{paymentId}", async (string paymentId, CheckoutService checkout, CancellationToken cancellationToken) =>
             Results.Ok(await checkout.GetStatusAsync(paymentId, cancellationToken)));
 
-        if (paymentGateway == PaymentGatewayMode.Stub)
+        api.MapPost("/checkout/stub/{paymentId}/notify", async (
+            string paymentId,
+            SimulatePaymentRequest request,
+            StubPaymentSimulator simulator,
+            PaymentGatewayRuntimeState runtimeState,
+            CancellationToken cancellationToken) =>
         {
-            api.MapPost("/checkout/stub/{paymentId}/notify", async (string paymentId, SimulatePaymentRequest request, StubPaymentSimulator simulator, CancellationToken cancellationToken) =>
-                Results.Ok(new { outcome = (await simulator.SimulateAsync(paymentId, request.Outcome, cancellationToken)).ToString() }));
-        }
+            if (runtimeState.EffectiveMode != PaymentGatewayMode.Stub)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(new { outcome = (await simulator.SimulateAsync(paymentId, request.Outcome, cancellationToken)).ToString() });
+        });
 
         api.MapPost("/notifications/adyen", async (HttpRequest request, AdyenNotificationModule notifications, CancellationToken cancellationToken) =>
         {

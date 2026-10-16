@@ -85,13 +85,12 @@ function DigitalSiteFlow({ api }) {
       || state.paymentType !== "DirectDebit"
       || state.paymentPlan !== "Annual"
       || state.paymentMethod !== "Card"
-      || !state.acceptedRoadsideAssistTerms
       || state.paymentSession) return;
 
     let cancelled = false;
     setBusy(true);
     setError(null);
-    api.startCheckout(toCheckoutRequest(state, returnUrl()))
+    api.startCheckout(toCheckoutRequest(state, returnUrl(), true))
       .then((session) => {
         if (!cancelled) dispatch({ type: "paymentSessionPrepared", session });
       })
@@ -106,7 +105,6 @@ function DigitalSiteFlow({ api }) {
   }, [
     api,
     paymentGateway,
-    state.acceptedRoadsideAssistTerms,
     state.paymentMethod,
     state.paymentPlan,
     state.paymentSession,

@@ -40,6 +40,8 @@ How the flow works:
      When the API reports the Adyen gateway and a session can be created, the Drop-in is used;
      otherwise the Digital Site keeps the fallback card form. The server-side API key is never
      sent to the browser.
+   - At CommerceApi startup, configured Adyen modes perform a Checkout session connectivity probe.
+     A failed probe is logged and the API automatically uses the Stub gateway for that process.
 6. **Confirmation** polls `GET /checkout/status/{paymentId}`. It shows the order number only after the verified webhook has updated the payment and the CartProcessor has created the order. The order then moves from Open to Complete when the FulfilmentStub provisions it, and a `ProductHoldingChange` appears on `contact.events`.
 
 The **Member history** panel lists the commercetools active carts and orders for the current CRM id. Flow state is kept in `sessionStorage`, so switching tabs or returning from a payment redirect resumes the flow.

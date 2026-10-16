@@ -10,6 +10,7 @@ namespace ServiceBusPoc.DigitalSite.CommerceApi.Checkout;
 /// <param name="AcceptedRoadsideAssistTerms">Whether the Roadside Assistance terms were accepted.</param>
 /// <param name="PaymentType">The selected payment type.</param>
 /// <param name="PaymentMethod">The selected payment method.</param>
+/// <param name="PrepareOnly">Whether to prepare the payment form without completing checkout terms validation.</param>
 public sealed record StartCheckoutRequest(
     string? CartId,
     string? CrmId,
@@ -17,7 +18,8 @@ public sealed record StartCheckoutRequest(
     bool AcceptedPaymentAuthTerms,
     bool AcceptedRoadsideAssistTerms,
     string? PaymentType = null,
-    string? PaymentMethod = null);
+    string? PaymentMethod = null,
+    bool PrepareOnly = false);
 
 /// <summary>Everything the browser needs to mount the payment form.</summary>
 /// <param name="PaymentId">The commercetools payment id.</param>

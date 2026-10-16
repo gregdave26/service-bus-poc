@@ -50,6 +50,10 @@ public static class CommerceApiServiceCollectionExtensions
         services.AddScoped<CheckoutService>();
         services.AddScoped<NotificationProcessor>();
         services.AddScoped<AdyenNotificationModule>();
+        services.AddScoped<StubPaymentSimulator>();
+        services.AddSingleton<PaymentGatewayRuntimeState>(serviceProvider =>
+            new PaymentGatewayRuntimeState(
+                serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DigitalSiteSettings>>().Value.PaymentGateway));
 
         var siteSettings = configuration.GetSection(DigitalSiteSettings.SectionName).Get<DigitalSiteSettings>() ?? new DigitalSiteSettings();
         services.AddCors(options => options.AddPolicy(CorsPolicy, policy => policy
@@ -60,12 +64,16 @@ public static class CommerceApiServiceCollectionExtensions
         if (siteSettings.PaymentGateway is PaymentGatewayMode.Adyen or PaymentGatewayMode.AdyenComponent)
         {
             builder.AddAdyenGateway(siteSettings.PaymentGateway);
+            services.AddSingleton<StubPaymentGateway>();
+            services.AddScoped<AdyenPaymentAdapter>();
+            services.AddScoped<RuntimePaymentGatewayAdapter>();
+            services.AddScoped<IPaymentGatewayAdapter>(provider => provider.GetRequiredService<RuntimePaymentGatewayAdapter>());
+            services.AddHostedService<AdyenConnectivityStartupCheck>();
         }
         else
         {
             services.AddSingleton<StubPaymentGateway>();
             services.AddSingleton<IPaymentGatewayAdapter>(provider => provider.GetRequiredService<StubPaymentGateway>());
-            services.AddScoped<StubPaymentSimulator>();
         }
 
         return siteSettings.PaymentGateway;

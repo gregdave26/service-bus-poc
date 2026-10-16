@@ -3,6 +3,7 @@ using Adyen.Checkout.Services;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.DigitalSite.CommerceApi.Notifications;
+using ServiceBusPoc.DigitalSite.Shared.CommerceTools.Models;
 
 namespace ServiceBusPoc.DigitalSite.CommerceApi.Payments;
 
@@ -44,6 +45,22 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
         _siteSettings.PaymentGateway == PaymentGatewayMode.AdyenComponent
             ? PaymentGatewayMode.AdyenComponent
             : PaymentGatewayMode.Adyen;
+
+    /// <summary>Verifies that the configured Adyen credentials and endpoint can create a Checkout session.</summary>
+    public async Task CheckConnectivityAsync(CancellationToken cancellationToken)
+    {
+        await CreateCheckoutSessionAsync(
+            new CheckoutSessionRequest(
+                "startup-connectivity-check",
+                "startup-connectivity-check",
+                $"RSA-startup-{Guid.NewGuid():N}",
+                Money.FromCents(_siteSettings.Currency, 1),
+                _siteSettings.AllowedOriginList.FirstOrDefault() ?? "http://localhost",
+                "startup-connectivity-check",
+                null,
+                null),
+            cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<CheckoutSession> CreateCheckoutSessionAsync(CheckoutSessionRequest request, CancellationToken cancellationToken)

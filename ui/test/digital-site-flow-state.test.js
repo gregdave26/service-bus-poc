@@ -175,6 +175,7 @@ test("requires annual card details and roadside terms on Confirm & pay", () => {
     acceptedRoadsideAssistTerms: true,
     paymentType: "DirectDebit",
     paymentMethod: "Card",
+    prepareOnly: false,
   });
 });
 

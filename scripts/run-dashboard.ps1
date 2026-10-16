@@ -823,12 +823,12 @@ Write-Host ""
 # Step 5: Wait for dashboard to be ready
 Write-Host "STEP 5: Waiting for dashboard to be ready..." -ForegroundColor Yellow
 $dashboardReady = $false
-$maxAttempts = 30
+$maxAttempts = 60
 $attempt = 0
 
 while (-not $dashboardReady -and $attempt -lt $maxAttempts) {
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:$DashboardPort" -TimeoutSec 1 -ErrorAction SilentlyContinue
+        $response = Invoke-WebRequest -Uri "http://localhost:$DashboardPort" -TimeoutSec 2 -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
             $dashboardReady = $true
             Write-Host "  ✓ Dashboard is ready"

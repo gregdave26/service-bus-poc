@@ -71,6 +71,7 @@ $env:ServiceBus__ConnectionString = $env:ServiceBus__ConnectionString ??
     "Endpoint=sb://${EmulatorHost}/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = $env:ServiceBus__Namespace ?? 'sbemulatorns'
 $env:ServiceBus__TopicName = $env:ServiceBus__TopicName ?? 'contact.events'
+$env:ServiceBus__SubscriptionName = $env:ServiceBus__SubscriptionName ?? 'digital-channels'
 $env:ServiceBus__TopologyConfigPath = $env:ServiceBus__TopologyConfigPath ??
     (Join-Path $projectRoot 'infra\servicebus\config.json')
 

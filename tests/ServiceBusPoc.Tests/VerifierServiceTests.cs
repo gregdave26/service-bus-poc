@@ -13,11 +13,15 @@ public sealed class VerifierServiceTests
     {
         var validator = new Mock<ITopologyValidator>();
         validator.Setup(x => x.ValidateAsync()).ReturnsAsync(true);
-        var service = CreateService(validator.Object);
+        var routingVerifier = new Mock<IDigitalChannelsRoutingVerifier>();
+        var filteredVerifier = new Mock<IFilteredChannelsRoutingVerifier>();
+        var service = CreateService(validator.Object, routingVerifier.Object, filteredVerifier.Object);
 
         await service.RunAsync();
 
         validator.Verify(x => x.ValidateAsync(), Times.Once);
+        routingVerifier.Verify(x => x.VerifyAsync(), Times.Once);
+        filteredVerifier.Verify(x => x.VerifyAsync(), Times.Once);
     }
 
     [Fact]
@@ -25,16 +29,23 @@ public sealed class VerifierServiceTests
     {
         var validator = new Mock<ITopologyValidator>();
         validator.Setup(x => x.ValidateAsync()).ReturnsAsync(false);
-        var service = CreateService(validator.Object);
+        var routingVerifier = new Mock<IDigitalChannelsRoutingVerifier>();
+        var filteredVerifier = new Mock<IFilteredChannelsRoutingVerifier>();
+        var service = CreateService(validator.Object, routingVerifier.Object, filteredVerifier.Object);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync());
 
         validator.Verify(x => x.ValidateAsync(), Times.Once);
     }
 
-    private static VerifierService CreateService(ITopologyValidator validator) =>
+    private static VerifierService CreateService(
+        ITopologyValidator validator,
+        IDigitalChannelsRoutingVerifier routingVerifier,
+        IFilteredChannelsRoutingVerifier filteredVerifier) =>
         new(
             Mock.Of<ILogger<VerifierService>>(),
             Options.Create(new ServiceBusSettings { Namespace = "test-namespace" }),
-            validator);
+            validator,
+            routingVerifier,
+            filteredVerifier);
 }

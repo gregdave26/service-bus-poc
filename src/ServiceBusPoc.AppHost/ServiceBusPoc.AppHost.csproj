@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ContactEvents\Consumers\Carwash\ServiceBusPoc.ContactEvents.Consumers.Carwash.csproj" />
+    <ProjectReference Include="..\ContactEvents\Consumers\DigitalChannels\ServiceBusPoc.ContactEvents.Consumers.DigitalChannels.csproj" />
+    <ProjectReference Include="..\ContactEvents\Consumers\Insurance\ServiceBusPoc.ContactEvents.Consumers.Insurance.csproj" />
+    <ProjectReference Include="..\ContactEvents\Consumers\ParksResorts\ServiceBusPoc.ContactEvents.Consumers.ParksResorts.csproj" />
+    <ProjectReference Include="..\ContactEvents\Producer\ServiceBusPoc.ContactEvents.Producer.csproj" />
+    <ProjectReference Include="..\ContactEvents\Verifier\ServiceBusPoc.ContactEvents.Verifier.csproj" />
+  </ItemGroup>
+
+</Project>

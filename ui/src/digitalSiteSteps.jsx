@@ -472,9 +472,9 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   </Stack>;
 }
 
-export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onCardValidity, paymentGateway }) {
+export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onAdyenAdditionalDetails, onCardValidity, paymentGateway }) {
   return state.checkout
-    ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} />
+    ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} onAdyenAdditionalDetails={onAdyenAdditionalDetails} />
     : <PaymentPlanStep
       state={state}
       dispatch={dispatch}
@@ -717,7 +717,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
   </Stack>;
 }
 
-export function PayStep({ state, simulatePayment, onPaymentResult }) {
+export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditionalDetails }) {
   const { checkout } = state;
   const plan = state.paymentPlan === "Monthly" ? "monthly" : "annual";
   return <Stack spacing={3}>
@@ -726,7 +726,7 @@ export function PayStep({ state, simulatePayment, onPaymentResult }) {
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {["Adyen", "AdyenComponent"].includes(checkout.gateway)
-      ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} />
+      ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} />
       : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} />}
   </Stack>;
 }

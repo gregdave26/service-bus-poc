@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ServiceBusPoc.DigitalSite.Shared.CommerceTools.Models;
 
 namespace ServiceBusPoc.DigitalSite.CommerceApi.Checkout;
@@ -48,7 +49,14 @@ public sealed record CheckoutSessionResponse(
 /// <param name="PaymentId">The commercetools payment id.</param>
 /// <param name="RedirectResult">The redirect result.</param>
 /// <param name="ThreeDSResult">The 3D Secure result.</param>
-public sealed record SubmitPaymentDetailsRequest(string? PaymentId, string? RedirectResult, string? ThreeDSResult);
+/// <param name="PaymentData">The opaque Adyen payment data returned with an action.</param>
+/// <param name="Details">The component details object, when the browser completed an action.</param>
+public sealed record SubmitPaymentDetailsRequest(
+    string? PaymentId,
+    string? RedirectResult,
+    string? ThreeDSResult,
+    string? PaymentData = null,
+    JsonElement? Details = null);
 
 /// <summary>Request to simulate a payment outcome with the stub gateway.</summary>
 /// <param name="Outcome"><c>Authorised</c>, <c>Refused</c> or <c>Pending</c>.</param>

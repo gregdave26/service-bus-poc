@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,12 +71,21 @@ public sealed class AdyenPaymentAdapterTests
             .Callback<PaymentDetailsRequest, Adyen.Core.Client.RequestOptions, CancellationToken>((request, _, _) => sent = request)
             .ReturnsAsync(response.Object);
 
-        var result = await CreateAdapter().HandlePaymentDetailsAsync(new PaymentDetailsSubmission("p1", "corr", "redirect", null), CancellationToken.None);
+        using var details = JsonDocument.Parse("""{"threeds2.challengeResult":"challenge"}""");
+        var result = await CreateAdapter().HandlePaymentDetailsAsync(
+            new PaymentDetailsSubmission("p1", "corr", "redirect", null, "payment-data", details.RootElement),
+            CancellationToken.None);
 
         Assert.Equal(new PaymentActionResult("Authorised", "PSP1", false), result);
+<<<<<<< HEAD
         var paymentDetailsRequest = Assert.IsType<PaymentDetailsRequest>(sent);
         Assert.NotNull(paymentDetailsRequest.Details);
         Assert.Equal("redirect", paymentDetailsRequest.Details!.RedirectResult);
+=======
+        Assert.Equal("redirect", sent!.Details.RedirectResult);
+        Assert.Equal("payment-data", sent.PaymentData);
+        Assert.Equal("challenge", sent.Details.Threeds2ChallengeResult);
+>>>>>>> 3c9bc39 (Refactor payment processing and update UI components)
     }
 
     [Fact]
@@ -209,3 +219,4 @@ public sealed class AdyenPaymentAdapterTests
         }
     }
 }
+

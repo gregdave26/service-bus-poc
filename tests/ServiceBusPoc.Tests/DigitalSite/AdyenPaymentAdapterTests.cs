@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,10 +66,15 @@ public sealed class AdyenPaymentAdapterTests
             .Callback<PaymentDetailsRequest, Adyen.Core.Client.RequestOptions, CancellationToken>((request, _, _) => sent = request)
             .ReturnsAsync(response.Object);
 
-        var result = await CreateAdapter().HandlePaymentDetailsAsync(new PaymentDetailsSubmission("p1", "corr", "redirect", null), CancellationToken.None);
+        using var details = JsonDocument.Parse("""{"threeds2.challengeResult":"challenge"}""");
+        var result = await CreateAdapter().HandlePaymentDetailsAsync(
+            new PaymentDetailsSubmission("p1", "corr", "redirect", null, "payment-data", details.RootElement),
+            CancellationToken.None);
 
         Assert.Equal(new PaymentActionResult("Authorised", "PSP1", false), result);
         Assert.Equal("redirect", sent!.Details.RedirectResult);
+        Assert.Equal("payment-data", sent.PaymentData);
+        Assert.Equal("challenge", sent.Details.Threeds2ChallengeResult);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Globalization;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
@@ -142,7 +143,10 @@ public sealed class CheckoutService
     /// <returns>The interim result.</returns>
     public async Task<PaymentActionResult> SubmitDetailsAsync(SubmitPaymentDetailsRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.RedirectResult) && string.IsNullOrWhiteSpace(request.ThreeDSResult))
+        if (string.IsNullOrWhiteSpace(request.RedirectResult)
+            && string.IsNullOrWhiteSpace(request.ThreeDSResult)
+            && string.IsNullOrWhiteSpace(request.PaymentData)
+            && (request.Details is null || request.Details.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined))
         {
             throw DigitalSiteRequestException.BadRequest("redirectResult or threeDSResult is required");
         }
@@ -150,7 +154,13 @@ public sealed class CheckoutService
         var payment = await GetPaymentAsync(request.PaymentId, cancellationToken);
         var correlationId = payment.Custom?.GetString(DigitalSiteCustomFields.CorrelationId) ?? string.Empty;
         var result = await _gateway.HandlePaymentDetailsAsync(
-            new PaymentDetailsSubmission(payment.Id, correlationId, request.RedirectResult, request.ThreeDSResult),
+            new PaymentDetailsSubmission(
+                payment.Id,
+                correlationId,
+                request.RedirectResult,
+                request.ThreeDSResult,
+                request.PaymentData,
+                request.Details),
             cancellationToken);
         await RecordInteractionAsync(
             payment,

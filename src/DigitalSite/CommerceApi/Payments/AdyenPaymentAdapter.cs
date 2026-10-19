@@ -1,5 +1,6 @@
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.DigitalSite.CommerceApi.Notifications;
@@ -104,9 +105,11 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
         {
             Details = new PaymentCompletionDetails
             {
-                RedirectResult = submission.RedirectResult,
-                ThreeDSResult = submission.ThreeDSResult,
+                RedirectResult = submission.RedirectResult ?? ReadDetail(submission.Details, "redirectResult"),
+                ThreeDSResult = submission.ThreeDSResult ?? ReadDetail(submission.Details, "threeDSResult"),
+                Threeds2ChallengeResult = ReadDetail(submission.Details, "threeds2.challengeResult", "challengeResult"),
             },
+            PaymentData = submission.PaymentData,
         };
 
         var response = await _payments.PaymentsDetailsAsync(detailsRequest, null, cancellationToken);
@@ -126,7 +129,7 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
             resultCode,
             details.PspReference,
             submission.PaymentId);
-        return new PaymentActionResult(resultCode, details.PspReference, details.Action is not null);
+        return new PaymentActionResult(resultCode, details.PspReference, details.Action is not null, details.Action);
     }
 
     /// <inheritdoc />
@@ -160,5 +163,23 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
         }
 
         return metadata;
+    }
+
+    private static string? ReadDetail(JsonElement? details, params string[] names)
+    {
+        if (details is not JsonElement value || value.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var name in names)
+        {
+            if (value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String)
+            {
+                return property.GetString();
+            }
+        }
+
+        return null;
     }
 }

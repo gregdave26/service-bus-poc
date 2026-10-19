@@ -136,6 +136,11 @@ public sealed class CommerceApiEndpointTests : IDisposable
 
         var unknownPayment = await _client.GetAsync($"{Api}/checkout/status/missing");
         Assert.Equal(HttpStatusCode.NotFound, unknownPayment.StatusCode);
+
+        var missingDetails = await _client.PostAsJsonAsync(
+            $"{Api}/checkout/details",
+            new SubmitPaymentDetailsRequest(null, null, null));
+        Assert.Equal(HttpStatusCode.BadRequest, missingDetails.StatusCode);
     }
 
     [Fact]

@@ -27,6 +27,10 @@ export function createDigitalSiteApi(baseUrl, fetchImpl = (...args) => fetch(...
     updateCart: (cartId, cartRequest) => request(`/carts/${segment(cartId)}`, { method: "PUT", body: cartRequest }),
     deleteCart: (cart, crmId) => request(`/carts/${segment(cart.id)}?crmId=${segment(crmId)}&version=${cart.version}`, { method: "DELETE" }),
     startCheckout: (checkoutRequest) => request("/checkout/session", { method: "POST", body: checkoutRequest }),
+    submitPaymentDetails: (paymentId, details, paymentData) => request("/checkout/details", {
+      method: "POST",
+      body: { paymentId, details, paymentData },
+    }),
     getCheckoutStatus: (paymentId) => request(`/checkout/status/${segment(paymentId)}`),
     simulateStubPayment: (paymentId, outcome) => request(`/checkout/stub/${segment(paymentId)}/notify`, { method: "POST", body: { outcome } }),
   };

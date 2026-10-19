@@ -3,7 +3,6 @@ import { Alert, Box, CircularProgress, GlobalStyles, Paper, Stack } from "@mui/m
 import { ThemeProvider } from "@mui/material/styles";
 import { RacwaStepperTemplate, theme as racwaTheme } from "@racwa/react-components";
 import { fontFaces } from "@racwa/styles";
-import { completeAdyenRedirect } from "./AdyenDropIn.jsx";
 import { createDigitalSiteApi } from "./digitalSiteApi.js";
 import {
   canContinue,
@@ -46,7 +45,7 @@ function CurrentStep({ state, dispatch, catalog, api, members, payment, onContin
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
     case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
-    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onAdyenAdditionalDetails={payment.onAdyenAdditionalDetails} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }
@@ -116,12 +115,11 @@ function DigitalSiteFlow({ api }) {
   useEffect(() => {
     const redirectResult = takeRedirectResult();
     if (!redirectResult || !state.checkout) return;
-    dispatch({ type: "paymentSubmitted", resultCode: "Received" });
-    completeAdyenRedirect(state.checkout, redirectResult)
-      .then((resultCode) => dispatch({ type: "paymentSubmitted", resultCode }))
+    api.submitPaymentDetails(state.checkout.paymentId, { redirectResult })
+      .then((result) => dispatch({ type: "paymentSubmitted", resultCode: result.resultCode }))
       .catch((redirectError) => setError(redirectError.message));
     // Runs once on mount: the redirect result belongs to the checkout restored from sessionStorage.
-  }, []);
+  }, [api, state.checkout]);
 
   async function run(operation) {
     setBusy(true);
@@ -159,6 +157,23 @@ function DigitalSiteFlow({ api }) {
 
   const onPaymentResult = useCallback((resultCode) => dispatch({ type: "paymentSubmitted", resultCode }), []);
   const onCardValidity = useCallback((value) => dispatch({ type: "cardReadinessChanged", value }), []);
+  const onAdyenAdditionalDetails = useCallback(async (componentState, component, actions) => {
+    try {
+      const result = await api.submitPaymentDetails(
+        state.checkout?.paymentId,
+        componentState.data?.details,
+        componentState.data?.paymentData);
+      if (result.action) {
+        component.handleAction(result.action);
+      } else {
+        actions.resolve({ resultCode: result.resultCode });
+        dispatch({ type: "paymentSubmitted", resultCode: result.resultCode });
+      }
+    } catch (detailsError) {
+      setError(detailsError.message);
+      actions.reject();
+    }
+  }, [api, state.checkout]);
 
   const members = {
     activeCart: activeCarts.find((cart) => cart.id !== state.cart?.id) ?? null,
@@ -199,7 +214,7 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember, onAdyenAdditionalDetails }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />
             {showButtons && <StepButtons
               onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}

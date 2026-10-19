@@ -3,7 +3,7 @@ import { Alert, Box, CircularProgress } from "@mui/material";
 import { AdyenCheckout, Card, Dropin } from "@adyen/adyen-web";
 import "@adyen/adyen-web/styles/adyen.css";
 
-function checkoutConfiguration(checkout, onResult, onError) {
+function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails) {
   return {
     session: { id: checkout.sessionId, sessionData: checkout.sessionData },
     clientKey: checkout.clientKey,
@@ -14,11 +14,20 @@ function checkoutConfiguration(checkout, onResult, onError) {
     onPaymentCompleted: (result) => onResult(result.resultCode),
     onPaymentFailed: (result) => onResult(result?.resultCode ?? "Refused"),
     onError: (error) => onError(error.message),
+    // The Checkout session owns the initial payment submission. Only follow-up
+    // redirect or 3DS details need to cross the Commerce API boundary.
+    onAdditionalDetails,
   };
 }
 
 // Card data and 3D Secure stay inside Adyen's iframes; the browser result is only an interim status.
-export function AdyenDropIn({ checkout, onResult, onValidity, showPayButton = true }) {
+export function AdyenDropIn({
+  checkout,
+  onResult,
+  onValidity,
+  onAdditionalDetails,
+  showPayButton = true,
+}) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,7 +35,7 @@ export function AdyenDropIn({ checkout, onResult, onValidity, showPayButton = tr
   useEffect(() => {
     let dropin;
     let cancelled = false;
-    AdyenCheckout(checkoutConfiguration(checkout, onResult, setError))
+    AdyenCheckout(checkoutConfiguration(checkout, onResult, setError, onAdditionalDetails))
       .then((adyenCheckout) => {
         if (cancelled) return;
         dropin = new Dropin(adyenCheckout, {
@@ -41,7 +50,7 @@ export function AdyenDropIn({ checkout, onResult, onValidity, showPayButton = tr
       cancelled = true;
       dropin?.unmount();
     };
-  }, [checkout, onResult]);
+  }, [checkout, onResult, onAdditionalDetails]);
 
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}

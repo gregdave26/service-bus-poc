@@ -14,6 +14,8 @@ function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails)
     onPaymentCompleted: (result) => onResult(result.resultCode),
     onPaymentFailed: (result) => onResult(result?.resultCode ?? "Refused"),
     onError: (error) => onError(error.message),
+    // The Checkout session owns the initial payment submission. Only follow-up
+    // redirect or 3DS details need to cross the Commerce API boundary.
     onAdditionalDetails,
   };
 }

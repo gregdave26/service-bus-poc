@@ -68,9 +68,11 @@ if (-not (Test-Path -LiteralPath $verifierProject -PathType Leaf)) {
 }
 
 $env:ServiceBus__ConnectionString = $env:ServiceBus__ConnectionString ??
-    "Endpoint=sb://${EmulatorHost}:${EmulatorPort}/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
+    "Endpoint=sb://${EmulatorHost}/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = $env:ServiceBus__Namespace ?? 'sbemulatorns'
 $env:ServiceBus__TopicName = $env:ServiceBus__TopicName ?? 'contact.events'
+$env:ServiceBus__TopologyConfigPath = $env:ServiceBus__TopologyConfigPath ??
+    (Join-Path $projectRoot 'infra\servicebus\config.json')
 
 & dotnet run --project $verifierProject --configuration Debug --no-restore -- --validate-topology
 if ($LASTEXITCODE -ne 0) {

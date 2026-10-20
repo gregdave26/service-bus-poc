@@ -50,6 +50,6 @@ public class VerifierService
         await _digitalChannelsRoutingVerifier.VerifyAsync();
         _logger.LogInformation("Digital-channels routing validation completed");
         await _filteredChannelsRoutingVerifier.VerifyAsync();
-        _logger.LogInformation("Insurance and parks-resorts routing validation completed");
+        _logger.LogInformation("Filtered subscription routing validation completed");
     }
 }

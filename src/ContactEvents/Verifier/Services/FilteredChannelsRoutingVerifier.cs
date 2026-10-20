@@ -30,6 +30,10 @@ public sealed class FilteredChannelsRoutingVerifier(
             SubscriptionNames.ParksResorts,
             scenarios.Where(scenario => scenario.HasParksResorts),
             cancellationToken);
+        await VerifySubscriptionAsync(
+            SubscriptionNames.Carwash,
+            scenarios.Where(scenario => scenario.HasCarwashProduct),
+            cancellationToken);
     }
 
     private async Task VerifySubscriptionAsync(

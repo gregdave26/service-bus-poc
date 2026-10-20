@@ -15,7 +15,8 @@ public sealed class FilteredChannelsRoutingVerifierTests
         var messages = new Dictionary<string, Queue<ServiceBusReceivedMessage>>
         {
             [SubscriptionNames.Insurance] = new(),
-            [SubscriptionNames.ParksResorts] = new()
+            [SubscriptionNames.ParksResorts] = new(),
+            [SubscriptionNames.Carwash] = new()
         };
 
         transport
@@ -35,6 +36,12 @@ public sealed class FilteredChannelsRoutingVerifierTests
                 if (attributes.HasParksResorts)
                 {
                     messages[SubscriptionNames.ParksResorts].Enqueue(Message(
+                        $"filtered-{attributes.HasInsurance}-{attributes.HasParksResorts}-{attributes.HasCarwashProduct}"));
+                }
+
+                if (attributes.HasCarwashProduct)
+                {
+                    messages[SubscriptionNames.Carwash].Enqueue(Message(
                         $"filtered-{attributes.HasInsurance}-{attributes.HasParksResorts}-{attributes.HasCarwashProduct}"));
                 }
             })

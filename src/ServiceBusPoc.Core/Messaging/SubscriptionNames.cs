@@ -18,4 +18,13 @@ public static class SubscriptionNames
 
     /// <summary>Subscription filtered by <c>hasCarwashProduct = true</c>.</summary>
     public const string Carwash = "carwash";
+
+    /// <summary>All contact-event subscriptions in topology order.</summary>
+    public static IReadOnlyList<string> All { get; } =
+    [
+        DigitalChannels,
+        Insurance,
+        ParksResorts,
+        Carwash
+    ];
 }

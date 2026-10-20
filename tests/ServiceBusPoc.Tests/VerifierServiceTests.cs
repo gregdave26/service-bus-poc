@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
+using ServiceBusPoc.Core.Messaging;
 using ServiceBusPoc.Core.Utilities;
 using ServiceBusPoc.ContactEvents.Verifier.Services;
+using Azure.Messaging.ServiceBus;
 
 namespace ServiceBusPoc.Tests;
 
@@ -13,15 +15,45 @@ public sealed class VerifierServiceTests
     {
         var validator = new Mock<ITopologyValidator>();
         validator.Setup(x => x.ValidateAsync()).ReturnsAsync(true);
-        var routingVerifier = new Mock<IDigitalChannelsRoutingVerifier>();
-        var filteredVerifier = new Mock<IFilteredChannelsRoutingVerifier>();
-        var service = CreateService(validator.Object, routingVerifier.Object, filteredVerifier.Object);
+        var transport = new Mock<IRoutingScenarioTransport>();
+        ServiceBusMessage? publishedMessage = null;
+        transport
+            .Setup(x => x.PublishAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceBusMessage, CancellationToken>((message, _) => publishedMessage = message)
+            .Returns(Task.CompletedTask);
+        transport
+            .Setup(x => x.ReceiveAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string subscriptionName, TimeSpan _, CancellationToken _) =>
+            {
+                Assert.NotNull(publishedMessage);
+                var expected = subscriptionName == SubscriptionNames.DigitalChannels
+                    || subscriptionName == SubscriptionNames.Insurance
+                        && IsEnabled("hasInsurance")
+                    || subscriptionName == SubscriptionNames.ParksResorts
+                        && IsEnabled("hasParksResorts")
+                    || subscriptionName == SubscriptionNames.Carwash
+                        && IsEnabled("hasCarwashProduct");
+
+                return expected
+                    ? ServiceBusModelFactory.ServiceBusReceivedMessage(
+                        publishedMessage!.Body,
+                        messageId: publishedMessage.MessageId)
+                    : null;
+
+                bool IsEnabled(string propertyName) =>
+                    publishedMessage!.ApplicationProperties[propertyName] is true;
+            });
+        var service = CreateService(validator.Object, transport.Object);
 
         await service.RunAsync();
 
         validator.Verify(x => x.ValidateAsync(), Times.Once);
-        routingVerifier.Verify(x => x.VerifyAsync(), Times.Once);
-        filteredVerifier.Verify(x => x.VerifyAsync(), Times.Once);
+        transport.Verify(
+            x => x.PublishAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(8));
+        transport.Verify(
+            x => x.ReceiveAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(32));
     }
 
     [Fact]
@@ -29,9 +61,7 @@ public sealed class VerifierServiceTests
     {
         var validator = new Mock<ITopologyValidator>();
         validator.Setup(x => x.ValidateAsync()).ReturnsAsync(false);
-        var routingVerifier = new Mock<IDigitalChannelsRoutingVerifier>();
-        var filteredVerifier = new Mock<IFilteredChannelsRoutingVerifier>();
-        var service = CreateService(validator.Object, routingVerifier.Object, filteredVerifier.Object);
+        var service = CreateService(validator.Object, Mock.Of<IRoutingScenarioTransport>());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync());
 
@@ -40,12 +70,10 @@ public sealed class VerifierServiceTests
 
     private static VerifierService CreateService(
         ITopologyValidator validator,
-        IDigitalChannelsRoutingVerifier routingVerifier,
-        IFilteredChannelsRoutingVerifier filteredVerifier) =>
+        IRoutingScenarioTransport transport) =>
         new(
             Mock.Of<ILogger<VerifierService>>(),
             Options.Create(new ServiceBusSettings { Namespace = "test-namespace" }),
             validator,
-            routingVerifier,
-            filteredVerifier);
+            transport);
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Validates the Service Bus emulator topology (topic and subscriptions).
+    Validates the Service Bus emulator topology and contact-event routing.
 
 .DESCRIPTION
     Connects to the local Service Bus emulator and verifies:
@@ -9,6 +9,7 @@
     - The 'contact.events' topic exists
     - All 4 subscriptions exist (digital-channels, insurance, parks-resorts, carwash)
     - Subscription filters are correctly configured
+    - All 8 capability combinations route to the expected subscriptions
 
 .PARAMETER EmulatorHost
     The emulator host. Default: 'localhost'
@@ -37,7 +38,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $verifierProject = Join-Path $projectRoot 'src\ContactEvents\Verifier\ServiceBusPoc.ContactEvents.Verifier.csproj'
 
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║           VALIDATING SERVICE BUS EMULATOR TOPOLOGY                         ║" -ForegroundColor Cyan
+Write-Host "║       VALIDATING SERVICE BUS TOPOLOGY AND CONTACT-EVENT ROUTING            ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
@@ -62,7 +63,7 @@ catch {
 Write-Host ""
 
 # Test 2-5: Use the repository's verifier and Azure Service Bus SDK
-Write-Host "Test 2-5: Verifying topic, subscriptions, and filters..." -ForegroundColor Yellow
+Write-Host "Test 2-5: Verifying topology, filters, and routing scenarios..." -ForegroundColor Yellow
 if (-not (Test-Path -LiteralPath $verifierProject -PathType Leaf)) {
     throw "Verifier project was not found: $verifierProject"
 }
@@ -82,5 +83,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                   TOPOLOGY VALIDATION SUCCESSFUL                          ║" -ForegroundColor Green
+Write-Host "║              TOPOLOGY AND ROUTING VALIDATION SUCCESSFUL                    ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green

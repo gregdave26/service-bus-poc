@@ -20,13 +20,13 @@ var host = Host.CreateDefaultBuilder(args)
         services
             .AddLogging(builder => builder.AddStructuredConsoleLogging())
             .AddServiceBusConfiguration(context.Configuration)
-            .AddContactEventPublishing()
-            .AddContactEventConsuming()
+            .AddSingleton(provider =>
+            {
+                var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ServiceBusSettings>>().Value;
+                return new ServiceBusClient(settings.ConnectionString);
+            })
+            .AddSingleton<IRoutingScenarioTransport, ServiceBusRoutingScenarioTransport>()
             .AddScoped<ITopologyValidator, TopologyValidator>()
-            .AddSingleton<IDigitalChannelsRoutingTransport, DigitalChannelsRoutingTransport>()
-            .AddSingleton<IDigitalChannelsRoutingVerifier, DigitalChannelsRoutingVerifier>()
-            .AddSingleton<IFilteredChannelsRoutingTransport, FilteredChannelsRoutingTransport>()
-            .AddSingleton<IFilteredChannelsRoutingVerifier, FilteredChannelsRoutingVerifier>()
             .AddScoped<VerifierService>();
     })
     .Build();

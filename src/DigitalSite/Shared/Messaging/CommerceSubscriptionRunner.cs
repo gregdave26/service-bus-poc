@@ -14,12 +14,10 @@ namespace ServiceBusPoc.DigitalSite.Shared.Messaging;
 /// Receives commercetools messages from one <c>commerce.events</c> subscription and passes them to a handler.
 /// Malformed messages are dead-lettered; handler failures are abandoned so the broker retries them
 /// until its maximum delivery count dead-letters them.
+/// Implements <see cref="IMessageReceiveOrchestrator"/> to coordinate with shared receive-loop logic.
 /// </summary>
-public sealed class CommerceSubscriptionRunner
+public sealed class CommerceSubscriptionRunner : IMessageReceiveOrchestrator
 {
-    private static readonly TimeSpan ReceiveWaitTime = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan DelayAfterReceiveFailure = TimeSpan.FromSeconds(2);
-
     private readonly IServiceBusReceiver _receiver;
     private readonly ICommerceMessageHandler _handler;
     private readonly IDashboardReporter _dashboardReporter;
@@ -27,11 +25,15 @@ public sealed class CommerceSubscriptionRunner
     private readonly DashboardSettings _dashboardSettings;
     private readonly ILogger<CommerceSubscriptionRunner> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly IMessageReceiveLoopRunner _receiveLoopRunner;
 
     private long _messagesHandled;
     private DateTimeOffset? _lastMessageAt;
     private string? _lastEventId;
     private DateTimeOffset _lastHeartbeatAt = DateTimeOffset.MinValue;
+
+    // Stored subscription name for orchestrator callbacks
+    private string? _currentSubscriptionName;
 
     /// <summary>Initializes a new instance of the <see cref="CommerceSubscriptionRunner"/> class.</summary>
     public CommerceSubscriptionRunner(
@@ -41,7 +43,8 @@ public sealed class CommerceSubscriptionRunner
         IOptions<ServiceBusSettings> serviceBusSettings,
         IOptions<DashboardSettings> dashboardSettings,
         ILogger<CommerceSubscriptionRunner> logger,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IMessageReceiveLoopRunner? receiveLoopRunner = null)
     {
         _receiver = receiver;
         _handler = handler;
@@ -50,6 +53,7 @@ public sealed class CommerceSubscriptionRunner
         _dashboardSettings = dashboardSettings.Value;
         _logger = logger;
         _timeProvider = timeProvider;
+        _receiveLoopRunner = receiveLoopRunner ?? new ServiceBusMessageReceiveLoopRunner(receiver, logger);
     }
 
     /// <summary>Runs the receive loop until the token is cancelled.</summary>
@@ -66,19 +70,14 @@ public sealed class CommerceSubscriptionRunner
             _serviceBusSettings.TopicName,
             subscriptionName);
 
+        // Store subscription name for use in orchestrator callbacks
+        _currentSubscriptionName = subscriptionName;
+
         await ReportHeartbeatAsync(subscriptionName, ServiceState.Starting, force: true, cancellationToken);
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var message = await TryReceiveAsync(subscriptionName, cancellationToken);
-                if (message is not null)
-                {
-                    await ProcessAsync(subscriptionName, message, cancellationToken);
-                }
-
-                await ReportHeartbeatAsync(subscriptionName, ServiceState.Running, force: message is not null, cancellationToken);
-            }
+            // Use the shared receive-loop runner to orchestrate message reception
+            await _receiveLoopRunner.RunAsync(this, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -87,26 +86,57 @@ public sealed class CommerceSubscriptionRunner
         finally
         {
             await ReportHeartbeatAsync(subscriptionName, ServiceState.Stopped, force: true, CancellationToken.None);
+            _currentSubscriptionName = null;
         }
     }
 
-    private async Task<ServiceBusReceivedMessage?> TryReceiveAsync(string subscriptionName, CancellationToken cancellationToken)
+    /// <summary>
+    /// Implements <see cref="IMessageReceiveOrchestrator.ProcessMessageAsync"/> to handle received messages.
+    /// </summary>
+    async Task IMessageReceiveOrchestrator.ProcessMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken)
     {
-        try
+        if (_currentSubscriptionName is null)
         {
-            return await _receiver.ReceiveMessageAsync(ReceiveWaitTime, cancellationToken);
+            _logger.LogError("ProcessMessageAsync called without subscription context");
+            return;
         }
-        catch (ServiceBusException ex)
+
+        await ProcessAsync(_currentSubscriptionName, message, cancellationToken);
+        await ReportHeartbeatAsync(_currentSubscriptionName, ServiceState.Running, force: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// Implements <see cref="IMessageReceiveOrchestrator.OnEmptyReceiveAsync"/> to handle timeouts.
+    /// </summary>
+    async Task IMessageReceiveOrchestrator.OnEmptyReceiveAsync(CancellationToken cancellationToken)
+    {
+        if (_currentSubscriptionName is null)
         {
-            _logger.LogError(
-                ex,
-                "Commerce consumer {ServiceName} failed to receive from subscription {SubscriptionName}: {FailureReason}",
-                _handler.ServiceName,
-                subscriptionName,
-                ex.Reason);
-            await Task.Delay(DelayAfterReceiveFailure, _timeProvider, cancellationToken);
-            return null;
+            return;
         }
+
+        await ReportHeartbeatAsync(_currentSubscriptionName, ServiceState.Running, force: false, cancellationToken);
+    }
+
+    /// <summary>
+    /// Implements <see cref="IMessageReceiveOrchestrator.OnReceiveFailureAsync"/> to handle receive errors.
+    /// </summary>
+    async Task IMessageReceiveOrchestrator.OnReceiveFailureAsync(ServiceBusException exception, CancellationToken cancellationToken)
+    {
+        if (_currentSubscriptionName is null)
+        {
+            return;
+        }
+
+        _logger.LogError(
+            exception,
+            "Commerce consumer {ServiceName} failed to receive from subscription {SubscriptionName}: {FailureReason}",
+            _handler.ServiceName,
+            _currentSubscriptionName,
+            exception.Reason);
+        
+        // Delay before retry (delay is handled by receive-loop runner)
+        await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
     }
 
     private async Task ProcessAsync(string subscriptionName, ServiceBusReceivedMessage message, CancellationToken cancellationToken)

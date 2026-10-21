@@ -9,9 +9,10 @@ the alternative is [`run-aspire.ps1`](../../scripts/run-aspire.ps1) and the
 
 **The Compose-owned broker topology and application responsibility boundaries
 are preserved. Configuration and lifecycle behavior are not fully equivalent.**
-In particular, the AppHost currently overrides all three Producer routing flags
-with `true`. Full parity must not be claimed until the gaps below are resolved
-or explicitly accepted and deterministic delivery/non-delivery tests pass.
+The AppHost now resolves Producer routing flags from configuration, preserving
+explicit `false` values while retaining the spike's all-true defaults. Source
+and unit-test cases cover this behavior, but the focused test runner timed out
+in this environment and runtime delivery parity remains unverified.
 
 This increment is a source-based comparison, not a new runtime test. It does
 not start or stop applications, inspect local secrets, or modify runtime code.
@@ -135,13 +136,15 @@ seconds" is stale and is not evidence of current behavior.
 | Contact ID, first name, last name | Required; no launcher defaults | Nonblank AppHost setting or `aspire-local-contact`, `Aspire`, `Local` |
 | Source | Application default `producer`, or supplied setting | Nonblank AppHost setting or `aspire-apphost` |
 | Membership number | Optional except when required by the event's Carwash validation | Nonblank AppHost setting or `ASPIRE-LOCAL-001` |
-| `HasInsurance`, `HasParksResorts`, `HasCarwashProduct` | Bound values; application defaults are `false` | **Unconditionally `true`; `Producer__*` false overrides are ignored for these three inputs** |
+| `HasInsurance`, `HasParksResorts`, `HasCarwashProduct` | Bound values; application defaults are `false` | Explicit `Producer:HasInsurance`, `Producer:HasParksResorts`, and `Producer:HasCarwashProduct` booleans are preserved; each defaults to `true` when unset |
 | Email, phone, correlation ID | Optional environment/mapped CLI inputs | No explicit AppHost assignment or fallback |
 
-Safe sample identity defaults are an intentional convenience for the spike.
-Forcing the flags is a **configuration-parity gap**, not a change to the broker
-filters. It also prevents using the current Aspire-started Producer to exercise
-negative combinations through configuration alone.
+Safe sample identity defaults and all-true routing defaults are intentional
+conveniences for the spike. Explicit false flag values can now be provided
+through AppHost configuration. `ProducerEnvironmentTests` contains coverage
+for all eight combinations, partial overrides, and invalid values; a focused
+`dotnet test` attempt did not complete, so those assertions are not reported as
+passing. This code change does not itself prove broker delivery or filtering.
 
 Blank-value semantics also differ: the AppHost replaces whitespace in its five
 defaulted text settings, whereas direct application execution validates required
@@ -236,8 +239,8 @@ prove graceful disposal or absence of orphan processes.
 | ID | Finding | Disposition |
 |---|---|---|
 | C1 | Same Compose configuration and contact subscription names; broker remains responsible for filtering | Source comparison passed; verify actual delivery/non-delivery next. |
-| C2 | Producer routing flags ignore false overrides | Unintended parity gap; make overrides effective before using the Aspire Producer for the eight-case routing matrix. |
-| C3 | Aspire starts one-shot apps without emulator readiness | Startup reliability gap; add equivalent readiness or explicitly pre-establish readiness for controlled tests. |
+| C2 | Producer routing flags previously ignored false overrides | Source fix and eight-combination/validation test cases are present; focused test execution timed out, and runtime delivery remains unverified. |
+| C3 | Aspire starts one-shot apps without emulator readiness | The launcher now invokes the shared AMQP-readiness helper after Compose startup; not runtime-verified. `-NoEmulator` still assumes readiness is established externally. |
 | C4 | Service Bus target precedence/defaults differ | Record as a deliberate launcher distinction; explicitly set identical target values for comparison and decide whether broader launcher parity is required. |
 | C5 | Custom dashboard absent but reporting defaults remain enabled | Intentional UI scope exclusion with a reporting side effect; use `Dashboard__Enabled=false` for isolated Aspire comparisons and verify the effective setting. |
 | C6 | Carwash API not declared as an Aspire endpoint | Current fixed local address preserved; endpoint discovery is absent, not an API regression. |
@@ -247,8 +250,10 @@ prove graceful disposal or absence of orphan processes.
 
 ### Next increment
 
-1. Resolve C2 and establish emulator readiness for the test run (C3).
-2. Use identical explicit broker/topic values and Producer payload fields in
+1. Get the focused Producer environment unit tests to complete successfully and
+   runtime-check the explicit false overrides.
+2. Verify the Compose startup readiness gate (C3), then use identical explicit
+   broker/topic values and Producer payload fields in
    both paths; disable custom reporting for the isolated Aspire run.
 3. Start only one workflow at a time. Publish uniquely identified events only
    after consumers are ready and account for existing subscription backlog.

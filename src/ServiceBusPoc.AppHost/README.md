@@ -48,8 +48,10 @@ process, the producer, and the connectivity verifier. Existing project
 configuration remains unchanged; Aspire only supplies the `ServiceBus:*`
 environment variables, consumer subscription names, and safe local Producer
 defaults. The contact identity, source, and membership defaults can be overridden
-with `Producer__*` environment variables. The current spike forces all three
-routing flags to `true`; false overrides for those flags are not yet honored.
+with `Producer__*` environment variables. The three routing flags default to
+`true` for the sample event but honor explicit `Producer__HasInsurance`,
+`Producer__HasParksResorts`, and `Producer__HasCarwashProduct` values, including
+`false`.
 
 The producer and verifier are short-lived processes. The consumer processes
 remain running until the Aspire application is stopped.

@@ -270,6 +270,52 @@ public sealed class CommerceApiEndpointTests : IDisposable
         Assert.Equal(PaymentStates.Authorised, (await GetStatusAsync(session.PaymentId)).PaymentState);
     }
 
+    private static StringContent CreateJsonContent(string payload)
+    {
+        var content = new StringContent(payload, Encoding.UTF8);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        return content;
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_RejectsMalformedPayload()
+    {
+        using var content = CreateJsonContent("not json");
+
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_AcceptsUnsignedNotificationWithoutApplyingIt()
+    {
+        using var content = CreateJsonContent(
+            """{"live":"false","notificationItems":[{"NotificationRequestItem":{"eventCode":"AUTHORISATION","pspReference":"PSP-unsigned"}}]}""");
+
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("[accepted]", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_AcceptsValidSignedNotification()
+    {
+        var cart = await CreateCartAsync("STD");
+        var session = await StartCheckoutAsync(cart);
+        var payment = await _commerceTools.CreateCommerceClient().GetPaymentAsync(session.PaymentId, CancellationToken.None);
+        var gateway = _api.Services.GetRequiredService<StubPaymentGateway>();
+        var payload = gateway.CreateSignedNotification(StubPaymentOutcome.Authorised, payment.Key!, payment.AmountPlanned);
+
+        using var content = CreateJsonContent(payload);
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("[accepted]", await response.Content.ReadAsStringAsync());
+        Assert.Equal(PaymentStates.Authorised, (await GetStatusAsync(session.PaymentId)).PaymentState);
+    }
+
     [Fact]
     public async Task Catalog_UsesCommercetoolsPricesAndSiteContent()
     {
@@ -503,7 +549,6 @@ public sealed class CommerceApiEndpointTests : IDisposable
         Assert.False((await PreflightAsync("https://attacker.example")).Headers.Contains("Access-Control-Allow-Origin"));
     }
 
-<<<<<<< HEAD
     private static Dictionary<string, string?> CompleteAdyenSettings(bool fallbackOptIn)
     {
         var settings = new Dictionary<string, string?>
@@ -520,7 +565,8 @@ public sealed class CommerceApiEndpointTests : IDisposable
         }
 
         return settings;
-=======
+    }
+
     [Fact]
     public async Task StubNotifications_DisabledByDefault_NoNotificationDispatchedAfterCheckout()
     {
@@ -529,7 +575,6 @@ public sealed class CommerceApiEndpointTests : IDisposable
 
         var status = await GetStatusAsync(session.PaymentId);
         Assert.Equal(PaymentStates.Pending, status.PaymentState);
->>>>>>> aff673f (Implement Increment 2B: Stub payment notification dispatch)
     }
 
     private async Task<HttpResponseMessage> PreflightAsync(string origin)

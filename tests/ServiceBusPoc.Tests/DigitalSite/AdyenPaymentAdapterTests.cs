@@ -32,13 +32,16 @@ public sealed class AdyenPaymentAdapterTests
         var session = await CreateAdapter().CreateCheckoutSessionAsync(SessionRequest(), CancellationToken.None);
 
         Assert.Equal(new CheckoutSession("CS1", "data", "test_CLIENT", "test", PaymentGatewayMode.Adyen), session);
-        Assert.Equal("RSA-1", sent!.Reference);
-        Assert.Equal("RACWAAccountECOM", sent.MerchantAccount);
-        Assert.Equal(31000, sent.Amount.Value);
-        Assert.Equal("AU", sent.CountryCode);
-        Assert.Equal("c1", sent.Metadata["cartId"]);
-        Assert.Equal("rac-rsa-poc", sent.Metadata["ctProjectKey"]);
-        Assert.Equal("CLAS", sent.Metadata["sku"]);
+        var checkoutRequest = Assert.IsType<CreateCheckoutSessionRequest>(sent);
+        Assert.Equal("RSA-1", checkoutRequest.Reference);
+        Assert.Equal("RACWAAccountECOM", checkoutRequest.MerchantAccount);
+        Assert.NotNull(checkoutRequest.Amount);
+        Assert.Equal(31000, checkoutRequest.Amount!.Value);
+        Assert.Equal("AU", checkoutRequest.CountryCode);
+        Assert.NotNull(checkoutRequest.Metadata);
+        Assert.Equal("c1", checkoutRequest.Metadata!["cartId"]);
+        Assert.Equal("rac-rsa-poc", checkoutRequest.Metadata["ctProjectKey"]);
+        Assert.Equal("CLAS", checkoutRequest.Metadata["sku"]);
     }
 
     [Fact]
@@ -68,7 +71,9 @@ public sealed class AdyenPaymentAdapterTests
         var result = await CreateAdapter().HandlePaymentDetailsAsync(new PaymentDetailsSubmission("p1", "corr", "redirect", null), CancellationToken.None);
 
         Assert.Equal(new PaymentActionResult("Authorised", "PSP1", false), result);
-        Assert.Equal("redirect", sent!.Details.RedirectResult);
+        var paymentDetailsRequest = Assert.IsType<PaymentDetailsRequest>(sent);
+        Assert.NotNull(paymentDetailsRequest.Details);
+        Assert.Equal("redirect", paymentDetailsRequest.Details!.RedirectResult);
     }
 
     [Fact]

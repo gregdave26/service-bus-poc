@@ -34,4 +34,9 @@ public class ServiceBusSettings
     /// Must be loaded from environment variable 'ServiceBus:SubscriptionName'.
     /// </summary>
     public string? SubscriptionName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the local emulator topology configuration path.
+    /// </summary>
+    public string? TopologyConfigPath { get; set; }
 }

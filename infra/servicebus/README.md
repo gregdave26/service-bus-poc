@@ -66,6 +66,13 @@ $env:ServiceBus__SubscriptionName = "carwash"   # varies per consumer
 
 `scripts/run-local-poc.ps1` sets these automatically once producer/consumer messaging (Phase 2.2/2.3) is implemented.
 
+## Topology validation
+
+The emulator does not expose the Azure Service Bus administration API used by
+`ServiceBusAdministrationClient`. `scripts/validate-emulator-topology.ps1`
+therefore validates the emulator's mounted `config.json` declarative topology.
+Azure Service Bus connections continue to use the administration client path.
+
 ## Limitations
 
 Per [ADR-001](../../docs/decisions/001-emulator-first-validation.md): the emulator is local/sequential only, has no SLA, uses AMQP over TCP only (no HTTPS/WebSockets), and loses all entities and messages on restart — `config.json` is reapplied fresh each time the container starts.

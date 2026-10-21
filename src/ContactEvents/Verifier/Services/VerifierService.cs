@@ -14,15 +14,21 @@ public class VerifierService
     private readonly ILogger<VerifierService> _logger;
     private readonly IOptions<ServiceBusSettings> _serviceBusSettings;
     private readonly ITopologyValidator _topologyValidator;
+    private readonly IDigitalChannelsRoutingVerifier _digitalChannelsRoutingVerifier;
+    private readonly IFilteredChannelsRoutingVerifier _filteredChannelsRoutingVerifier;
 
     public VerifierService(
         ILogger<VerifierService> logger,
         IOptions<ServiceBusSettings> serviceBusSettings,
-        ITopologyValidator topologyValidator)
+        ITopologyValidator topologyValidator,
+        IDigitalChannelsRoutingVerifier digitalChannelsRoutingVerifier,
+        IFilteredChannelsRoutingVerifier filteredChannelsRoutingVerifier)
     {
         _logger = logger;
         _serviceBusSettings = serviceBusSettings;
         _topologyValidator = topologyValidator;
+        _digitalChannelsRoutingVerifier = digitalChannelsRoutingVerifier;
+        _filteredChannelsRoutingVerifier = filteredChannelsRoutingVerifier;
     }
 
     /// <summary>
@@ -41,8 +47,9 @@ public class VerifierService
             throw new InvalidOperationException("Topology validation failed.");
         }
 
-        // TODO: Implement verification logic in Phase 2
-        _logger.LogInformation("Verifier service ready for Phase 2 implementation");
-        await Task.CompletedTask;
+        await _digitalChannelsRoutingVerifier.VerifyAsync();
+        _logger.LogInformation("Digital-channels routing validation completed");
+        await _filteredChannelsRoutingVerifier.VerifyAsync();
+        _logger.LogInformation("Filtered subscription routing validation completed");
     }
 }

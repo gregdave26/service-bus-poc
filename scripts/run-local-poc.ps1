@@ -62,7 +62,7 @@ function Get-ProjectDirectory {
 }
 $infraPath = Join-Path $projectRoot 'infra'
 $logsPath = Join-Path $projectRoot 'logs'
-. (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
+$startEmulatorScript = Join-Path $PSScriptRoot 'start-servicebus-emulator.ps1'
 
 # Ensure logs directory exists
 if (-not (Test-Path $logsPath)) {
@@ -121,29 +121,12 @@ if (-not (Test-Path $composePath)) {
     exit 1
 }
 
-$composeLogs = Join-Path $logsPath "emulator-$timestamp.log"
-
-Push-Location (Split-Path $composePath)
 try {
-    # Check for existing containers
-    $existing = docker-compose ps --quiet 2>$null
-    if ($existing) {
-        Write-Host "  Stopping existing containers..." -ForegroundColor Gray
-        docker-compose down | Out-Null
-    }
-    
-    Write-Host "  Starting containers..."
-    $null = docker-compose up -d
-    Write-Host "  ✓ Emulator started"
-    
-    Wait-ServiceBusEmulatorReady -ComposePath $composePath
+    & $startEmulatorScript -ReadinessTimeoutSeconds 90
 }
 catch {
     Write-Error "❌ Failed to start emulator: $_"
     exit 1
-}
-finally {
-    Pop-Location
 }
 
 Write-Host ""

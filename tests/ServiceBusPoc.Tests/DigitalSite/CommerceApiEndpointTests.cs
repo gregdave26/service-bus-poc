@@ -503,6 +503,7 @@ public sealed class CommerceApiEndpointTests : IDisposable
         Assert.False((await PreflightAsync("https://attacker.example")).Headers.Contains("Access-Control-Allow-Origin"));
     }
 
+<<<<<<< HEAD
     private static Dictionary<string, string?> CompleteAdyenSettings(bool fallbackOptIn)
     {
         var settings = new Dictionary<string, string?>
@@ -519,6 +520,16 @@ public sealed class CommerceApiEndpointTests : IDisposable
         }
 
         return settings;
+=======
+    [Fact]
+    public async Task StubNotifications_DisabledByDefault_NoNotificationDispatchedAfterCheckout()
+    {
+        var cart = await CreateCartAsync("STD");
+        var session = await StartCheckoutAsync(cart);
+
+        var status = await GetStatusAsync(session.PaymentId);
+        Assert.Equal(PaymentStates.Pending, status.PaymentState);
+>>>>>>> aff673f (Implement Increment 2B: Stub payment notification dispatch)
     }
 
     private async Task<HttpResponseMessage> PreflightAsync(string origin)
@@ -595,3 +606,4 @@ public sealed class CommerceApiEndpointTests : IDisposable
         return JsonSerializer.Deserialize<T>(body, Json)!;
     }
 }
+

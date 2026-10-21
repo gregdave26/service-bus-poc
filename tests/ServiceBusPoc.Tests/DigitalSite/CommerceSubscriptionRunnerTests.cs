@@ -145,7 +145,8 @@ public sealed class CommerceSubscriptionRunnerTests
             Options.Create(new ServiceBusSettings { TopicName = "commerce.events", SubscriptionName = subscriptionName }),
             Options.Create(new DashboardSettings()),
             NullLogger<CommerceSubscriptionRunner>.Instance,
-            TimeProvider.System);
+            TimeProvider.System,
+            null); // IMessageReceiveLoopRunner (optional, defaults to production implementation)
 
     [Fact]
     public async Task RunAsync_HeartbeatReportsCorrectServiceName()

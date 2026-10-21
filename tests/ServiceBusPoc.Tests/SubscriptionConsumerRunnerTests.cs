@@ -265,7 +265,8 @@ public sealed class SubscriptionConsumerRunnerTests
             }),
             Options.Create(new DashboardSettings { HeartbeatIntervalSeconds = heartbeatIntervalSeconds }),
             Mock.Of<ILogger<SubscriptionConsumerRunner>>(),
-            TimeProvider.System);
+            TimeProvider.System,
+            null); // IMessageReceiveLoopRunner (optional, defaults to production implementation)
     }
 
     private static Mock<IServiceBusReceiver> ReceiverThatCancelsAfter(

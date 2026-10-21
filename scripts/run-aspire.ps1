@@ -33,6 +33,7 @@ $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
 $appHostProject = Join-Path $projectRoot 'src\ServiceBusPoc.AppHost\ServiceBusPoc.AppHost.csproj'
 $emulatorStartedByScript = $false
+. (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 function Import-EnvironmentFile {
     param([string]$Path)
@@ -121,6 +122,7 @@ try {
         }
 
         $emulatorStartedByScript = $existingContainers.Count -eq 0
+        Wait-ServiceBusEmulatorReady -ComposePath $composePath
     }
 
     $env:ServiceBus__ConnectionString = if ($env:ServiceBus__ConnectionString) {

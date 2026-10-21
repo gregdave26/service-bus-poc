@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Aspire.Hosting;
+using ServiceBusPoc.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -55,22 +56,7 @@ var producer = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Producer>
 ConfigureServiceBus(producer);
 producer.WithEnvironment(context =>
 {
-    static string GetProducerSetting(IConfiguration configuration, string key, string fallback) =>
-        string.IsNullOrWhiteSpace(configuration[key]) ? fallback : configuration[key]!;
-
-    var producerSettings = new Dictionary<string, string>
-    {
-        ["Producer__ContactId"] = GetProducerSetting(builder.Configuration, "Producer:ContactId", "aspire-local-contact"),
-        ["Producer__FirstName"] = GetProducerSetting(builder.Configuration, "Producer:FirstName", "Aspire"),
-        ["Producer__LastName"] = GetProducerSetting(builder.Configuration, "Producer:LastName", "Local"),
-        ["Producer__Source"] = GetProducerSetting(builder.Configuration, "Producer:Source", "aspire-apphost"),
-        ["Producer__MembershipNumber"] = GetProducerSetting(builder.Configuration, "Producer:MembershipNumber", "ASPIRE-LOCAL-001"),
-        ["Producer__HasInsurance"] = "true",
-        ["Producer__HasParksResorts"] = "true",
-        ["Producer__HasCarwashProduct"] = "true"
-    };
-
-    foreach (var setting in producerSettings)
+    foreach (var setting in ProducerEnvironment.Create(builder.Configuration))
     {
         context.EnvironmentVariables[setting.Key] = setting.Value;
     }

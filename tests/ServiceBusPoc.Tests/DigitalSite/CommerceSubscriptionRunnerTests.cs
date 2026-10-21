@@ -146,4 +146,44 @@ public sealed class CommerceSubscriptionRunnerTests
             Options.Create(new DashboardSettings()),
             NullLogger<CommerceSubscriptionRunner>.Instance,
             TimeProvider.System);
+
+    [Fact]
+    public async Task RunAsync_HeartbeatReportsCorrectServiceName()
+    {
+        var message = Deliver(ValidBody);
+        _handler.Setup(handler => handler.HandleAsync(It.IsAny<CommerceMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await CreateRunner().RunAsync(_cancellation.Token);
+
+        _dashboard.Verify(reporter => reporter.ReportAsync(
+            It.Is<ServiceHeartbeat>(h =>
+                h.ServiceName == "cart-processor" &&
+                h.State == ServiceState.Starting),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _dashboard.Verify(reporter => reporter.ReportAsync(
+            It.Is<ServiceHeartbeat>(h =>
+                h.ServiceName == "cart-processor" &&
+                h.State == ServiceState.Stopped),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RunAsync_ReceiveWaitTimeIsConsistent()
+    {
+        var message = Deliver(ValidBody);
+        var receiveTimes = new List<TimeSpan>();
+        _receiver.Setup(receiver => receiver.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .Returns<TimeSpan, CancellationToken>((timeout, _) =>
+            {
+                receiveTimes.Add(timeout);
+                _cancellation.Cancel();
+                return Task.FromResult<ServiceBusReceivedMessage?>(null);
+            });
+
+        await CreateRunner().RunAsync(_cancellation.Token);
+
+        Assert.NotEmpty(receiveTimes);
+        Assert.All(receiveTimes, timeout => Assert.Equal(TimeSpan.FromSeconds(5), timeout));
+    }
 }

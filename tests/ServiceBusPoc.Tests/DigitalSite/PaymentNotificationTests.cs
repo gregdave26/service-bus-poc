@@ -74,12 +74,22 @@ public sealed class PaymentNotificationTests
     }
 
     [Fact]
-    public void Reader_RejectsItemsSignedWithAnotherKey()
+    public void Reader_RejectsItemWithInvalidHmac()
     {
         var item = Item("PSP1");
         new AdyenNotificationReader(new string('A', 64)).Sign(item);
+        item.Amount!.Value = 1;
 
         var verification = new AdyenNotificationReader(HmacKey).Verify(Payload(item));
+
+        Assert.Empty(verification.Authentic);
+        Assert.Equal(1, verification.RejectedCount);
+    }
+
+    [Fact]
+    public void Reader_RejectsItemWithMissingSignature()
+    {
+        var verification = new AdyenNotificationReader(HmacKey).Verify(Payload(Item("PSP1")));
 
         Assert.Empty(verification.Authentic);
         Assert.Equal(1, verification.RejectedCount);
@@ -88,7 +98,7 @@ public sealed class PaymentNotificationTests
     [Theory]
     [InlineData("not json")]
     [InlineData("{\"notificationItems\":[]}")]
-    public void Reader_RejectsPayloadsThatAreNotNotifications(string payload)
+    public void Reader_RejectsMalformedPayload(string payload)
     {
         Assert.Throws<FormatException>(() => new AdyenNotificationReader(HmacKey).Verify(payload));
     }

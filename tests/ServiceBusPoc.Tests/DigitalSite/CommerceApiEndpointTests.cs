@@ -1,5 +1,7 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Azure.Messaging.ServiceBus;
@@ -12,6 +14,7 @@ using ServiceBusPoc.DigitalSite.CommerceApi.Carts;
 using ServiceBusPoc.DigitalSite.CommerceApi.Catalog;
 using ServiceBusPoc.DigitalSite.CommerceApi.Checkout;
 using ServiceBusPoc.DigitalSite.FulfilmentStub;
+using ServiceBusPoc.DigitalSite.CommerceApi.Payments;
 using ServiceBusPoc.DigitalSite.Shared.CommerceTools.Models;
 
 namespace ServiceBusPoc.Tests.DigitalSite;
@@ -219,6 +222,52 @@ public sealed class CommerceApiEndpointTests : IDisposable
             It.IsAny<CreateCheckoutSessionRequest>(),
             It.IsAny<Adyen.Core.Client.RequestOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private static StringContent CreateJsonContent(string payload)
+    {
+        var content = new StringContent(payload, Encoding.UTF8);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        return content;
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_RejectsMalformedPayload()
+    {
+        using var content = CreateJsonContent("not json");
+
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_AcceptsUnsignedNotificationWithoutApplyingIt()
+    {
+        using var content = CreateJsonContent(
+            """{"live":"false","notificationItems":[{"NotificationRequestItem":{"eventCode":"AUTHORISATION","pspReference":"PSP-unsigned"}}]}""");
+
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("[accepted]", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task AdyenNotificationEndpoint_AcceptsValidSignedNotification()
+    {
+        var cart = await CreateCartAsync("STD");
+        var session = await StartCheckoutAsync(cart);
+        var payment = await _commerceTools.CreateCommerceClient().GetPaymentAsync(session.PaymentId, CancellationToken.None);
+        var gateway = _api.Services.GetRequiredService<StubPaymentGateway>();
+        var payload = gateway.CreateSignedNotification(StubPaymentOutcome.Authorised, payment.Key!, payment.AmountPlanned);
+
+        using var content = CreateJsonContent(payload);
+        var response = await _client.PostAsync($"{Api}/notifications/adyen", content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("[accepted]", await response.Content.ReadAsStringAsync());
+        Assert.Equal(PaymentStates.Authorised, (await GetStatusAsync(session.PaymentId)).PaymentState);
     }
 
     [Fact]

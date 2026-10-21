@@ -1,0 +1,39 @@
+meta {
+  name: Start Adyen checkout session
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/checkout/session
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "cartId": "{{cartId}}",
+    "crmId": "{{crmId}}",
+    "returnUrl": "http://localhost:5100/digital-site",
+    "acceptedPaymentAuthTerms": true,
+    "acceptedRoadsideAssistTerms": true,
+    "paymentType": "Card",
+    "paymentMethod": "Card",
+    "prepareOnly": false
+  }
+}
+
+tests {
+  test("checkout session is returned", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.paymentId).to.be.a("string").and.not.empty;
+    expect(res.body.sessionId).to.be.a("string").and.not.empty;
+    expect(res.body.sessionData).to.be.a("string").and.not.empty;
+    expect(res.body.gateway).to.be.a("string").and.not.empty;
+    bru.setVar("paymentId", res.body.paymentId);
+  });
+}

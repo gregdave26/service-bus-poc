@@ -22,6 +22,7 @@ public sealed class CheckoutService
     private readonly ICommerceToolsClient _commerceTools;
     private readonly IPaymentGatewayAdapter _gateway;
     private readonly DigitalSiteSettings _settings;
+    private readonly AdyenNotificationModule? _notifications;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<CheckoutService> _logger;
 
@@ -31,16 +32,19 @@ public sealed class CheckoutService
     /// <param name="settings">The Digital Site settings.</param>
     /// <param name="timeProvider">The clock.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="notifications">Optional notification module for stub payment simulation.</param>
     public CheckoutService(
         ICommerceToolsClient commerceTools,
         IPaymentGatewayAdapter gateway,
         IOptions<DigitalSiteSettings> settings,
         TimeProvider timeProvider,
-        ILogger<CheckoutService> logger)
+        ILogger<CheckoutService> logger,
+        AdyenNotificationModule? notifications = null)
     {
         _commerceTools = commerceTools;
         _gateway = gateway;
         _settings = settings.Value;
+        _notifications = notifications;
         _timeProvider = timeProvider;
         _logger = logger;
     }
@@ -124,6 +128,12 @@ public sealed class CheckoutService
             merchantReference,
             session.SessionId,
             session.Gateway);
+
+        await DispatchStubNotificationIfEnabledAsync(
+            StubPaymentOutcome.Pending,
+            payment,
+            cancellationToken);
+
         return new CheckoutSessionResponse(
             payment.Id,
             merchantReference,
@@ -172,6 +182,12 @@ public sealed class CheckoutService
                 ["pspReference"] = result.PspReference,
             },
             cancellationToken);
+
+        await DispatchStubNotificationIfEnabledAsync(
+            StubPaymentOutcome.Authorised,
+            payment,
+            cancellationToken);
+
         return result;
     }
 
@@ -282,6 +298,32 @@ public sealed class CheckoutService
         return _settings.AllowedOriginList.Contains(origin, StringComparer.OrdinalIgnoreCase)
             ? uri.ToString()
             : throw DigitalSiteRequestException.BadRequest("returnUrl must be on an allowed origin");
+    }
+
+    private async Task DispatchStubNotificationIfEnabledAsync(StubPaymentOutcome outcome, Payment payment, CancellationToken cancellationToken)
+    {
+        if (!_settings.EnableStubNotifications || _notifications is null || _gateway.Mode != PaymentGatewayMode.Stub)
+        {
+            return;
+        }
+
+        try
+        {
+            var current = await _commerceTools.GetPaymentAsync(payment.Id, cancellationToken) ?? payment;
+            var gatewayAdapter = _gateway as StubPaymentGateway;
+            if (gatewayAdapter is null)
+            {
+                return;
+            }
+
+            var payload = gatewayAdapter.CreateSignedNotification(outcome, current.Key!, current.AmountPlanned);
+            await _notifications.HandleAsync(payload, cancellationToken);
+            _logger.LogInformation("Stub notification dispatched for payment {PaymentId} with outcome {Outcome}", payment.Id, outcome);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to dispatch stub notification for payment {PaymentId}", payment.Id);
+        }
     }
 
     private string Now() => _timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture);

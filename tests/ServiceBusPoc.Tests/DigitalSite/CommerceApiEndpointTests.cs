@@ -330,6 +330,16 @@ public sealed class CommerceApiEndpointTests : IDisposable
         Assert.False((await PreflightAsync("https://attacker.example")).Headers.Contains("Access-Control-Allow-Origin"));
     }
 
+    [Fact]
+    public async Task StubNotifications_DisabledByDefault_NoNotificationDispatchedAfterCheckout()
+    {
+        var cart = await CreateCartAsync("STD");
+        var session = await StartCheckoutAsync(cart);
+
+        var status = await GetStatusAsync(session.PaymentId);
+        Assert.Equal(PaymentStates.Pending, status.PaymentState);
+    }
+
     private async Task<HttpResponseMessage> PreflightAsync(string origin)
     {
         using var request = new HttpRequestMessage(HttpMethod.Options, $"{Api}/carts");

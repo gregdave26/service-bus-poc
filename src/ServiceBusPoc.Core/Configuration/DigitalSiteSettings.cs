@@ -44,6 +44,9 @@ public sealed class DigitalSiteSettings
     [Required]
     public string ShopperLocale { get; set; } = "en-AU";
 
+    /// <summary>Gets or sets a value indicating whether stub payments automatically dispatch signed notifications.</summary>
+    public bool EnableStubNotifications { get; set; } = false;
+
     /// <summary>Gets the parsed allowed origins without trailing slashes.</summary>
     public IReadOnlyList<string> AllowedOriginList =>
         AllowedOrigins

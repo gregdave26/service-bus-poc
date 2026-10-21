@@ -1,0 +1,19 @@
+meta {
+  name: Read payment status
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/checkout/status/{{paymentId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("payment status is returned", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.paymentId).to.equal(bru.getVar("paymentId"));
+    expect(res.body.paymentState).to.be.a("string").and.not.empty;
+  });
+}

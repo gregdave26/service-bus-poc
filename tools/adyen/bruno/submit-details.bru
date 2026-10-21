@@ -1,0 +1,36 @@
+meta {
+  name: Submit Adyen payment details
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/checkout/details
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "paymentId": "{{paymentId}}",
+    "redirectResult": "{{redirectResult}}",
+    "threeDSResult": "{{threeDSResult}}"
+  }
+}
+
+docs {
+  Run only after the Adyen Component returns a shopper action result.
+  Provide either redirectResult or threeDSResult in the active environment.
+  Do not commit action results or use this request unattended.
+}
+
+tests {
+  test("payment details response is returned", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.resultCode).to.be.a("string").and.not.empty;
+  });
+}

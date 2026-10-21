@@ -1,0 +1,319 @@
+diff --git a/tools/adyen/bruno/README.md b/tools/adyen/bruno/README.md
+new file mode 100644
+index 0000000..18046eb
+--- /dev/null
++++ b/tools/adyen/bruno/README.md
+@@ -0,0 +1,46 @@
++# Adyen Checkout Sessions smoke tests
++
++This Bruno collection exercises the Digital Site API's existing Adyen Checkout
++Sessions boundary. It does not call Adyen directly and does not contain API
++keys, HMAC keys, APIM subscription keys, or captured PSP references.
++
++## Setup
++
++1. Start the Digital Site Commerce API.
++2. Open `tools/adyen/bruno` as a Bruno collection.
++3. Select the `local` environment.
++4. Set `crmId` and `cartId` in `environments/local.bru` to an existing payable
++   cart, or set them through Bruno's environment UI.
++5. Run the requests in this order:
++
++   - `health`
++   - `config`
++   - `start-session`
++   - `status`
++   - `submit-details` only when Adyen returns an action requiring details
++
++The `start-session` request creates an Adyen session through the application.
++It does not authorize or capture a payment. The browser still needs to mount
++the Adyen Component and submit the shopper's payment details.
++
++`submit-details` is intentionally a manual request. Populate `paymentId` and
++either `redirectResult` or `threeDSResult` only from the shopper action. Do not
++commit those values.
++
++## Direct Adyen and APIM modes
++
++The application can be configured to call Adyen directly with
++`Adyen__ApiKey`, or through an APIM endpoint with
++`Adyen__CheckoutApiUrl` and `Adyen__ApimSubscriptionKey`. This collection only
++calls the application API, so the credential boundary remains on the server.
++
++## Payment finality
++
++The session and details responses are interim results. The authoritative
++payment state is established by the signed Adyen webhook received at
++`POST /api/digital-site/notifications/adyen`. A successful HTTP response from
++Adyen is not by itself proof that funds were captured.
++
++Use the existing `scripts/test-adyen-connectivity.ps1` for a credential and
++Checkout API connectivity check without creating a shopper session through the
++browser flow.
+diff --git a/tools/adyen/bruno/bruno.json b/tools/adyen/bruno/bruno.json
+new file mode 100644
+index 0000000..f24978e
+--- /dev/null
++++ b/tools/adyen/bruno/bruno.json
+@@ -0,0 +1,4 @@
++{
++  "version": "1",
++  "name": "service-bus-poc-adyen"
++}
+diff --git a/tools/adyen/bruno/.gitignore b/tools/adyen/bruno/.gitignore
+new file mode 100644
+index 0000000..4c49bd7
+--- /dev/null
++++ b/tools/adyen/bruno/.gitignore
+@@ -0,0 +1 @@
++.env
+diff --git a/tools/adyen/bruno/environments/local.bru b/tools/adyen/bruno/environments/local.bru
+new file mode 100644
+index 0000000..025c1dd
+--- /dev/null
++++ b/tools/adyen/bruno/environments/local.bru
+@@ -0,0 +1,9 @@
++vars {
++  apiRoot: http://localhost:5200
++  baseUrl: http://localhost:5200/api/digital-site
++  crmId: replace-with-crm-id
++  cartId: replace-with-cart-id
++  paymentId: replace-with-payment-id
++  redirectResult: replace-with-redirect-result
++  threeDSResult: replace-with-three-ds-result
++}
+diff --git a/tools/adyen/bruno/health.bru b/tools/adyen/bruno/health.bru
+new file mode 100644
+index 0000000..c3262ad
+--- /dev/null
++++ b/tools/adyen/bruno/health.bru
+@@ -0,0 +1,18 @@
++meta {
++  name: Commerce API health
++  type: http
++  seq: 1
++}
++
++get {
++  url: {{apiRoot}}/health
++  body: none
++  auth: none
++}
++
++tests {
++  test("commerce API is healthy", function() {
++    expect(res.status).to.equal(200);
++    expect(res.body.status).to.equal("ok");
++  });
++}
+diff --git a/tools/adyen/bruno/config.bru b/tools/adyen/bruno/config.bru
+new file mode 100644
+index 0000000..1325848
+--- /dev/null
++++ b/tools/adyen/bruno/config.bru
+@@ -0,0 +1,18 @@
++meta {
++  name: Payment gateway configuration
++  type: http
++  seq: 2
++}
++
++get {
++  url: {{baseUrl}}/config
++  body: none
++  auth: none
++}
++
++tests {
++  test("payment gateway mode is reported", function() {
++    expect(res.status).to.equal(200);
++    expect(res.body.gateway).to.be.a("string").and.not.empty;
++  });
++}
+diff --git a/tools/adyen/bruno/start-session.bru b/tools/adyen/bruno/start-session.bru
+new file mode 100644
+index 0000000..c6059cc
+--- /dev/null
++++ b/tools/adyen/bruno/start-session.bru
+@@ -0,0 +1,39 @@
++meta {
++  name: Start Adyen checkout session
++  type: http
++  seq: 3
++}
++
++post {
++  url: {{baseUrl}}/checkout/session
++  body: json
++  auth: none
++}
++
++headers {
++  Content-Type: application/json
++}
++
++body:json {
++  {
++    "cartId": "{{cartId}}",
++    "crmId": "{{crmId}}",
++    "returnUrl": "http://localhost:5100/digital-site",
++    "acceptedPaymentAuthTerms": true,
++    "acceptedRoadsideAssistTerms": true,
++    "paymentType": "Card",
++    "paymentMethod": "Card",
++    "prepareOnly": false
++  }
++}
++
++tests {
++  test("checkout session is returned", function() {
++    expect(res.status).to.equal(200);
++    expect(res.body.paymentId).to.be.a("string").and.not.empty;
++    expect(res.body.sessionId).to.be.a("string").and.not.empty;
++    expect(res.body.sessionData).to.be.a("string").and.not.empty;
++    expect(res.body.gateway).to.be.a("string").and.not.empty;
++    bru.setVar("paymentId", res.body.paymentId);
++  });
++}
+diff --git a/tools/adyen/bruno/submit-details.bru b/tools/adyen/bruno/submit-details.bru
+new file mode 100644
+index 0000000..5e76b10
+--- /dev/null
++++ b/tools/adyen/bruno/submit-details.bru
+@@ -0,0 +1,36 @@
++meta {
++  name: Submit Adyen payment details
++  type: http
++  seq: 4
++}
++
++post {
++  url: {{baseUrl}}/checkout/details
++  body: json
++  auth: none
++}
++
++headers {
++  Content-Type: application/json
++}
++
++body:json {
++  {
++    "paymentId": "{{paymentId}}",
++    "redirectResult": "{{redirectResult}}",
++    "threeDSResult": "{{threeDSResult}}"
++  }
++}
++
++docs {
++  Run only after the Adyen Component returns a shopper action result.
++  Provide either redirectResult or threeDSResult in the active environment.
++  Do not commit action results or use this request unattended.
++}
++
++tests {
++  test("payment details response is returned", function() {
++    expect(res.status).to.equal(200);
++    expect(res.body.resultCode).to.be.a("string").and.not.empty;
++  });
++}
+diff --git a/tools/adyen/bruno/status.bru b/tools/adyen/bruno/status.bru
+new file mode 100644
+index 0000000..4f450cf
+--- /dev/null
++++ b/tools/adyen/bruno/status.bru
+@@ -0,0 +1,19 @@
++meta {
++  name: Read payment status
++  type: http
++  seq: 5
++}
++
++get {
++  url: {{baseUrl}}/checkout/status/{{paymentId}}
++  body: none
++  auth: none
++}
++
++tests {
++  test("payment status is returned", function() {
++    expect(res.status).to.equal(200);
++    expect(res.body.paymentId).to.equal(bru.getVar("paymentId"));
++    expect(res.body.paymentState).to.be.a("string").and.not.empty;
++  });
++}
+diff --git a/docs/scenarios/adyen-checkout-sessions-smoke-test.md b/docs/scenarios/adyen-checkout-sessions-smoke-test.md
+new file mode 100644
+index 0000000..233380b
+--- /dev/null
++++ b/docs/scenarios/adyen-checkout-sessions-smoke-test.md
+@@ -0,0 +1,69 @@
++# Adyen Checkout Sessions smoke test
++
++This scenario validates the repository's application boundary for Adyen
++Checkout Sessions without exposing Adyen credentials to Bruno or the browser
++test collection.
++
++## Flow
++
++```mermaid
++sequenceDiagram
++    participant B as Bruno or Digital Site browser
++    participant C as Commerce API
++    participant A as Adyen Checkout
++    participant W as Adyen Standard webhook
++
++    B->>C: POST /api/digital-site/checkout/session
++    C->>A: POST /sessions
++    A-->>C: session id and session data
++    C-->>B: session response
++    B->>A: Adyen Component payment details
++    A-->>B: authorised, refused, or shopper action
++    B->>C: POST /api/digital-site/checkout/details (if required)
++    A->>W: AUTHORISATION/CAPTURE notification
++    W->>C: POST /api/digital-site/notifications/adyen
++    C-->>W: [accepted]
++    B->>C: GET /api/digital-site/checkout/status/{paymentId}
++```
++
++## Running it
++
++Open [`tools/adyen/bruno`](../../tools/adyen/bruno) in Bruno, select the
++`local` environment, set `crmId` and `cartId`, and run the requests in the
++order documented in its README.
++
++The cart must already exist and contain a payable item. The collection does
++not create or mutate carts because cart setup is specific to the local
++Commerce Tools configuration.
++
++## Configuration boundary
++
++The Commerce API owns the Adyen credential. It can use either:
++
++- direct Adyen Checkout API access using `Adyen__ApiKey`; or
++- an APIM endpoint using `Adyen__CheckoutApiUrl` and
++  `Adyen__ApimSubscriptionKey`.
++
++The Bruno collection calls only the Commerce API. It must not send
++`X-API-Key`, `Ocp-Apim-Subscription-Key`, or `Adyen__HmacKey`.
++
++## Payment state and retries
++
++Creating a session or receiving a successful `/payments/details` response is
++not proof that funds were captured. The signed Adyen Standard webhook is the
++source of payment state updates. Adyen may retry notifications; the API must
++continue to verify each item and preserve duplicate-safe processing.
++
++Any future authorization or capture operation must use an idempotency key
++where the Adyen API and SDK support it. This smoke test deliberately does not
++add a capture request because capture timing is a business decision and is not
++currently part of the checkout API boundary.
++
++## Safety
++
++- Use the Adyen test environment only.
++- Never place API keys, HMAC keys, APIM keys, redirect results, or PSP
++  references in tracked files.
++- Do not run `submit-details` without a real action result from the Adyen
++  Component.
++- A successful HTTP response is not equivalent to final settlement.

@@ -21,10 +21,45 @@ $env:ServiceBus__TopicName = "contact.events"
 dotnet run --project src/ServiceBusPoc.AppHost/ServiceBusPoc.AppHost.csproj
 ```
 
+Alternatively, use the repository launcher:
+
+```powershell
+.\scripts\run-aspire.ps1
+```
+
+The launcher ensures the .NET and Aspire HTTPS development certificates are
+trusted before starting the AppHost. If you start Aspire directly instead, run
+this once from an elevated PowerShell when prompted:
+
+```powershell
+dotnet dev-certs https --trust
+aspire certs trust
+```
+
+Use `-NoEmulator` when the Compose emulator is already running, or `-NoBuild`
+when the AppHost has already been built:
+
+```powershell
+.\scripts\run-aspire.ps1 -NoEmulator -NoBuild
+```
+
 The host starts the four filtered consumers, Carwash's HTTP API and consumer
 process, the producer, and the connectivity verifier. Existing project
 configuration remains unchanged; Aspire only supplies the `ServiceBus:*`
-environment variables and the consumer subscription names.
+environment variables, consumer subscription names, and safe local Producer
+defaults. The contact identity, source, and membership defaults can be overridden
+with `Producer__*` environment variables. The current spike forces all three
+routing flags to `true`; false overrides for those flags are not yet honored.
 
 The producer and verifier are short-lived processes. The consumer processes
 remain running until the Aspire application is stopped.
+
+## Configuration and responsibility comparison
+
+See the [source-based comparison](../../docs/architecture/aspire-configuration-comparison.md)
+for configuration precedence, topic/subscription wiring, Carwash API ownership,
+startup/shutdown differences, and remaining parity gaps. The custom dashboard
+and Digital Site applications are intentionally not started by this spike.
+Aspire does not replace their user-facing functionality. For an isolated run
+without the custom dashboard, set `Dashboard__Enabled=false` in the launcher
+environment or ignored root `.env` to disable custom reporting.

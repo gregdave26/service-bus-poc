@@ -25,7 +25,13 @@ public static class DigitalSiteEndpoints
 
         var api = app.MapGroup(RoutePrefix).AddEndpointFilter(TranslateErrorsAsync);
 
-        api.MapGet("/config", (IPaymentGatewayAdapter gateway) => Results.Ok(new { gateway = gateway.Mode.ToString() }));
+        api.MapGet("/config", (IPaymentGatewayAdapter gateway, PaymentGatewayRuntimeState state) => Results.Ok(new
+        {
+            gateway = gateway.Mode.ToString(),
+            configuredGateway = state.ConfiguredMode.ToString(),
+            fallbackActive = state.FallbackActive,
+            fallbackReason = state.FallbackReason,
+        }));
 
         api.MapGet("/catalog", async (ICatalogProvider catalog, CancellationToken cancellationToken) =>
             Results.Ok(await catalog.GetCatalogAsync(cancellationToken)));

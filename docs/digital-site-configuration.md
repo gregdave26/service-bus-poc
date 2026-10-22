@@ -39,6 +39,47 @@ the same notification and CommerceTools update path used by the real gateway.
 The message saying that “Adyen is not configured” on this page means that the
 stub mode is active; it is not a payment failure.
 
+### Startup feature flag
+
+CommerceApi uses `Microsoft.FeatureManagement` to evaluate the optional
+`FeatureManagement__UseRealAdyen` flag once, before registering payment services.
+The library is a new dependency justified by the standard flag-evaluation API
+and planned Azure App Configuration migration. No Azure service is required now.
+
+| Flag | Existing `DigitalSite__PaymentGateway` | Selected gateway |
+| --- | --- | --- |
+| Absent | Absent or `Stub` | `Stub` |
+| Absent | `Adyen` / `AdyenComponent` | Existing mode unchanged |
+| `false` | Any valid mode | `Stub` |
+| `true` | Absent, `Stub` or `Adyen` | `Adyen` |
+| `true` | `AdyenComponent` | `AdyenComponent` |
+
+For example, enable real Adyen component-only sandbox testing with:
+
+```powershell
+$env:FeatureManagement__UseRealAdyen = "true"
+$env:DigitalSite__PaymentGateway = "AdyenComponent"
+```
+
+To select simulated payments, set the flag to `false` and restart CommerceApi.
+To return to legacy mode selection, remove the flag. Invalid mode/flag values
+fail startup rather than silently choosing a stub. Only Boolean flags are
+supported in this phase; conditional filters, targeting and variants are rejected
+for this selection.
+
+The flag has precedence over the mode setting; a valid but overridden mode is
+not a configuration error. Adyen `test`/`live`, secrets and the Development-only
+fallback permission remain separate settings. Only the selected gateway's
+credentials are required. `/api/digital-site/config` reports the resolved
+configured gateway and the effective gateway after the startup check.
+
+**Restart is required** to change selection; there are no per-request flag
+checks or live switches during checkout. The launcher defers flag-controlled
+preflight evaluation to CommerceApi rather than implementing a second flag
+engine. For later Azure migration, add the configuration provider and identity/
+RBAC before this startup evaluation; retaining the startup snapshot still
+requires restarts. Live refresh requires a separate workflow-consistency design.
+
 ## 2. Configuration ownership
 
 The systems have different responsibilities:
@@ -46,7 +87,8 @@ The systems have different responsibilities:
 | Configuration | Owner | Purpose |
 | --- | --- | --- |
 | `CommerceTools__ApiUrl`, `CommerceTools__ProjectKey` | CommerceApi and processors | CommerceTools API endpoint and project |
-| `DigitalSite__PaymentGateway` | CommerceApi | Selects `Stub` or `Adyen` |
+| `DigitalSite__PaymentGateway` | CommerceApi | Legacy selection of `Stub`, `Adyen` or `AdyenComponent` |
+| `FeatureManagement__UseRealAdyen` | CommerceApi | Optional startup flag overriding legacy selection |
 | `DigitalSite__AllowedOrigins` | CommerceApi | CORS origins allowed to call CommerceApi |
 | `DIGITAL_SITE_API_BASE_URL` | Dashboard Node server | URL exposed to the browser as `digitalSiteApiBaseUrl` |
 | `Adyen__MerchantAccount` | CommerceApi | Adyen merchant account used by server-side Checkout API calls |
@@ -124,6 +166,44 @@ https://<public-commerce-api-host>/api/digital-site/notifications/adyen
 
 The endpoint must be reachable by Adyen. For local testing, use an approved
 development tunnel rather than exposing a development machine directly.
+
+### Optional Development-only startup fallback
+
+By default, an Adyen startup connectivity failure stops CommerceApi. Developers
+can explicitly permit simulated payments after a failed startup check:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Development"
+$env:DigitalSite__AllowDevelopmentAdyenFallback = "true"
+```
+
+This applies to both `Adyen` and `AdyenComponent`. The resolved .NET hosting
+environment must be `Development`; Adyen's `test` environment is not sufficient.
+The permission is rejected outside Development, including when Stub was selected.
+Local launch scripts do not implicitly enable this permission or change the
+hosting environment: configure both variables explicitly, or use the local
+`.env` file with the dashboard launcher.
+
+Missing or invalid required settings still fail validation. Only recognised
+startup gateway/HTTP failures and HTTP timeouts permit fallback; cancellation
+and unexpected application errors propagate. The check creates a session, not
+a payment authorisation.
+
+When fallback occurs:
+
+- An error reports the failed Adyen connection and that payments are simulated.
+- A startup warning explains that a restart is required to retry Adyen.
+- A persistent Digital Site warning says **"Adyen connection failed. Using stub
+  payments; no real payment will be taken."** It remains visible across purchase
+  steps and cannot be dismissed with unrelated errors.
+- `/api/digital-site/config` retains `gateway` and adds `configuredGateway`,
+  `fallbackActive` and a safe `fallbackReason` code. Raw exceptions and
+  credentials are not exposed. Intentional Stub selection reports no fallback.
+
+The effective gateway remains Stub for that process lifetime. Fix the connection
+and restart to retry Adyen. There is no automatic recovery or fallback during
+a checkout/payment request; a failed real payment must not become simulated
+success. To disable this permission, remove the variable or set it to `false`.
 
 ## 5. Payment-page integration sequence
 
@@ -257,4 +337,3 @@ This is expected until the webhook is processed. Check:
 3. the CommerceTools payment transaction changed to authorised;
 4. the `cart-processor` subscription is running;
 5. the `fulfilment-d365-stub` subscription is running.
-

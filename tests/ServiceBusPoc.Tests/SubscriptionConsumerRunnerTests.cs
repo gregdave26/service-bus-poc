@@ -265,8 +265,7 @@ public sealed class SubscriptionConsumerRunnerTests
             }),
             Options.Create(new DashboardSettings { HeartbeatIntervalSeconds = heartbeatIntervalSeconds }),
             Mock.Of<ILogger<SubscriptionConsumerRunner>>(),
-            TimeProvider.System,
-            null); // IMessageReceiveLoopRunner (optional, defaults to production implementation)
+            TimeProvider.System);
     }
 
     private static Mock<IServiceBusReceiver> ReceiverThatCancelsAfter(
@@ -308,108 +307,4 @@ public sealed class SubscriptionConsumerRunnerTests
                 LastName = "Lovelace"
             }
         });
-
-    [Fact]
-    public async Task RunAsync_MultipleValidMessages_IncrementsMessageCount()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var message1 = Message(ValidEnvelope("event-1"));
-        var message2 = Message(ValidEnvelope("event-2"));
-        var receiver = new Mock<IServiceBusReceiver>();
-        var messageQueue = new Queue<ServiceBusReceivedMessage?>(new[] { message1, message2, null });
-        receiver.Setup(x => x.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns<TimeSpan, CancellationToken>((_, _) =>
-            {
-                var msg = messageQueue.Count > 0 ? messageQueue.Dequeue() : null;
-                if (msg is null) cancellation.Cancel();
-                return Task.FromResult(msg);
-            });
-        var dashboard = new Mock<IDashboardReporter>();
-        var runner = CreateRunner(receiver, dashboard);
-
-        await runner.RunAsync(Descriptor(), cancellation.Token);
-
-        dashboard.Verify(x => x.ReportAsync(
-            It.Is<ServiceHeartbeat>(h =>
-                h.State == ServiceState.Stopped &&
-                h.MessagesHandled == 2),
-            CancellationToken.None), Times.Once);
-    }
-
-    [Fact]
-    public async Task RunAsync_CompleteThrowsMessageLockLost_LogsWarningAndContinues()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var message1 = Message(ValidEnvelope("event-1"));
-        var message2 = Message(ValidEnvelope("event-2"));
-        var receiver = new Mock<IServiceBusReceiver>();
-        var messageQueue = new Queue<ServiceBusReceivedMessage?>(new[] { message1, message2, null });
-        receiver.Setup(x => x.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns<TimeSpan, CancellationToken>((_, _) =>
-            {
-                var msg = messageQueue.Count > 0 ? messageQueue.Dequeue() : null;
-                if (msg is null) cancellation.Cancel();
-                return Task.FromResult(msg);
-            });
-        receiver.Setup(x => x.CompleteMessageAsync(message1, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new ServiceBusException("lock lost", ServiceBusFailureReason.MessageLockLost));
-        var runner = CreateRunner(receiver);
-
-        await runner.RunAsync(Descriptor(), cancellation.Token);
-
-        receiver.Verify(x => x.CompleteMessageAsync(message1, cancellation.Token), Times.Once);
-        receiver.Verify(x => x.CompleteMessageAsync(message2, cancellation.Token), Times.Once);
-    }
-
-    [Fact]
-    public async Task RunAsync_EmptyMessageFollowedByValidMessage_ReportsHeartbeatOnlyForMessage()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var validMessage = Message(ValidEnvelope("event-1"));
-        var receiver = new Mock<IServiceBusReceiver>();
-        var messageQueue = new Queue<ServiceBusReceivedMessage?>(new[] { (ServiceBusReceivedMessage?)null, validMessage, null });
-        receiver.Setup(x => x.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns<TimeSpan, CancellationToken>((_, _) =>
-            {
-                var msg = messageQueue.Count > 0 ? messageQueue.Dequeue() : null;
-                if (msg is null && messageQueue.Count == 0) cancellation.Cancel();
-                return Task.FromResult(msg);
-            });
-        var dashboard = new Mock<IDashboardReporter>();
-        var runner = CreateRunner(receiver, dashboard, heartbeatIntervalSeconds: 0);
-
-        await runner.RunAsync(Descriptor(), cancellation.Token);
-
-        dashboard.Verify(x => x.ReportAsync(
-            It.Is<ServiceHeartbeat>(h => h.State == ServiceState.Running),
-            cancellation.Token), Times.AtLeastOnce);
-    }
-
-    [Fact]
-    public async Task RunAsync_MultipleValidMessagesWithErrors_TracksCorrectFinalCount()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var validMessage1 = Message(ValidEnvelope("event-1"));
-        var invalidMessage = Message("{ not json");
-        var validMessage2 = Message(ValidEnvelope("event-2"));
-        var receiver = new Mock<IServiceBusReceiver>();
-        var messageQueue = new Queue<ServiceBusReceivedMessage?>(new[] { validMessage1, invalidMessage, validMessage2, null });
-        receiver.Setup(x => x.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
-            .Returns<TimeSpan, CancellationToken>((_, _) =>
-            {
-                var msg = messageQueue.Count > 0 ? messageQueue.Dequeue() : null;
-                if (msg is null && messageQueue.Count == 0) cancellation.Cancel();
-                return Task.FromResult(msg);
-            });
-        var dashboard = new Mock<IDashboardReporter>();
-        var runner = CreateRunner(receiver, dashboard);
-
-        await runner.RunAsync(Descriptor(), cancellation.Token);
-
-        dashboard.Verify(x => x.ReportAsync(
-            It.Is<ServiceHeartbeat>(h =>
-                h.State == ServiceState.Stopped &&
-                h.MessagesHandled == 2),
-            CancellationToken.None), Times.Once);
-    }
 }

@@ -14,10 +14,11 @@ namespace ServiceBusPoc.Core.Messaging;
 /// The runner never re-evaluates capability flags: whatever arrives was already selected by the
 /// subscription filter, so what a consumer logs is exactly what its filter let through.
 /// One instance drives one subscription and is not re-entrant.
-/// Implements <see cref="IMessageReceiveOrchestrator"/> to coordinate with shared receive-loop logic.
 /// </summary>
-public class SubscriptionConsumerRunner : IMessageReceiveOrchestrator
+public class SubscriptionConsumerRunner
 {
+    private static readonly TimeSpan ReceiveWaitTime = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DelayAfterReceiveFailure = TimeSpan.FromSeconds(2);
 
     private readonly IServiceBusReceiver _receiver;
     private readonly IDashboardReporter _dashboardReporter;
@@ -25,16 +26,11 @@ public class SubscriptionConsumerRunner : IMessageReceiveOrchestrator
     private readonly DashboardSettings _dashboardSettings;
     private readonly ILogger<SubscriptionConsumerRunner> _logger;
     private readonly TimeProvider _timeProvider;
-    private readonly IMessageReceiveLoopRunner _receiveLoopRunner;
 
     private long _messagesReceived;
     private DateTimeOffset? _lastMessageAt;
     private string? _lastEventId;
     private DateTimeOffset _lastHeartbeatAt = DateTimeOffset.MinValue;
-
-    // Stored descriptor and subscription name for orchestrator callbacks
-    private ConsumerDescriptor? _currentDescriptor;
-    private string? _currentSubscriptionName;
 
     public SubscriptionConsumerRunner(
         IServiceBusReceiver receiver,
@@ -42,8 +38,7 @@ public class SubscriptionConsumerRunner : IMessageReceiveOrchestrator
         IOptions<ServiceBusSettings> serviceBusSettings,
         IOptions<DashboardSettings> dashboardSettings,
         ILogger<SubscriptionConsumerRunner> logger,
-        TimeProvider timeProvider,
-        IMessageReceiveLoopRunner? receiveLoopRunner = null)
+        TimeProvider timeProvider)
     {
         _receiver = receiver;
         _dashboardReporter = dashboardReporter;
@@ -51,7 +46,6 @@ public class SubscriptionConsumerRunner : IMessageReceiveOrchestrator
         _dashboardSettings = dashboardSettings.Value;
         _logger = logger;
         _timeProvider = timeProvider;
-        _receiveLoopRunner = receiveLoopRunner ?? new ServiceBusMessageReceiveLoopRunner(receiver, logger);
     }
 
     /// <summary>
@@ -214,66 +208,36 @@ public class SubscriptionConsumerRunner : IMessageReceiveOrchestrator
         string subscriptionName,
         CancellationToken cancellationToken)
     {
-        // Store descriptor and subscription for use in orchestrator callbacks
-        _currentDescriptor = descriptor;
-        _currentSubscriptionName = subscriptionName;
-
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            // Use the shared receive-loop runner to orchestrate message reception
-            await _receiveLoopRunner.RunAsync(this, cancellationToken);
+            ServiceBusReceivedMessage? message;
+
+            try
+            {
+                message = await _receiver.ReceiveMessageAsync(ReceiveWaitTime, cancellationToken);
+            }
+            catch (ServiceBusException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Consumer {ServiceName} failed to receive from subscription {SubscriptionName}: {FailureReason}",
+                    descriptor.ServiceName,
+                    subscriptionName,
+                    ex.Reason);
+
+                await Task.Delay(DelayAfterReceiveFailure, _timeProvider, cancellationToken);
+                continue;
+            }
+
+            if (message is null)
+            {
+                await ReportHeartbeatAsync(descriptor, subscriptionName, ServiceState.Running, force: false, cancellationToken);
+                continue;
+            }
+
+            await ProcessMessageAsync(descriptor, subscriptionName, message, cancellationToken);
+            await ReportHeartbeatAsync(descriptor, subscriptionName, ServiceState.Running, force: true, cancellationToken);
         }
-        finally
-        {
-            _currentDescriptor = null;
-            _currentSubscriptionName = null;
-        }
-    }
-
-    /// <summary>
-    /// Implements <see cref="IMessageReceiveOrchestrator.ProcessMessageAsync"/> to handle received messages.
-    /// </summary>
-    async Task IMessageReceiveOrchestrator.ProcessMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken)
-    {
-        if (_currentDescriptor is null || _currentSubscriptionName is null)
-        {
-            _logger.LogError("ProcessMessageAsync called without descriptor context");
-            return;
-        }
-
-        await ProcessMessageAsync(_currentDescriptor, _currentSubscriptionName, message, cancellationToken);
-        await ReportHeartbeatAsync(_currentDescriptor, _currentSubscriptionName, ServiceState.Running, force: true, cancellationToken);
-    }
-
-    /// <summary>
-    /// Implements <see cref="IMessageReceiveOrchestrator.OnEmptyReceiveAsync"/> to handle timeouts.
-    /// </summary>
-    async Task IMessageReceiveOrchestrator.OnEmptyReceiveAsync(CancellationToken cancellationToken)
-    {
-        if (_currentDescriptor is null || _currentSubscriptionName is null)
-        {
-            return;
-        }
-
-        await ReportHeartbeatAsync(_currentDescriptor, _currentSubscriptionName, ServiceState.Running, force: false, cancellationToken);
-    }
-
-    /// <summary>
-    /// Implements <see cref="IMessageReceiveOrchestrator.OnReceiveFailureAsync"/> to handle receive errors.
-    /// </summary>
-    async Task IMessageReceiveOrchestrator.OnReceiveFailureAsync(ServiceBusException exception, CancellationToken cancellationToken)
-    {
-        if (_currentDescriptor is null || _currentSubscriptionName is null)
-        {
-            return;
-        }
-
-        _logger.LogError(
-            exception,
-            "Consumer {ServiceName} failed to receive from subscription {SubscriptionName}: {FailureReason}",
-            _currentDescriptor.ServiceName,
-            _currentSubscriptionName,
-            exception.Reason);
     }
 
     private async Task ProcessMessageAsync(

@@ -216,8 +216,7 @@ public class ConsumerServiceTests
             Options.Create(new ServiceBusSettings()),
             Options.Create(new DashboardSettings()),
             Mock.Of<ILogger<SubscriptionConsumerRunner>>(),
-            TimeProvider.System,
-            null); // IMessageReceiveLoopRunner (optional, defaults to production implementation)
+            TimeProvider.System);
         return (mock.Object, mock);
     }
 }

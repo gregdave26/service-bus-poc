@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using Adyen.Checkout.Models;
+using Adyen.Checkout.Services;
 using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Messaging;
@@ -45,6 +48,121 @@ public sealed class CommerceApiEndpointTests : IDisposable
         var config = await _client.GetFromJsonAsync<JsonElement>($"{Api}/config");
 
         Assert.Equal("Stub", config.GetProperty("gateway").GetString());
+        Assert.Equal("Stub", config.GetProperty("configuredGateway").GetString());
+        Assert.False(config.GetProperty("fallbackActive").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, config.GetProperty("fallbackReason").ValueKind);
+    }
+
+    [Theory]
+    [InlineData("Adyen")]
+    [InlineData("AdyenComponent")]
+    public async Task Config_WhenRealFlagDisabled_UsesStubWithoutAdyenSettings(string legacyMode)
+    {
+        var payments = new Mock<IPaymentsService>(MockBehavior.Strict);
+        using var api = new CommerceApiFactory(_commerceTools, new Dictionary<string, string?>
+        {
+            ["FeatureManagement:UseRealAdyen"] = "false",
+            ["DigitalSite:PaymentGateway"] = legacyMode,
+        }, services => services.AddSingleton(payments.Object));
+        using var client = api.CreateClient();
+
+        var config = await client.GetFromJsonAsync<JsonElement>($"{Api}/config");
+
+        Assert.Equal("Stub", config.GetProperty("gateway").GetString());
+        Assert.Equal("Stub", config.GetProperty("configuredGateway").GetString());
+        Assert.False(config.GetProperty("fallbackActive").GetBoolean());
+        payments.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("Stub", "Adyen")]
+    [InlineData("AdyenComponent", "AdyenComponent")]
+    public async Task Config_WhenRealFlagEnabled_UsesSelectedRealMode(string legacyMode, string expectedMode)
+    {
+        var response = new Mock<ISessionsApiResponse>();
+        response.SetupGet(value => value.IsCreated).Returns(true);
+        response.Setup(value => value.Created()).Returns(new CreateCheckoutSessionResponse
+        {
+            Id = "startup-session",
+            SessionData = "startup-data",
+        });
+        var payments = new Mock<IPaymentsService>();
+        payments.Setup(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>())).ReturnsAsync(response.Object);
+        using var api = new CommerceApiFactory(_commerceTools, new Dictionary<string, string?>
+        {
+            ["FeatureManagement:UseRealAdyen"] = "true",
+            ["DigitalSite:PaymentGateway"] = legacyMode,
+            ["Adyen:MerchantAccount"] = "merchant",
+            ["Adyen:ApiKey"] = "test-api-key",
+            ["Adyen:ClientKey"] = "client",
+            ["Adyen:HmacKey"] = new string('A', 64),
+        }, services => services.AddSingleton(payments.Object));
+        using var client = api.CreateClient();
+
+        var config = await client.GetFromJsonAsync<JsonElement>($"{Api}/config");
+
+        Assert.Equal(expectedMode, config.GetProperty("gateway").GetString());
+        Assert.Equal(expectedMode, config.GetProperty("configuredGateway").GetString());
+        Assert.False(config.GetProperty("fallbackActive").GetBoolean());
+        payments.Verify(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("Adyen", null, "Adyen")]
+    [InlineData("AdyenComponent", null, "AdyenComponent")]
+    [InlineData("Stub", "true", "Adyen")]
+    [InlineData("AdyenComponent", "true", "AdyenComponent")]
+    public async Task Config_WhenStartupFallsBack_ReportsSafeReasonAndBothGateways(
+        string mode, string? flag, string expectedConfiguredMode)
+    {
+        var payments = new Mock<IPaymentsService>();
+        payments.Setup(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException("secret-upstream-detail"));
+        var settings = new Dictionary<string, string?>
+        {
+            ["DigitalSite:PaymentGateway"] = mode,
+            ["DigitalSite:AllowDevelopmentAdyenFallback"] = "true",
+            ["Adyen:MerchantAccount"] = "merchant",
+            ["Adyen:ApiKey"] = "secret-api-key",
+            ["Adyen:ClientKey"] = "client",
+            ["Adyen:HmacKey"] = new string('A', 64),
+        };
+        if (flag is not null)
+        {
+            settings["FeatureManagement:UseRealAdyen"] = flag;
+        }
+        using var api = new CommerceApiFactory(_commerceTools, settings, services => services.AddSingleton(payments.Object));
+        using var client = api.CreateClient();
+
+        var response = await client.GetStringAsync($"{Api}/config");
+        using var document = JsonDocument.Parse(response);
+        var config = document.RootElement;
+
+        Assert.Equal("Stub", config.GetProperty("gateway").GetString());
+        Assert.Equal(expectedConfiguredMode, config.GetProperty("configuredGateway").GetString());
+        Assert.True(config.GetProperty("fallbackActive").GetBoolean());
+        Assert.Equal("AdyenStartupConnectivityFailed", config.GetProperty("fallbackReason").GetString());
+        Assert.DoesNotContain("secret", response);
+    }
+
+    [Fact]
+    public void Startup_WithMissingAdyenSettings_DoesNotFallback()
+    {
+        using var api = new CommerceApiFactory(_commerceTools, new Dictionary<string, string?>
+        {
+            ["DigitalSite:PaymentGateway"] = "Adyen",
+            ["DigitalSite:AllowDevelopmentAdyenFallback"] = "true",
+        });
+
+        Assert.Throws<OptionsValidationException>(() => api.CreateClient());
     }
 
     [Fact]

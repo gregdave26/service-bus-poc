@@ -23,6 +23,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [012](012-feature-based-backend-structure.md) | Feature-Based Backend Structure | ✅ Approved | One namespace/folder per feature tab; C# dashboard removed |
 | [013](013-digital-site-racwa-component-library.md) | Digital Site Tab and RACWA Component Library | ✅ Approved | RSA purchase flow using published `@racwa/react-components`; orders publish `ProductHoldingChange` |
 | [014](014-digital-site-commerce-flow.md) | Digital Site Commerce Flow | ✅ Approved | commercetools API stub, Adyen Sessions Drop-in behind a gateway adapter, webhook-driven order creation on `commerce.events` |
+| [015](015-startup-payment-feature-management.md) | Startup Payment Feature Management | Accepted | Microsoft.FeatureManagement startup selection preserving all existing payment modes |
 
 ---
 

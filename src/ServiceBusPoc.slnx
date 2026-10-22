@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/DigitalSite/" />
+  <Folder Name="/Aspire/">
+    <Project Path="ServiceBusPoc.AppHost/ServiceBusPoc.AppHost.csproj" />
+  </Folder>
   <Folder Name="/DigitalSite/CartProcessor/">
     <Project Path="DigitalSite/CartProcessor/ServiceBusPoc.DigitalSite.CartProcessor.csproj" />
   </Folder>

@@ -272,9 +272,7 @@ $env:Dashboard__HeartbeatIntervalSeconds = "5"
 
 # Logging
 $env:DOTNET_LOG_LEVEL = "Information"  # or "Debug" for verbose
-$env:DOTNET_Environment = "Development"
-
-# Carwash API
+$env:DOTNET_ENVIRONMENT = "Development"  # Required for the optional CommerceApi Adyen fallback; the launcher no longer sets it
 $env:Carwash__ApiPort = "5000"
 
 # Digital Site (run-dashboard.ps1 only; each app also gets its own ServiceBus__TopicName/SubscriptionName)

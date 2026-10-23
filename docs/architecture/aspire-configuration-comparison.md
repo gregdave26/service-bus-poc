@@ -96,7 +96,7 @@ comparison evidence.
 | `ServiceBus__TopicName` | Unconditionally `contact.events` for contact apps | Retains a nonempty value; otherwise `contact.events` |
 | `ServiceBus__SubscriptionName` | Sets each consumer's fixed name before starting its process | Explicitly sets each resource's fixed name |
 | `Dashboard__*` | Forces reporting enabled, selected URL/port, heartbeat 5s, timeout 5s | No explicit AppHost override; reporting defaults to enabled, URL `http://localhost:5100`, heartbeat 5s, timeout 3s unless configured |
-| Environment/logging | Sets `DOTNET_Environment=Development` and several logging variables | No equivalent assignments in the launcher/AppHost; do not assume identical effective environment without runtime inspection |
+| Environment/logging | Loads `.env` into the process environment (including `DOTNET_ENVIRONMENT` when set there) and sets several logging variables | No equivalent assignments in the launcher/AppHost; do not assume identical effective environment without runtime inspection |
 | Digital Site settings | Sets local commerce URLs and per-app overrides | No Digital Site resources or equivalent wiring |
 
 The two default connection strings address the same local AMQP port, but

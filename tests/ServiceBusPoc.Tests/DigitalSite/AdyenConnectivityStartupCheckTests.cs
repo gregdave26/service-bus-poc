@@ -96,13 +96,47 @@ public sealed class AdyenConnectivityStartupCheckTests
         _payments.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public async Task StartAsync_WhenProviderRejectsSession_AllowsDevelopmentFallback()
+    [Theory]
+    [InlineData(408)]
+    [InlineData(429)]
+    [InlineData(500)]
+    [InlineData(503)]
+    public async Task StartAsync_WhenGatewayStatusIsTransient_AllowsDevelopmentFallback(int httpStatusCode)
     {
-        SetupConnectivityFailure(new PaymentGatewayException("rejected"));
+        SetupConnectivityFailure(new PaymentGatewayException("unavailable", httpStatusCode));
         var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
         await CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None);
         Assert.True(state.FallbackActive);
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(404)]
+    [InlineData(422)]
+    public async Task StartAsync_WhenGatewayRejectsConfigurationOrCredentials_PropagatesEvenWithOptIn(int httpStatusCode)
+    {
+        SetupConnectivityFailure(new PaymentGatewayException("rejected", httpStatusCode));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+
+        await Assert.ThrowsAsync<PaymentGatewayException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None));
+
+        Assert.Equal(PaymentGatewayMode.Adyen, state.EffectiveMode);
+        Assert.False(state.FallbackActive);
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenGatewayFailureHasNoStatus_PropagatesEvenWithOptIn()
+    {
+        SetupConnectivityFailure(new PaymentGatewayException("incomplete session"));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+
+        await Assert.ThrowsAsync<PaymentGatewayException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None));
+
+        Assert.False(state.FallbackActive);
     }
 
     [Fact]

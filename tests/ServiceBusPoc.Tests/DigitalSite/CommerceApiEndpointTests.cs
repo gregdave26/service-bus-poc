@@ -63,6 +63,7 @@ public sealed class CommerceApiEndpointTests : IDisposable
         {
             ["FeatureManagement:UseRealAdyen"] = "false",
             ["DigitalSite:PaymentGateway"] = legacyMode,
+            ["DigitalSite:AllowDevelopmentAdyenFallback"] = "true",
         }, services => services.AddSingleton(payments.Object));
         using var client = api.CreateClient();
 
@@ -163,6 +164,61 @@ public sealed class CommerceApiEndpointTests : IDisposable
         });
 
         Assert.Throws<OptionsValidationException>(() => api.CreateClient());
+    }
+
+    [Fact]
+    public void Startup_WhenRealFlagEnabledWithMissingAdyenSettings_DoesNotFallback()
+    {
+        using var api = new CommerceApiFactory(_commerceTools, new Dictionary<string, string?>
+        {
+            ["FeatureManagement:UseRealAdyen"] = "true",
+            ["DigitalSite:PaymentGateway"] = "Stub",
+            ["DigitalSite:AllowDevelopmentAdyenFallback"] = "true",
+        });
+
+        Assert.Throws<OptionsValidationException>(() => api.CreateClient());
+    }
+
+    [Fact]
+    public void Startup_WhenFallbackOptInOutsideDevelopment_FailsValidation()
+    {
+        using var api = new CommerceApiFactory(
+            _commerceTools,
+            CompleteAdyenSettings(fallbackOptIn: true),
+            environmentName: "Production");
+
+        Assert.Throws<OptionsValidationException>(() => api.CreateClient());
+    }
+
+    [Fact]
+    public async Task Checkout_AfterStartupFallback_UsesStubWithoutCallingAdyenAgain()
+    {
+        var payments = new Mock<IPaymentsService>();
+        payments.Setup(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException("unreachable"));
+        using var api = new CommerceApiFactory(
+            _commerceTools,
+            CompleteAdyenSettings(fallbackOptIn: true),
+            services => services.AddSingleton(payments.Object));
+        using var client = api.CreateClient();
+
+        var cartResponse = await client.PostAsJsonAsync(
+            $"{Api}/carts",
+            new CreateCartRequest(CrmId, "No", new VehicleSelection("RegoLookup", "1abc123"), "CLAS"));
+        var cart = await cartResponse.Content.ReadFromJsonAsync<CartView>(Json);
+        var checkoutResponse = await client.PostAsJsonAsync(
+            $"{Api}/checkout/session",
+            new StartCheckoutRequest(cart!.Id, CrmId, $"{CommerceApiFactory.AllowedOrigin}/digital-site", true, true));
+        var session = await checkoutResponse.Content.ReadFromJsonAsync<CheckoutSessionResponse>(Json);
+
+        Assert.Equal(HttpStatusCode.OK, checkoutResponse.StatusCode);
+        Assert.Equal("Stub", session!.Gateway);
+        payments.Verify(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -391,6 +447,24 @@ public sealed class CommerceApiEndpointTests : IDisposable
     {
         Assert.True((await PreflightAsync(CommerceApiFactory.AllowedOrigin)).Headers.Contains("Access-Control-Allow-Origin"));
         Assert.False((await PreflightAsync("https://attacker.example")).Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    private static Dictionary<string, string?> CompleteAdyenSettings(bool fallbackOptIn)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["DigitalSite:PaymentGateway"] = "Adyen",
+            ["Adyen:MerchantAccount"] = "merchant",
+            ["Adyen:ApiKey"] = "test-api-key",
+            ["Adyen:ClientKey"] = "client",
+            ["Adyen:HmacKey"] = new string('A', 64),
+        };
+        if (fallbackOptIn)
+        {
+            settings["DigitalSite:AllowDevelopmentAdyenFallback"] = "true";
+        }
+
+        return settings;
     }
 
     private async Task<HttpResponseMessage> PreflightAsync(string origin)

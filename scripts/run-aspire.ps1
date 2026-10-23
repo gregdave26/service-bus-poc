@@ -32,6 +32,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
 $appHostProject = Join-Path $projectRoot 'src\ServiceBusPoc.AppHost\ServiceBusPoc.AppHost.csproj'
+$logsPath = Join-Path $projectRoot 'logs'
+$appHostBuildProcess = $null
 $emulatorStartedByScript = $false
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
@@ -97,6 +99,18 @@ try {
         throw "Aspire AppHost project was not found: $appHostProject"
     }
 
+    if (-not $NoBuild) {
+        New-Item -ItemType Directory -Path $logsPath -Force | Out-Null
+        $buildTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+        $appHostBuildProcess = Start-Process -FilePath 'dotnet' `
+            -ArgumentList @('build', $appHostProject, '--configuration', 'Debug', '--verbosity', 'quiet') `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $logsPath "apphost-build-$buildTimestamp.log") `
+            -RedirectStandardError (Join-Path $logsPath "apphost-build-error-$buildTimestamp.log")
+        Write-Host "Building Aspire AppHost in background (PID: $($appHostBuildProcess.Id))..." -ForegroundColor Gray
+    }
+
     if (-not $NoEmulator) {
         if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
             throw 'Docker was not found.'
@@ -104,6 +118,10 @@ try {
 
         if (-not (Test-Path -LiteralPath $envFilePath -PathType Leaf)) {
             throw "Environment file was not found: $envFilePath. Copy .env.example to .env and set SQL_PASSWORD."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($env:SQL_PASSWORD)) {
+            throw "SQL_PASSWORD is required. Set it in $envFilePath or the current environment."
         }
 
         $composeDirectory = Split-Path -Parent $composePath
@@ -147,15 +165,21 @@ try {
         throw "Aspire certificate trust failed with exit code $LASTEXITCODE."
     }
 
+    if ($null -ne $appHostBuildProcess) {
+        $appHostBuildProcess.WaitForExit()
+        if ($appHostBuildProcess.ExitCode -ne 0) {
+            throw "Aspire AppHost build failed (exit code $($appHostBuildProcess.ExitCode)). See logs\apphost-build-*.log"
+        }
+        Write-Host 'Aspire AppHost build completed.' -ForegroundColor Green
+    }
+
     $aspireArguments = @(
         'run',
         '--apphost', $appHostProject,
         '--non-interactive',
-        '--nologo'
+        '--nologo',
+        '--no-build'
     )
-    if ($NoBuild) {
-        $aspireArguments += '--no-build'
-    }
 
     Write-Host ''
     Write-Host 'Starting Aspire AppHost...' -ForegroundColor Cyan
@@ -166,5 +190,8 @@ try {
     }
 }
 finally {
+    if ($null -ne $appHostBuildProcess -and -not $appHostBuildProcess.HasExited) {
+        Stop-Process -Id $appHostBuildProcess.Id -Force -ErrorAction SilentlyContinue
+    }
     Stop-Emulator
 }

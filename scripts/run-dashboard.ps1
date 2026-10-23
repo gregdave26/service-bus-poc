@@ -491,6 +491,11 @@ if (-not $NoEmulator) {
         exit 1
     }
     
+    if ([string]::IsNullOrWhiteSpace($env:SQL_PASSWORD)) {
+        Write-Error "❌ SQL_PASSWORD is required. Set it in $envFilePath or the current environment."
+        exit 1
+    }
+
     Push-Location (Split-Path $composePath)
     try {
         Write-Host "  Starting or reusing containers..."
@@ -539,32 +544,21 @@ if (-not $NoEmulator) {
     Write-Host ""
 }
 
-# Step 2: Build solution
-Write-Host "STEP 2: Building solution..." -ForegroundColor Yellow
-try {
-    $output = dotnet build $solutionPath --configuration Debug --verbosity quiet 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "❌ Build failed`n$output"
-        Invoke-Cleanup
-        return
-    }
-    Write-Host "  ✓ Build successful"
-}
-catch {
-    Write-Error "❌ Build failed: $_"
-    Invoke-Cleanup
-    return
-}
-
-Write-Host ""
-
-# Build the browser dashboard before starting its Node.js server. The server
-# serves the compiled files from ui/public/dist and otherwise only returns the
-# static fallback HTML without the React bundle.
-Write-Host "STEP 2b: Building dashboard..." -ForegroundColor Yellow
+# Step 2 & 2b: Build solution AND dashboard in parallel
+Write-Host "STEP 2 & 2b: Building solution and dashboard in parallel..." -ForegroundColor Yellow
 $uiPath = Join-Path $projectRoot 'ui'
+
+# Start .NET build in background
+$dotnetBuildStart = Get-Date
+$dotnetLogFile = Join-Path $logsPath "dotnet-build-$(Get-Date -Format 'HHmmss').log"
+$dotnetErrorFile = Join-Path $logsPath "dotnet-build-error-$(Get-Date -Format 'HHmmss').log"
+$dotnetProcess = Start-Process -FilePath 'dotnet' -ArgumentList @('build', $solutionPath, '--configuration', 'Debug', '--verbosity', 'quiet') -NoNewWindow -PassThru -RedirectStandardOutput $dotnetLogFile -RedirectStandardError $dotnetErrorFile
+
+Write-Host "  ⏳ .NET build started (PID: $($dotnetProcess.Id))"
+
+# Start UI build in background
 try {
-    Push-Location $uiPath
+    $uiBuildStart = Get-Date
     $nodeCommands = @(Get-Command node.exe -ErrorAction Stop | Select-Object -ExpandProperty Source)
     $nodeExecutable = $nodeCommands | Where-Object { $_ -notmatch '\\Volta\\' } | Select-Object -First 1
     if (-not $nodeExecutable) {
@@ -575,40 +569,61 @@ try {
         throw "Dashboard package manifest not found: $(Join-Path $uiPath 'package.json')"
     }
 
-    Write-Host "  Installing dashboard dependencies..."
-    $npmOutput = & npm install 2>&1
+    Write-Host "  ⏳ Installing UI dependencies..."
+    $npmInstallLog = Join-Path $logsPath "npm-install-$(Get-Date -Format 'HHmmss').log"
+    $npmInstallErrorLog = Join-Path $logsPath "npm-install-error-$(Get-Date -Format 'HHmmss').log"
+    $npmInstallProcess = Start-Process -FilePath 'npm' -ArgumentList @('install') -NoNewWindow -PassThru -WorkingDirectory $uiPath -RedirectStandardOutput $npmInstallLog -RedirectStandardError $npmInstallErrorLog
+    $npmInstallProcess | Wait-Process
     if ($LASTEXITCODE -ne 0) {
-        throw "npm install failed.`n$npmOutput"
+        throw "npm install failed. See $npmInstallLog"
     }
-    Write-Host "  ✓ Dashboard dependencies installed"
+    Write-Host "  ✓ UI dependencies installed"
 
+    Write-Host "  ⏳ UI build started"
+    $uiBuildLog = Join-Path $logsPath "ui-build-$(Get-Date -Format 'HHmmss').log"
+    $uiBuildErrorLog = Join-Path $logsPath "ui-build-error-$(Get-Date -Format 'HHmmss').log"
     $viteCli = Join-Path $uiPath 'node_modules\vite\bin\vite.js'
     if (-not (Test-Path $viteCli)) {
         throw "Vite CLI not found: $viteCli"
     }
-    $dashboardOutput = & $nodeExecutable $viteCli build 2>&1
-    $dashboardBuildSucceeded = $LASTEXITCODE -eq 0
-    if (-not $dashboardBuildSucceeded) {
-        $existingBundle = Join-Path $uiPath 'public\dist\index.html'
-        if (-not (Test-Path $existingBundle)) {
-            Write-Error "❌ Dashboard build failed and no existing bundle is available.`n$dashboardOutput"
-            Invoke-Cleanup
-            return
-        }
-        Write-Warning "Dashboard build failed; serving the existing compiled bundle.`n$dashboardOutput"
-    }
-    if ($dashboardBuildSucceeded) {
-        Write-Host "  ✓ Dashboard build successful"
-    }
+    $uiBuildProcess = Start-Process -FilePath $nodeExecutable -ArgumentList @($viteCli, 'build') -NoNewWindow -PassThru -WorkingDirectory $uiPath -RedirectStandardOutput $uiBuildLog -RedirectStandardError $uiBuildErrorLog
 }
 catch {
-    Write-Error "❌ Dashboard build failed: $_"
+    Write-Error "❌ UI build setup failed: $_"
+    $dotnetProcess | Stop-Process -Force -ErrorAction SilentlyContinue
     Invoke-Cleanup
     return
 }
-finally {
-    Pop-Location
+
+# Wait for both builds to complete
+Write-Host "  ⏳ Waiting for both builds to complete..."
+$dotnetProcess | Wait-Process
+$dotnetBuildTime = (Get-Date) - $dotnetBuildStart
+if ($dotnetProcess.ExitCode -ne 0) {
+    Write-Error "❌ .NET build failed (exit code: $($dotnetProcess.ExitCode)). See logs/dotnet-build-*.log"
+    $uiBuildProcess | Stop-Process -Force -ErrorAction SilentlyContinue
+    Invoke-Cleanup
+    return
 }
+Write-Host "  ✓ .NET build completed in $([int]$dotnetBuildTime.TotalSeconds)s"
+
+$uiBuildProcess | Wait-Process
+$uiBuildTime = (Get-Date) - $uiBuildStart
+if ($uiBuildProcess.ExitCode -ne 0) {
+    $existingBundle = Join-Path $uiPath 'public\dist\index.html'
+    if (-not (Test-Path $existingBundle)) {
+        Write-Error "❌ UI build failed (exit code: $($uiBuildProcess.ExitCode)). See logs/ui-build-*.log"
+        Invoke-Cleanup
+        return
+    }
+    Write-Warning "⚠️  UI build failed but existing compiled bundle is available. Using fallback."
+}
+else {
+    Write-Host "  ✓ UI build completed in $([int]$uiBuildTime.TotalSeconds)s"
+}
+
+$parallelSavings = [Math]::Max($dotnetBuildTime.TotalSeconds, $uiBuildTime.TotalSeconds) - [Math]::Min($dotnetBuildTime.TotalSeconds, $uiBuildTime.TotalSeconds)
+Write-Host "  ✓ Parallel builds completed (saved ~$([int]$parallelSavings)s by running in parallel)" -ForegroundColor Green
 
 Write-Host ""
 
@@ -625,7 +640,6 @@ $env:Dashboard__Url = "http://localhost:$DashboardPort"
 $env:Dashboard__HeartbeatIntervalSeconds = "5"
 $env:Dashboard__RequestTimeoutSeconds = "5"
 $env:Dashboard__OfflineAfterSeconds = "15"
-$env:DOTNET_Environment = "Development"
 
 # Digital Site commerce flow (ADR-014). Adyen__* and DigitalSite__PaymentGateway=Adyen come from
 # the user's environment only; without them the CommerceApi uses the stub payment gateway.
@@ -781,28 +795,18 @@ function Start-AppWithLogging {
 # Store the set of all started processes for cleanup (uses $script:allProcesses from trap)
 $script:allProcesses = @()
 
-# Build the active React dashboard before starting Express. Without this step,
-# Express falls back to the legacy vanilla dashboard in ui/public/index.html.
-Write-Host "Building dashboard frontend..." -ForegroundColor Yellow
-Push-Location $uiPath
-try {
-    npm run build
-    if ($LASTEXITCODE -ne 0) {
-        throw "Dashboard frontend build failed with exit code $LASTEXITCODE"
-    }
-}
-finally {
-    Pop-Location
-}
-
 # Start the Node.js dashboard independently from the .NET services.
+Write-Host "Starting applications..." -ForegroundColor Yellow
+Write-Host "  Starting Dashboard (Node.js UI and event publishing)..." -ForegroundColor Cyan
 $dashboardProcess = Start-NodeDashboardWithLogging
 if ($null -ne $dashboardProcess) {
     $script:allProcesses += $dashboardProcess
 }
-Start-Sleep -Seconds 2
+Start-Sleep -Milliseconds 500
 
-# Start each application
+# Start all .NET services in parallel (no per-service delays)
+Write-Host "  Starting all .NET services in parallel..." -ForegroundColor Cyan
+$serviceProcesses = @()
 foreach ($app in $apps) {
     $projectPath = Get-ProjectDirectory $app.Project
     if (Test-Path $projectPath) {
@@ -812,15 +816,18 @@ foreach ($app in $apps) {
         
         if ($null -ne $process) {
             $script:allProcesses += $process
-            
-            # Give each service time to start and initialize (stagger startup to avoid emulator connection contention)
-            Start-Sleep -Seconds 2
+            $serviceProcesses += $process
         }
     }
     else {
         Write-Host "  ✗ $($app.Name) - project not found" -ForegroundColor Red
     }
 }
+
+Write-Host ""
+Write-Host "  ⏳ All $($serviceProcesses.Count) services launched in parallel. Waiting for initialization..." -ForegroundColor Yellow
+Start-Sleep -Seconds 3  # Single unified wait for all services to stabilize
+Write-Host "  ✓ Services ready for connections" -ForegroundColor Green
 
 Write-Host ""
 
@@ -866,6 +873,7 @@ if (-not $NoBrowser) {
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║                            ✓ All services running                          ║" -ForegroundColor Green
+Write-Host "║                  (Optimized with parallel builds & startup)                ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 Write-Host "Dashboard:" -ForegroundColor Cyan

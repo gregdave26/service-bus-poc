@@ -84,7 +84,7 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
                 "Adyen session creation failed with {StatusCode} for {MerchantReference}",
                 (int)response.StatusCode,
                 request.MerchantReference);
-            throw new PaymentGatewayException($"Adyen did not create a session (HTTP {(int)response.StatusCode})");
+            throw new PaymentGatewayException($"Adyen did not create a session (HTTP {(int)response.StatusCode})", (int)response.StatusCode);
         }
 
         var session = response.Created();

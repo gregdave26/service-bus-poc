@@ -40,11 +40,20 @@ registering or validating an unselected real gateway.
 Capture the selected mode in options registration and runtime state. All
 request-time services use that snapshot; configuration changes require restart.
 Fallback requires `DigitalSite__AllowDevelopmentAdyenFallback=true` and the
-Development hosting environment. Only recognized startup connectivity failures
-qualify; missing configuration, cancellation, unexpected failures and payment
-request failures do not silently select Stub. Status and a persistent UI warning
+Development hosting environment. Only transient startup connectivity failures
+qualify: transport failures, HTTP timeouts, and gateway responses HTTP 408, 429
+or 5xx. Authentication and authorisation rejections (HTTP 401 and 403), other
+rejections (for example HTTP 400 or 404), missing or invalid configuration,
+cancellation, unexpected failures, and payment request failures all fail startup
+or the request and never select Stub. Status and a persistent UI warning
 distinguish fallback from deliberate Stub selection. Selecting real Adyen does
 not select live versus sandbox.
+
+The startup check runs as a hosted service that completes before the host
+begins serving requests, so no request reaches Adyen before the gateway is
+verified or a permitted fallback is selected. Runtime verification showed
+requests held until the check finished, then answered through the selected
+gateway.
 
 ## Consequences
 

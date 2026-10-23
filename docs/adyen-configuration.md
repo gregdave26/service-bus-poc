@@ -3,7 +3,9 @@ To configure the real Adyen Card Component, you need values from the **Adyen Cus
 Adyen startup connectivity failures stop the application by default. For an
 explicit Development-only opt-in to simulated payments, see
 [startup fallback and its visible warnings](digital-site-configuration.md#optional-development-only-startup-fallback).
-Payment-request failures never trigger stub fallback.
+The opt-in covers only transport failures, timeouts and HTTP 408/429/5xx;
+authentication and configuration rejections always stop startup. Payment-request
+failures never trigger stub fallback.
 
 ## 1. Create or access an Adyen test account
 

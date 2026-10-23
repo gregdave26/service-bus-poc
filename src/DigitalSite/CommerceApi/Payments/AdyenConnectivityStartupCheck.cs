@@ -58,9 +58,7 @@ public sealed class AdyenConnectivityStartupCheck : IHostedService
             await adyen.CheckConnectivityAsync(cancellationToken);
             _logger.LogInformation("Adyen connectivity check succeeded; using the {PaymentGateway} payment gateway", _state.EffectiveMode);
         }
-        catch (Exception exception) when (
-            !cancellationToken.IsCancellationRequested
-            && exception is HttpRequestException or PaymentGatewayException or TaskCanceledException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested && IsFallbackEligible(exception))
         {
             if (!allowFallback)
             {
@@ -78,6 +76,13 @@ public sealed class AdyenConnectivityStartupCheck : IHostedService
                 "STUB PAYMENT FALLBACK ACTIVE. Restart the application after fixing the Adyen connection to retry Adyen; automatic recovery is disabled");
         }
     }
+
+    private static bool IsFallbackEligible(Exception exception) => exception switch
+    {
+        HttpRequestException or TaskCanceledException => true,
+        PaymentGatewayException { HttpStatusCode: var status } => status is 408 or 429 or >= 500,
+        _ => false,
+    };
 
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

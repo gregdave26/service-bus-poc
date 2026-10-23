@@ -573,9 +573,9 @@ try {
     $npmInstallLog = Join-Path $logsPath "npm-install-$(Get-Date -Format 'HHmmss').log"
     $npmInstallErrorLog = Join-Path $logsPath "npm-install-error-$(Get-Date -Format 'HHmmss').log"
     $npmInstallProcess = Start-Process -FilePath 'npm' -ArgumentList @('install') -NoNewWindow -PassThru -WorkingDirectory $uiPath -RedirectStandardOutput $npmInstallLog -RedirectStandardError $npmInstallErrorLog
-    $npmInstallProcess | Wait-Process
-    if ($LASTEXITCODE -ne 0) {
-        throw "npm install failed. See $npmInstallLog"
+    $npmInstallProcess.WaitForExit()
+    if ($npmInstallProcess.ExitCode -ne 0) {
+        throw "npm install failed (exit code: $($npmInstallProcess.ExitCode)). See $npmInstallLog and $npmInstallErrorLog"
     }
     Write-Host "  ✓ UI dependencies installed"
 

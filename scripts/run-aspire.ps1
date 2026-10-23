@@ -75,8 +75,9 @@ function Resolve-AspireCli {
     }
 
     $packageRoot = Join-Path $env:USERPROFILE '.nuget\packages\aspire.cli.win-x64'
+    # [Version] rejects prerelease suffixes, so parse the core version and let stable releases rank above prereleases.
     $latestPackage = Get-ChildItem -LiteralPath $packageRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object { [Version]$_.Name } -Descending |
+        Sort-Object { [Version]($_.Name -split '-', 2)[0] }, { $_.Name -notmatch '-' } -Descending |
         Select-Object -First 1
     if ($null -ne $latestPackage) {
         $bundledCli = Join-Path $latestPackage.FullName 'tools\net10.0\win-x64\aspire.exe'

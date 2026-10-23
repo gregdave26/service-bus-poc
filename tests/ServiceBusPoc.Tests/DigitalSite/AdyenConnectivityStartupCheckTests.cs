@@ -1,6 +1,8 @@
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
@@ -25,28 +27,144 @@ public sealed class AdyenConnectivityStartupCheckTests
         Assert.Equal(PaymentGatewayMode.AdyenComponent, state.EffectiveMode);
     }
 
-    [Fact]
-    public async Task StartAsync_WhenConnectivityFails_SwitchesToStubMode()
+    [Theory]
+    [InlineData(PaymentGatewayMode.Adyen)]
+    [InlineData(PaymentGatewayMode.AdyenComponent)]
+    public async Task StartAsync_WhenDevelopmentFallbackEnabled_ReportsSimulatedPayments(PaymentGatewayMode mode)
     {
-        var response = new Mock<ISessionsApiResponse>();
-        response.SetupGet(r => r.IsCreated).Returns(false);
-        _payments
-            .Setup(p => p.SessionsAsync(
-                It.IsAny<CreateCheckoutSessionRequest>(),
-                It.IsAny<Adyen.Core.Client.RequestOptions>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response.Object);
-        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.AdyenComponent);
-        var check = CreateStartupCheck(state, CreateAdapter());
+        SetupConnectivityFailure(new HttpRequestException("sensitive upstream response"));
+        var state = new PaymentGatewayRuntimeState(mode);
+        var logger = new Mock<ILogger<AdyenConnectivityStartupCheck>>();
+        var check = CreateStartupCheck(state, CreateAdapter(), allowFallback: true, logger: logger.Object);
 
         await check.StartAsync(CancellationToken.None);
 
         Assert.Equal(PaymentGatewayMode.Stub, state.EffectiveMode);
+        Assert.Equal(mode, state.ConfiguredMode);
+        Assert.True(state.FallbackActive);
+        Assert.Equal("AdyenStartupConnectivityFailed", state.FallbackReason);
+        logger.Verify(log => log.Log(
+            LogLevel.Error, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((value, _) => value.ToString()!.Contains("payments are simulated")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
+        logger.Verify(log => log.Log(
+            LogLevel.Warning, It.IsAny<EventId>(),
+            It.Is<It.IsAnyType>((value, _) => value.ToString()!.Contains("Restart")),
+            null, It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once);
     }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Test")]
+    [InlineData("Staging")]
+    [InlineData("Production")]
+    public async Task StartAsync_WithoutOptIn_PropagatesConnectivityFailure(string environment)
+    {
+        var failure = new HttpRequestException("unreachable");
+        SetupConnectivityFailure(failure);
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), environment).StartAsync(CancellationToken.None));
+
+        Assert.Same(failure, exception);
+        Assert.Equal(PaymentGatewayMode.Adyen, state.EffectiveMode);
+        Assert.False(state.FallbackActive);
+    }
+
+    [Theory]
+    [InlineData("Test", PaymentGatewayMode.Adyen)]
+    [InlineData("Staging", PaymentGatewayMode.AdyenComponent)]
+    [InlineData("Production", PaymentGatewayMode.Stub)]
+    public async Task StartAsync_WithOptInOutsideDevelopment_RejectsConfiguration(string environment, PaymentGatewayMode mode)
+    {
+        var state = new PaymentGatewayRuntimeState(mode);
+        await Assert.ThrowsAsync<OptionsValidationException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), environment, true).StartAsync(CancellationToken.None));
+        _payments.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenStubSelected_DoesNotCheckConnectivity()
+    {
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Stub);
+        var check = CreateStartupCheck(state, CreateAdapter());
+        await check.StartAsync(CancellationToken.None);
+        await check.StopAsync(CancellationToken.None);
+        Assert.False(state.FallbackActive);
+        Assert.Null(state.FallbackReason);
+        _payments.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenProviderRejectsSession_AllowsDevelopmentFallback()
+    {
+        SetupConnectivityFailure(new PaymentGatewayException("rejected"));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+        await CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None);
+        Assert.True(state.FallbackActive);
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenUnexpectedFailure_DoesNotFallback()
+    {
+        SetupConnectivityFailure(new InvalidOperationException("bug"));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None));
+        Assert.False(state.FallbackActive);
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCancelled_DoesNotFallback()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        SetupConnectivityFailure(new OperationCanceledException(cancellation.Token));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(cancellation.Token));
+        Assert.False(state.FallbackActive);
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenHttpTimeout_AllowsDevelopmentFallback()
+    {
+        SetupConnectivityFailure(new TaskCanceledException("timeout"));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+        await CreateStartupCheck(state, CreateAdapter(), allowFallback: true).StartAsync(CancellationToken.None);
+        Assert.True(state.FallbackActive);
+    }
+
+    [Fact]
+    public async Task RuntimeGateway_WhenPaymentRequestFails_DoesNotFallback()
+    {
+        SetupConnectivityFailure(new HttpRequestException("payment failure"));
+        var state = new PaymentGatewayRuntimeState(PaymentGatewayMode.Adyen);
+        var gateway = new RuntimePaymentGatewayAdapter(state, CreateAdapter(), new StubPaymentGateway(TimeProvider.System));
+        var request = new CheckoutSessionRequest(
+            "cart", "payment", "reference", Money.FromCents("AUD", 100),
+            "http://localhost:5100", "correlation", null, null);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            gateway.CreateCheckoutSessionAsync(request, CancellationToken.None));
+
+        Assert.Equal(PaymentGatewayMode.Adyen, gateway.Mode);
+        Assert.False(state.FallbackActive);
+    }
+
+    private void SetupConnectivityFailure(Exception exception) =>
+        _payments.Setup(payment => payment.SessionsAsync(
+            It.IsAny<CreateCheckoutSessionRequest>(),
+            It.IsAny<Adyen.Core.Client.RequestOptions>(),
+            It.IsAny<CancellationToken>())).ThrowsAsync(exception);
 
     private AdyenConnectivityStartupCheck CreateStartupCheck(
         PaymentGatewayRuntimeState state,
-        AdyenPaymentAdapter adapter)
+        AdyenPaymentAdapter adapter,
+        string environment = "Development",
+        bool allowFallback = false,
+        ILogger<AdyenConnectivityStartupCheck>? logger = null)
     {
         var serviceProvider = new Mock<IServiceProvider>();
         serviceProvider
@@ -57,10 +175,14 @@ public sealed class AdyenConnectivityStartupCheckTests
         var scopeFactory = new Mock<IServiceScopeFactory>();
         scopeFactory.Setup(factory => factory.CreateScope()).Returns(scope.Object);
 
+        var hostEnvironment = new Mock<IHostEnvironment>();
+        hostEnvironment.SetupGet(host => host.EnvironmentName).Returns(environment);
         return new AdyenConnectivityStartupCheck(
             scopeFactory.Object,
             state,
-            NullLogger<AdyenConnectivityStartupCheck>.Instance);
+            Options.Create(new DigitalSiteSettings { AllowDevelopmentAdyenFallback = allowFallback }),
+            hostEnvironment.Object,
+            logger ?? NullLogger<AdyenConnectivityStartupCheck>.Instance);
     }
 
     private AdyenPaymentAdapter CreateAdapter() =>

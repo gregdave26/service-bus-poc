@@ -158,6 +158,10 @@ function Get-RunningDashboardInstances {
 }
 
 function Invoke-AdyenConnectivityCheck {
+    if (Test-Path Env:\FeatureManagement__UseRealAdyen) {
+        Write-Host "  Payment selection is feature-flag controlled; CommerceApi will evaluate UseRealAdyen and run its authoritative startup check." -ForegroundColor Yellow
+        return
+    }
     $configuredGateway = $env:DigitalSite__PaymentGateway
     if ($configuredGateway -notin @('Adyen', 'AdyenComponent')) {
         Write-Host "  Adyen connectivity check skipped (payment gateway: $(if ($configuredGateway) { $configuredGateway } else { 'Stub' }))" -ForegroundColor DarkGray
@@ -174,12 +178,12 @@ function Invoke-AdyenConnectivityCheck {
     try {
         & $probeScript -EnvironmentFile $envFilePath
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  ⚠ Adyen connectivity check failed; CommerceApi will apply its normal Stub fallback." -ForegroundColor Yellow
+            Write-Host "  ⚠ Adyen connectivity check failed; CommerceApi startup will fail unless Development-only fallback is explicitly enabled." -ForegroundColor Yellow
         }
     }
     catch {
         Write-Host "  ✗ Adyen connectivity check could not run: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "  CommerceApi will apply its normal Stub fallback." -ForegroundColor Yellow
+        Write-Host "  CommerceApi will apply its startup validation and explicit Development-only fallback policy." -ForegroundColor Yellow
     }
 }
 
@@ -876,6 +880,9 @@ Write-Host "  🟢 Carwash        - Receives hasCarwashProduct=true"
 Write-Host "  🛒 Digital Site   - commercetools stub ($commerceToolsStubUrl), CommerceApi ($commerceApiUrl),"
 Write-Host "                      CartProcessor and FulfilmentStub on commerce.events"
 Write-Host "                      Payment gateway: $(if ($env:DigitalSite__PaymentGateway) { $env:DigitalSite__PaymentGateway } else { 'Stub' })"
+if (Test-Path Env:\FeatureManagement__UseRealAdyen) {
+    Write-Host "                      UseRealAdyen overrides that setting; see CommerceApi logs and /api/digital-site/config for the resolved gateway."
+}
 Write-Host ""
 Write-Host "Usage:" -ForegroundColor Cyan
 Write-Host "  1. Open http://localhost:$DashboardPort in your browser"

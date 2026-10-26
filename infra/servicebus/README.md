@@ -1,6 +1,6 @@
 # Azure Service Bus Emulator - Local Topology
 
-Local equivalent of the Azure `contact.events` topic described in [PROJECT_BRIEF.md](../../PROJECT_BRIEF.md) and [ADR-001](../../docs/decisions/001-emulator-first-validation.md). Runs the official Microsoft Service Bus emulator plus its Azure SQL Edge dependency via Docker Compose.
+Local equivalent of the Azure `contact.events` topic described in [PROJECT_BRIEF.md](../../PROJECT_BRIEF.md) and [ADR-001](../../docs/decisions/001-emulator-first-validation.md). Runs the official Microsoft Service Bus emulator plus its Azure SQL Edge dependency via Compose. Podman is the default runtime; Docker is available as a fallback (see [ADR-015](../../docs/decisions/015-podman-container-runtime.md)).
 
 ## Topology
 
@@ -15,33 +15,41 @@ Defined declaratively in [config.json](./config.json), following the [official e
 
 ## Prerequisites
 
-- Docker Desktop (Linux containers)
+- Podman (rootless) installed in WSL, with `podman-compose` as the compose provider (default), **or** Docker Engine with the Compose v2 plugin installed in WSL (`CONTAINER_RUNTIME=docker`)
+- WSL distribution name in `CONTAINER_WSL_DISTRO` (default `Ubuntu`)
 - Accept the [emulator EULA](https://github.com/Azure/azure-service-bus-emulator-installer/blob/main/EMULATOR_EULA.txt) — required before the container will start
+
+Both runtimes run inside WSL. The PowerShell scripts call them through `wsl`, using the helper in [scripts/container-runtime.ps1](../../scripts/container-runtime.ps1). Select the runtime with the `CONTAINER_RUNTIME` shell environment variable: `podman` (default) or `docker`. It is read from the shell, not from `.env`. Podman and Docker both bind ports `5672` and `5300`, so only one runtime can run the emulator at a time.
+
+```powershell
+$env:CONTAINER_RUNTIME = 'docker'   # current session only; omit to use podman
+```
 
 ## Running
 
 ```powershell
 cd infra/servicebus
-Copy-Item ..\..\.env.example ..\..\.env
+Copy-Item .env.example .env
 # Edit .env: set ACCEPT_EULA=Y and a strong SQL_PASSWORD
-docker compose --env-file ..\..\.env up -d
 ```
 
-Compose reuses existing containers and local images by default. To explicitly
-refresh the emulator images before starting:
+`start-servicebus-emulator.ps1` reads `infra/servicebus/.env`. `run-dashboard.ps1` and `stop-service-bus-poc.ps1` read the repository-root `.env` instead, so keep the same `ACCEPT_EULA` and `SQL_PASSWORD` values in both files until the two paths are unified.
+
+The usual entry point is the script, which uses the configured runtime:
 
 ```powershell
-docker compose --env-file ..\..\.env pull
-docker compose --env-file ..\..\.env up -d
+..\..\scripts\start-servicebus-emulator.ps1
 ```
 
-Compose reuses existing containers and local images by default. To explicitly
-refresh the emulator images before starting:
+To run Compose directly, open a WSL shell in the repository's `infra/servicebus` folder (for example `/mnt/c/path/to/service-bus-poc/infra/servicebus`):
 
-```powershell
-docker compose pull
-docker compose up -d
+```bash
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env pull
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env up -d
 ```
+
+Compose reuses existing containers and local images by default. The `pull` step
+refreshes the emulator images explicitly before starting. With Docker, run `docker compose` with the same arguments, without the `PODMAN_COMPOSE_PROVIDER` prefix.
 
 The emulator listens on:
 - `localhost:5672` — AMQP (used by the .NET apps via the Service Bus SDK)
@@ -49,9 +57,11 @@ The emulator listens on:
 
 Stop and remove containers:
 
-```powershell
-docker compose --env-file ..\..\.env down
+```bash
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env down
 ```
+
+Or run `..\..\scripts\stop-service-bus-poc.ps1` from PowerShell to stop the POC processes and the emulator together.
 
 ## Connecting from .NET apps
 

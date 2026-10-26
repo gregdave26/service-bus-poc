@@ -7,7 +7,7 @@
     with different routing property combinations to verify the producer service works end-to-end.
     
     Prerequisites:
-    - Service Bus emulator running (via Docker Compose)
+    - Service Bus emulator running (via Compose, Podman in WSL by default)
     - ServiceBus__ConnectionString environment variable set
     - .NET 10 SDK installed
 .EXAMPLE

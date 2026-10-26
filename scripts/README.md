@@ -9,10 +9,12 @@ the `scripts` directory; each script resolves paths relative to its own location
 - PowerShell 7+ (cross-platform)
 - .NET 10 SDK
 - Node.js 20+
-- Docker Desktop (for emulator)
+- Podman in WSL (default), or Docker Engine with the Compose v2 plugin in WSL when
+  `CONTAINER_RUNTIME=docker` is set in the shell. `CONTAINER_WSL_DISTRO` selects the
+  WSL distribution (default `Ubuntu`).
 - 4 GB free disk space (for emulator container)
-- For emulator checks, Docker Desktop must be running with Linux containers and the
-  emulator EULA accepted in the repository-root `.env`.
+- For emulator checks, the selected runtime must be running in WSL with Linux containers
+  and the emulator EULA accepted in the repository-root `.env`.
 - SDK-based checks use the local emulator connection string by default. Set
   `ServiceBus__ConnectionString` to override it; no credentials are committed.
 
@@ -48,7 +50,7 @@ unavailable, an entity is missing, or a filter is wrong.
 
 ### `test-emulator-connectivity.ps1` — SDK Connectivity Probe
 
-Checks Docker before starting the compose services, then runs the Verifier's SDK
+Checks the container runtime before starting the compose services, then runs the Verifier's SDK
 probe. The probe creates a sender and message batch without publishing a message.
 It uses no temporary project, downloaded package, or generated source file.
 
@@ -77,7 +79,7 @@ from starting, because CommerceApi performs its own Stub fallback.
 
 ### `check-emulator-status.ps1` — Diagnostics
 
-Reports Docker, container, TCP, AMQP, and recent log status. It is diagnostic only
+Reports runtime, container, TCP, AMQP, and recent log status. It is diagnostic only
 and does not prove that the configured topic topology is correct.
 
 ### `wait-for-servicebus-emulator.ps1` — Readiness Helper
@@ -139,13 +141,15 @@ exited are skipped; other process-stop errors are reported rather than ignored.
 ```
 
 The emulator startup reuses existing containers and local images. It does not
-pull the `latest` images on every run. To explicitly refresh the images:
+pull the `latest` images on every run. To explicitly refresh the images, open a WSL
+shell in the repository's `infra/servicebus` folder and run:
 
-```powershell
-cd ..\infra\servicebus
-docker compose pull
-docker compose up -d
+```bash
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env pull
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env up -d
 ```
+
+With Docker, run `docker compose` with the same arguments, without the `PODMAN_COMPOSE_PROVIDER` prefix.
 
 Pressing `Ctrl+C` in `run-dashboard.ps1` still stops and removes the emulator
 containers as part of normal cleanup.
@@ -297,7 +301,7 @@ logs/
 ├── debug-run-20260915-154201.log       # From debug-run.ps1
 ├── poc-run-20260915-154300.log         # From run-local-poc.ps1
 ├── poc-report-20260915-154300.txt      # Test results summary
-└── emulator-20260915-154300.log        # Docker Compose output (if saved)
+└── emulator-20260915-154300.log        # Compose output (if saved)
 ```
 
 **View logs in real-time:**
@@ -310,8 +314,9 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 
 ## Troubleshooting
 
-### "Docker not found or not running"
-→ Start Docker Desktop and retry
+### "Container runtime not found or not running"
+→ Start Podman (or Docker, with `CONTAINER_RUNTIME=docker`) in WSL and retry
+→ Confirm the WSL distribution: `CONTAINER_WSL_DISTRO` (default `Ubuntu`)
 
 ### ".NET SDK not found"
 → Install .NET 10 SDK from https://dotnet.microsoft.com/download
@@ -323,16 +328,16 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 → Check `dotnet build` output in console; ensure all projects exist
 
 ### Applications start but don't receive messages
-→ Verify Service Bus emulator is running: `docker-compose ps`
+→ Verify Service Bus emulator is running: `.\scripts\check-emulator-status.ps1`
 → Check environment variables are set: `$env:ServiceBus__ConnectionString`
 ### Dashboard not opening in browser
 → Manually navigate to `http://localhost:5100` or `http://localhost:{DashboardPort}`
 → Check firewall is not blocking port 5100
 
 ### Emulator times out or doesn't start
-→ Ensure Docker Desktop is running
-→ Check disk space: `docker system df`
-→ Cleanup old containers: `docker system prune`
+→ Ensure the container runtime is running in WSL
+→ Check disk space: `podman system df` (or `docker system df`)
+→ Cleanup old containers: `podman system prune` (or `docker system prune`)
 
 ---
 

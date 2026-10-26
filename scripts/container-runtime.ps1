@@ -73,6 +73,18 @@ function Get-WslRuntimeCommand {
     return @($Runtime)
 }
 
+function Get-WslRuntimeArguments {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Runtime,
+
+        [Parameter(Mandatory)]
+        [string[]]$Arguments
+    )
+
+    return @('-d', (Get-WslDistro), '--') + (Get-WslRuntimeCommand -Runtime $Runtime) + $Arguments
+}
+
 function Invoke-ContainerRuntime {
     [CmdletBinding()]
     param(
@@ -81,11 +93,11 @@ function Invoke-ContainerRuntime {
     )
 
     $runtime = Get-ContainerRuntime
-    $runtimeCommand = Get-WslRuntimeCommand -Runtime $runtime
+    $wslArguments = Get-WslRuntimeArguments -Runtime $runtime -Arguments $Arguments
     $originalWslEnv = $env:WSLENV
     try {
         $env:WSLENV = Get-WslEnvironmentForwarding
-        & wsl -d (Get-WslDistro) -- @runtimeCommand @Arguments 2>&1 |
+        & wsl @wslArguments 2>&1 |
             ForEach-Object { $_.ToString() -replace "$([char]27)\[[0-9;]*m", '' } |
             Where-Object { $_.Trim() -and $_ -notmatch 'Executing external compose provider' }
         $exitCode = $LASTEXITCODE
@@ -97,6 +109,28 @@ function Invoke-ContainerRuntime {
     if ($exitCode -ne 0) {
         throw "$runtime command failed with exit code ${exitCode}: $($Arguments -join ' ')"
     }
+}
+
+function Get-ContainerComposeArguments {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$ComposePath,
+
+        [string]$EnvFilePath,
+
+        [Parameter(Mandatory)]
+        [string[]]$Arguments
+    )
+
+    $composeArguments = @('compose')
+    if ($EnvFilePath) {
+        $composeArguments += @('--env-file', (ConvertTo-WslPath -WindowsPath $EnvFilePath))
+    }
+    $composeArguments += @('-f', (ConvertTo-WslPath -WindowsPath $ComposePath))
+    $composeArguments += $Arguments
+
+    return $composeArguments
 }
 
 function Invoke-ContainerCompose {
@@ -111,20 +145,54 @@ function Invoke-ContainerCompose {
         [string[]]$Arguments
     )
 
-    $composeFile = ConvertTo-WslPath -WindowsPath $ComposePath
-    $envFile = $null
-    if ($EnvFilePath) {
-        $envFile = ConvertTo-WslPath -WindowsPath $EnvFilePath
+    Invoke-ContainerRuntime -Arguments (Get-ContainerComposeArguments -ComposePath $ComposePath -EnvFilePath $EnvFilePath -Arguments $Arguments)
+}
+
+function Start-ContainerRuntimeProcess {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments,
+
+        [Parameter(Mandatory)]
+        [string]$StandardOutputPath,
+
+        [Parameter(Mandatory)]
+        [string]$StandardErrorPath
+    )
+
+    $runtime = Get-ContainerRuntime
+    $wslArguments = Get-WslRuntimeArguments -Runtime $runtime -Arguments $Arguments
+    $originalWslEnv = $env:WSLENV
+    try {
+        $env:WSLENV = Get-WslEnvironmentForwarding
+        return Start-Process -FilePath 'wsl' -ArgumentList $wslArguments `
+            -RedirectStandardOutput $StandardOutputPath `
+            -RedirectStandardError $StandardErrorPath `
+            -NoNewWindow `
+            -PassThru
+    }
+    finally {
+        $env:WSLENV = $originalWslEnv
+    }
+}
+
+function Stop-ContainerComposeLogStream {
+    [CmdletBinding()]
+    param(
+        [System.Diagnostics.Process]$Process,
+
+        [Parameter(Mandatory)]
+        [string]$ComposePath
+    )
+
+    if ($Process -and -not $Process.HasExited) {
+        Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
     }
 
-    $composeArguments = @('compose')
-    if ($envFile) {
-        $composeArguments += @('--env-file', $envFile)
-    }
-    $composeArguments += @('-f', $composeFile)
-    $composeArguments += $Arguments
-
-    Invoke-ContainerRuntime -Arguments $composeArguments
+    # Killing the wsl.exe wrapper does not stop the compose process running inside WSL.
+    $composeFile = [regex]::Escape((ConvertTo-WslPath -WindowsPath $ComposePath))
+    & wsl -d (Get-WslDistro) -- pkill -f -- "$composeFile.*logs --follow" 2>$null | Out-Null
 }
 
 function Test-ContainerRuntimeAvailable {

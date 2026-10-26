@@ -7,8 +7,8 @@
     This script orchestrates starting the entire Service Bus POC application locally
     in debug mode. It:
     
-    1. Validates prerequisites (.NET 10, Docker Desktop)
-    2. Starts Azure Service Bus emulator via Docker Compose
+    1. Validates prerequisites (.NET 10, Podman or Docker in WSL)
+    2. Starts Azure Service Bus emulator via Compose (Podman by default, or Docker)
     3. Applies emulator topology configuration
     4. Starts all 7 console applications as background jobs
     5. Displays unified logging output
@@ -44,7 +44,7 @@
 
 .NOTES
     Author: Service Bus POC Team
-    Requires: PowerShell 7+, .NET 10 SDK, Docker Desktop
+    Requires: PowerShell 7+, .NET 10 SDK, Podman or Docker installed in WSL
     Environment: Local development only (uses emulator)
 #>
 
@@ -72,6 +72,7 @@ function Get-ProjectDirectory {
     if ($projectFile) { $projectFile.DirectoryName } else { Join-Path $srcPath $ProjectName }
 }
 $logsPath = Join-Path $projectRoot 'logs'
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Default log path if not provided
@@ -115,16 +116,14 @@ catch {
     exit 1
 }
 
-# Check Docker (if emulator needed)
+# Check container runtime (if emulator needed)
 if ($Emulator) {
-    try {
-        $dockerVersion = docker --version
-        Write-Host "  ✓ Docker: $dockerVersion"
-    }
-    catch {
-        Write-Error "❌ Docker Desktop not found or not running. Install from https://www.docker.com/products/docker-desktop"
+    $runtime = Get-ContainerRuntime
+    if (-not (Test-ContainerRuntimeAvailable)) {
+        Write-Error "❌ $runtime not found or not running in WSL distro '$(Get-WslDistro)'"
         exit 1
     }
+    Write-Host "  ✓ Container runtime: $runtime"
 }
 
 # Check solution exists
@@ -143,21 +142,18 @@ if ($Emulator) {
     
     $composePath = Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml'
     if (-not (Test-Path $composePath)) {
-        Write-Warning "⚠️ Docker Compose file not found: $composePath"
+        Write-Warning "⚠️ Compose file not found: $composePath"
         Write-Warning "   Skipping emulator startup. Ensure Service Bus is accessible."
     }
     else {
-        # Check if containers already running
-        $runningContainers = docker-compose -f $composePath ps --quiet 2>$null
+        $runningContainers = Invoke-ContainerCompose -ComposePath $composePath -Arguments @('ps', '--quiet')
         if ($runningContainers) {
             Write-Host "  ℹ Containers already running. Restarting..." -ForegroundColor Cyan
-            docker-compose -f $composePath down | Out-Null
+            Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
         }
         
-        # Start emulator
-        Push-Location (Split-Path $composePath)
         try {
-            $null = docker-compose up -d
+            Invoke-ContainerCompose -ComposePath $composePath -Arguments @('up', '-d') | Out-Null
             Write-Host "  ✓ Emulator containers started"
             
             Wait-ServiceBusEmulatorReady -ComposePath $composePath -InitialDelaySeconds $WaitSeconds
@@ -165,9 +161,6 @@ if ($Emulator) {
         catch {
             Write-Error "❌ Failed to start emulator: $_"
             exit 1
-        }
-        finally {
-            Pop-Location
         }
     }
 }
@@ -380,16 +373,12 @@ finally {
         Write-Host "Stopping emulator..." -ForegroundColor Yellow
         $composePath = Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml'
         if (Test-Path $composePath) {
-            Push-Location (Split-Path $composePath)
             try {
-                docker-compose down | Out-Null
+                Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
                 Write-Host "  ✓ Emulator stopped"
             }
             catch {
                 Write-Warning "  ⚠ Failed to stop emulator: $_"
-            }
-            finally {
-                Pop-Location
             }
         }
     }

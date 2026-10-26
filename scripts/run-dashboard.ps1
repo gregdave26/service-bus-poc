@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script launches the complete Service Bus POC system with a browser dashboard:
     
-    1. Starts Azure Service Bus emulator via Docker Compose
+    1. Starts Azure Service Bus emulator via Compose (Podman by default, or Docker)
     2. Configures the emulator topology (topic, subscriptions, filters)
     3. Starts the Dashboard application (HTTP status + event publishing)
     4. Starts the Producer (publishes sample events every 3 seconds)
@@ -55,7 +55,7 @@
 
 .NOTES
     Author: Service Bus POC Team
-    Requires: PowerShell 7+, .NET 10 SDK, Node.js 20+, Docker Desktop
+    Requires: PowerShell 7+, .NET 10 SDK, Node.js 20+, Podman or Docker installed in WSL
     Environment: Local development only
     
     To stop: Press Ctrl+C in the terminal running this script.
@@ -378,27 +378,25 @@ function Invoke-Cleanup {
         # No remaining processes
     }
 
-    if ($script:emulatorLogProcess -and -not $script:emulatorLogProcess.HasExited) {
-        Stop-Process -Id $script:emulatorLogProcess.Id -Force -ErrorAction SilentlyContinue
+    if ($script:emulatorLogProcess) {
+        Stop-ContainerComposeLogStream -Process $script:emulatorLogProcess -ComposePath (Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml')
         $script:emulatorLogProcess = $null
     }
     
-    # Stop and remove Docker containers
+    # Stop and remove containers
     Write-Host ""
-    Write-Host "Stopping Docker containers:" -ForegroundColor Cyan
+    Write-Host "Stopping containers:" -ForegroundColor Cyan
     try {
         $infraPath = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent (Get-PSCallStack)[-1].ScriptName }
         $projectRoot = Split-Path -Parent $infraPath
-        $composePath = Join-Path $projectRoot 'infra' 'servicebus'
-        
-        if (Test-Path $composePath) {
-            Push-Location $composePath
-            docker-compose --env-file $envFilePath down 2>&1 | ForEach-Object { Write-Host "    $_" }
-            Pop-Location
-            Write-Host "  ✓ Docker containers stopped and removed"
+        $composeFile = Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml'
+
+        if (Test-Path $composeFile) {
+            Invoke-ContainerCompose -ComposePath $composeFile -EnvFilePath $envFilePath -Arguments @('down') | ForEach-Object { Write-Host "    $_" }
+            Write-Host "  ✓ Containers stopped and removed"
         }
     } catch {
-        Write-Host "  ⚠️  Docker cleanup failed (Docker may not be running)"
+        Write-Host "  ⚠️  Container cleanup failed (the container runtime may not be running)"
     }
     
     Write-Host ""
@@ -409,6 +407,7 @@ function Invoke-Cleanup {
     Stop-OrchestrationTranscript
 }
 
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 # Ensure logs directory exists
@@ -456,14 +455,12 @@ catch {
 }
 
 if (-not $NoEmulator) {
-    try {
-        $null = docker --version
-        Write-Host "  ✓ Docker available"
-    }
-    catch {
-        Write-Error "❌ Docker not found or not running"
+    $runtime = Get-ContainerRuntime
+    if (-not (Test-ContainerRuntimeAvailable)) {
+        Write-Error "❌ $runtime not found or not running in WSL distro '$(Get-WslDistro)'"
         exit 1
     }
+    Write-Host "  ✓ $runtime available"
 }
 
 # The local emulator requires explicit EULA acceptance before Compose starts.
@@ -483,36 +480,29 @@ if (-not $NoEmulator) {
     
     $composePath = Join-Path $infraPath 'servicebus' 'compose.yaml'
     if (-not (Test-Path $composePath)) {
-        Write-Error "❌ Docker Compose file not found: $composePath"
+        Write-Error "❌ Compose file not found: $composePath"
         exit 1
     }
     
-    Push-Location (Split-Path $composePath)
     try {
         Write-Host "  Starting or reusing containers..."
-        $null = docker-compose --env-file $envFilePath up -d
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('up', '-d') | Out-Null
         Write-Host "  ✓ Emulator started"
 
         $emulatorTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
         $emulatorStdoutLog = Join-Path $logsPath "emulator-$emulatorTimestamp-stdout.log"
         $emulatorStderrLog = Join-Path $logsPath "emulator-$emulatorTimestamp-stderr.log"
-        $script:emulatorLogProcess = Start-Process `
-            -FilePath 'docker-compose' `
-            -ArgumentList @(
-                '-f', $composePath,
-                '--env-file', $envFilePath,
-                'logs', '--follow', '--no-color', '--timestamps',
-                'emulator', 'sqledge'
-            ) `
-            -WorkingDirectory (Split-Path $composePath) `
-            -RedirectStandardOutput $emulatorStdoutLog `
-            -RedirectStandardError $emulatorStderrLog `
-            -NoNewWindow `
-            -PassThru
+        $script:emulatorLogProcess = Start-ContainerRuntimeProcess `
+            -Arguments (Get-ContainerComposeArguments -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @(
+                'logs', '--follow', '--timestamps', 'emulator', 'sqledge'
+            )) `
+            -StandardOutputPath $emulatorStdoutLog `
+            -StandardErrorPath $emulatorStderrLog
         Write-Host "  Emulator logs: logs/emulator-$emulatorTimestamp-stdout.log and stderr.log"
         
         Wait-ServiceBusEmulatorReady `
             -ComposePath $composePath `
+            -EnvFilePath $envFilePath `
             -CancellationCheck {
                return (Test-ControlCRequested)
             }
@@ -527,9 +517,6 @@ if (-not $NoEmulator) {
         Invoke-Cleanup
         Write-Error "❌ Failed to start emulator: $_"
         return
-    }
-    finally {
-        Pop-Location
     }
     
     Write-Host ""

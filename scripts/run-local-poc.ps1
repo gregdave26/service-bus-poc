@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script runs the entire Service Bus POC end-to-end:
     
-    1. Starts Azure Service Bus emulator via Docker Compose
+    1. Starts Azure Service Bus emulator via Compose (Podman by default, or Docker)
     2. Configures the emulator topology (topic, subscriptions, filters)
     3. Starts all 7 applications as background processes
     4. Runs the Verifier to validate all scenarios
@@ -38,7 +38,7 @@
 
 .NOTES
     Author: Service Bus POC Team
-    Requires: PowerShell 7+, .NET 10 SDK, Docker Desktop
+    Requires: PowerShell 7+, .NET 10 SDK, Podman or Docker installed in WSL
     Environment: Local development only
 #>
 
@@ -63,6 +63,7 @@ function Get-ProjectDirectory {
 $infraPath = Join-Path $projectRoot 'infra'
 $logsPath = Join-Path $projectRoot 'logs'
 $startEmulatorScript = Join-Path $PSScriptRoot 'start-servicebus-emulator.ps1'
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 
 # Ensure logs directory exists
 if (-not (Test-Path $logsPath)) {
@@ -95,14 +96,12 @@ catch {
     exit 1
 }
 
-try {
-    $null = docker --version
-    Write-Host "  ✓ Docker available"
-}
-catch {
-    Write-Error "❌ Docker not found or not running"
+$runtime = Get-ContainerRuntime
+if (-not (Test-ContainerRuntimeAvailable)) {
+    Write-Error "❌ $runtime not found or not running in WSL distro '$(Get-WslDistro)'"
     exit 1
 }
+Write-Host "  ✓ $runtime available"
 
 $solutionPath = Join-Path $srcPath 'ServiceBusPoc.slnx'
 if (-not (Test-Path $solutionPath)) {
@@ -117,7 +116,7 @@ Write-Host "STEP 1: Starting emulator topology..." -ForegroundColor Yellow
 
 $composePath = Join-Path $infraPath 'servicebus' 'compose.yaml'
 if (-not (Test-Path $composePath)) {
-    Write-Error "❌ Docker Compose file not found: $composePath"
+    Write-Error "❌ Compose file not found: $composePath"
     exit 1
 }
 
@@ -289,24 +288,19 @@ if (-not $NoCleanup) {
     }
     Write-Host "  ✓ Consumer processes stopped"
     
-    # Stop emulator
-    Push-Location (Split-Path $composePath)
     try {
-        docker-compose down | Out-Null
+        Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
         Write-Host "  ✓ Emulator stopped"
     }
     catch {
         Write-Warning "  ⚠️ Failed to stop emulator"
-    }
-    finally {
-        Pop-Location
     }
 }
 else {
     Write-Host "CLEANUP: Skipped (applications still running)" -ForegroundColor Yellow
     Write-Host "To stop services manually, run:"
     Write-Host "  Stop-Process -Id <process-id>"
-    Write-Host "  docker-compose -f $composePath down"
+    Write-Host "  .\scripts\stop-service-bus-poc.ps1"
 }
 
 Write-Host ""

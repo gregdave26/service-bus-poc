@@ -6,7 +6,7 @@
 .DESCRIPTION
     Finds processes whose command lines reference this repository or one of the
     Service Bus POC applications, stops their child processes, and brings down
-    the local Docker Compose stack.
+    the local emulator stack through the configured container runtime.
 
     This script does not kill every dotnet or PowerShell process on the machine.
     An editor PowerShell host is stopped only when its PID is explicitly passed.
@@ -30,6 +30,8 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
+
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 
 Write-Host "Stopping Service Bus POC processes for: $projectRoot" -ForegroundColor Cyan
 
@@ -86,15 +88,8 @@ foreach ($processId in ($targetIds | Sort-Object -Descending)) {
 }
 
 if (Test-Path $composePath) {
-    $composeDirectory = Split-Path -Parent $composePath
-    Push-Location $composeDirectory
-    try {
-        if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run docker-compose down')) {
-            docker-compose --env-file $envFilePath down
-        }
-    }
-    finally {
-        Pop-Location
+    if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run compose down')) {
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('down')
     }
 }
 

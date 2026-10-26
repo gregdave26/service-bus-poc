@@ -52,8 +52,25 @@ function ConvertTo-WslPath {
 }
 
 function Get-WslEnvironmentForwarding {
-    $entries = @($env:WSLENV) + $script:WslForwardedVariables
+    # WSLENV forwards unset variables as empty strings, and an empty value would override the Compose env file.
+    $setVariables = $script:WslForwardedVariables | Where-Object { Test-Path -LiteralPath "env:$_" }
+    $entries = @($env:WSLENV) + $setVariables
     return ($entries | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ':'
+}
+
+function Get-WslRuntimeCommand {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Runtime
+    )
+
+    # The Docker Compose plugin installed in WSL would otherwise be picked up by
+    # `podman compose` and fail against the Docker socket.
+    if ($Runtime -eq 'podman') {
+        return @('env', 'PODMAN_COMPOSE_PROVIDER=podman-compose', 'podman')
+    }
+
+    return @($Runtime)
 }
 
 function Invoke-ContainerRuntime {
@@ -64,10 +81,11 @@ function Invoke-ContainerRuntime {
     )
 
     $runtime = Get-ContainerRuntime
+    $runtimeCommand = Get-WslRuntimeCommand -Runtime $runtime
     $originalWslEnv = $env:WSLENV
     try {
         $env:WSLENV = Get-WslEnvironmentForwarding
-        & wsl -d (Get-WslDistro) -- $runtime @Arguments
+        & wsl -d (Get-WslDistro) -- @runtimeCommand @Arguments 2>&1 | ForEach-Object { $_.ToString() }
         $exitCode = $LASTEXITCODE
     }
     finally {

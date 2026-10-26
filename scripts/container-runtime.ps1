@@ -85,7 +85,9 @@ function Invoke-ContainerRuntime {
     $originalWslEnv = $env:WSLENV
     try {
         $env:WSLENV = Get-WslEnvironmentForwarding
-        & wsl -d (Get-WslDistro) -- @runtimeCommand @Arguments 2>&1 | ForEach-Object { $_.ToString() }
+        & wsl -d (Get-WslDistro) -- @runtimeCommand @Arguments 2>&1 |
+            ForEach-Object { $_.ToString() -replace "$([char]27)\[[0-9;]*m", '' } |
+            Where-Object { $_.Trim() -and $_ -notmatch 'Executing external compose provider' }
         $exitCode = $LASTEXITCODE
     }
     finally {

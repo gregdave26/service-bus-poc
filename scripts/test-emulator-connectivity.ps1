@@ -10,40 +10,33 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
 
 Write-Host "Starting emulator connectivity test..." -ForegroundColor Cyan
 
-if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-    throw "Docker CLI is unavailable; the emulator was not started."
-}
-& docker info *> $null
-if ($LASTEXITCODE -ne 0) {
-    throw "Docker is unavailable; the emulator was not started."
+$runtime = Get-ContainerRuntime
+if (-not (Test-ContainerRuntimeAvailable)) {
+    throw "$runtime is unavailable in WSL distro '$(Get-WslDistro)'; the emulator was not started."
 }
 
-$composeDirectory = Split-Path -Parent $composePath
-Push-Location $composeDirectory
+$existing = @()
 try {
-    $existing = & docker compose --env-file $envFilePath -f $composePath ps --quiet 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to inspect the emulator containers."
-    }
-
-    if (-not $existing) {
-        Write-Host "Starting emulator containers..."
-        & docker compose --env-file $envFilePath -f $composePath up -d
-        if ($LASTEXITCODE -ne 0) {
-            throw "docker compose up failed with exit code $LASTEXITCODE."
-        }
-    } else {
-        Write-Host "Emulator containers are already running."
-    }
+    $existing = @(Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('ps', '--quiet') |
+        Where-Object { $_.Trim() })
 }
-finally {
-    Pop-Location
+catch {
+    throw "Unable to inspect the emulator containers: $($_.Exception.Message)"
+}
+
+if ($existing.Count -eq 0) {
+    Write-Host "Starting emulator containers..."
+    Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('up', '-d')
+} else {
+    Write-Host "Emulator containers are already running."
 }
 
 $env:ServiceBus__ConnectionString = $env:ServiceBus__ConnectionString ??

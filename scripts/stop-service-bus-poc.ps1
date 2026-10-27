@@ -55,7 +55,7 @@ foreach ($process in $processes) {
     $commandLine = [string]$process.CommandLine
     if ($commandLine -match $escapedRoot -or
         $commandLine -match 'ServiceBusPoc\.(Dashboard|Producer|DigitalChannels|Insurance|ParksResorts|Carwash|Verifier|DigitalSite\.\w+)' -or
-        $commandLine -match 'run-(dashboard|local-poc|debug-run|simple)\.ps1') {
+        $commandLine -match 'run-(dashboard|simple)\.ps1') {
         if ([int]$process.ProcessId -ne $PID) {
             $null = $targetIds.Add([int]$process.ProcessId)
         }

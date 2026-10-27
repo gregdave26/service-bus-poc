@@ -83,7 +83,7 @@ $env:ServiceBus__TopicName = "contact.events"
 $env:ServiceBus__SubscriptionName = "carwash"   # varies per consumer
 ```
 
-`scripts/run-local-poc.ps1` sets these automatically once producer/consumer messaging (Phase 2.2/2.3) is implemented.
+`scripts/run-dashboard.ps1` sets these automatically once producer/consumer messaging (Phase 2.2/2.3) is implemented.
 
 ## Topology validation
 

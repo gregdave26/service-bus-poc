@@ -86,7 +86,7 @@ Containers are **not** currently used to package the .NET applications or the br
 
 ### Local execution
 
-[`scripts/run-local-poc.ps1`](../scripts/run-local-poc.ps1) checks prerequisites, starts the Compose stack, waits for the emulator, builds the .NET solution, sets emulator connection variables, starts the four consumers, runs the verifier, writes logs, and cleans up by default.
+[`scripts/run-dashboard.ps1`](../scripts/run-dashboard.ps1) checks prerequisites, starts the Compose stack, waits for the emulator, builds the .NET solution, sets emulator connection variables, starts the consumers and the dashboard, and cleans up on exit.
 
 Typical setup and execution (Podman in WSL; use `docker compose` with `CONTAINER_RUNTIME=docker`):
 
@@ -94,7 +94,7 @@ Typical setup and execution (Podman in WSL; use `docker compose` with `CONTAINER
 Copy-Item .env.example .env
 # Set SQL_PASSWORD and accept the emulator EULA in .env
 .\scripts\start-servicebus-emulator.ps1
-.\scripts\run-local-poc.ps1
+.\scripts\run-dashboard.ps1
 .\scripts\stop-service-bus-poc.ps1
 ```
 

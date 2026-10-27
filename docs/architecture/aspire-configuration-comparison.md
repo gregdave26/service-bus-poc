@@ -189,7 +189,7 @@ The normal Verifier path invokes the existing topology validator; it is
 different from the connectivity branch. On the integration baseline, normal
 execution validates topology and exercises all eight routing combinations,
 including positive and negative delivery assertions. The separate
-[`run-local-poc.ps1`](../../scripts/run-local-poc.ps1) invokes that normal path.
+[`run-dashboard.ps1`](../../scripts/run-dashboard.ps1) invokes that normal path.
 It is not the interactive baseline used in this comparison and must not be
 confused with `run-dashboard.ps1`. Set `ServiceBus__TopologyConfigPath` to the
 local emulator configuration for direct normal Verifier execution; the topology

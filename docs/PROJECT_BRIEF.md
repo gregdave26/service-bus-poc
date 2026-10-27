@@ -55,7 +55,7 @@ The architecture reference defines the project context:
 ## 5. How to Work
 
 - Setup: .NET 10 SDK, Podman or Docker in WSL, Azure CLI + Bicep, PowerShell 7+ (see prerequisites in README).
-- Run (local): `scripts/run-local-poc.ps1`
+- Run (local): `scripts/run-dashboard.ps1`
 - Test: `dotnet test`
 - Deploy (Azure, optional/credentialed): `scripts/deploy-azure.ps1`
 - Repository rules: see `.github/copilot-instructions.md`

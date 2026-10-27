@@ -17,7 +17,7 @@
     Maximum number of seconds to wait for the AMQP endpoint. Default: 90.
 
 .PARAMETER EnvFilePath
-    Optional path to a Compose environment file. Defaults to infra\servicebus\.env.
+    Optional path to a Compose environment file. Defaults to the repository-root .env.
 
 .EXAMPLE
     .\scripts\start-servicebus-emulator.ps1
@@ -44,7 +44,7 @@ $waitScriptPath = Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1'
 $runtimeHelperPath = Join-Path $PSScriptRoot 'container-runtime.ps1'
 
 if ([string]::IsNullOrWhiteSpace($EnvFilePath)) {
-    $EnvFilePath = Join-Path $projectRoot 'infra\servicebus\.env'
+    $EnvFilePath = Join-Path $projectRoot '.env'
 }
 
 if (-not (Test-Path -LiteralPath $composePath -PathType Leaf)) {

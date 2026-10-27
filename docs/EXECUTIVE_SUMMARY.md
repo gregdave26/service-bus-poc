@@ -91,7 +91,7 @@ Containers are **not** currently used to package the .NET applications or the br
 Typical setup and execution (Podman in WSL; use `docker compose` with `CONTAINER_RUNTIME=docker`):
 
 ```powershell
-Copy-Item infra/servicebus/.env.example infra/servicebus/.env
+Copy-Item .env.example .env
 # Set SQL_PASSWORD and accept the emulator EULA in .env
 .\scripts\start-servicebus-emulator.ps1
 .\scripts\run-local-poc.ps1

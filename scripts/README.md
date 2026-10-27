@@ -145,8 +145,8 @@ pull the `latest` images on every run. To explicitly refresh the images, open a 
 shell in the repository's `infra/servicebus` folder and run:
 
 ```bash
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env pull
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env up -d
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env pull
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env up -d
 ```
 
 With Docker, run `docker compose` with the same arguments, without the `PODMAN_COMPOSE_PROVIDER` prefix.

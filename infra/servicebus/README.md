@@ -38,12 +38,11 @@ $env:CONTAINER_RUNTIME = 'docker'   # current session only; omit to use podman
 ## Running
 
 ```powershell
-cd infra/servicebus
-Copy-Item .env.example .env
+Copy-Item .env.example .env   # from the repository root
 # Edit .env: set ACCEPT_EULA=Y and a strong SQL_PASSWORD
 ```
 
-`start-servicebus-emulator.ps1` reads `infra/servicebus/.env`. `run-dashboard.ps1` and `stop-service-bus-poc.ps1` read the repository-root `.env` instead, so keep the same `ACCEPT_EULA` and `SQL_PASSWORD` values in both files until the two paths are unified.
+All emulator scripts read the repository-root `.env`. Its emulator placeholders (`ACCEPT_EULA`, `SQL_PASSWORD`, `SQL_WAIT_INTERVAL`, `EMULATOR_HTTP_PORT`) are documented in [.env.example](../../.env.example).
 
 The usual entry point is the script, which uses the configured runtime:
 
@@ -54,8 +53,8 @@ The usual entry point is the script, which uses the configured runtime:
 To run Compose directly, open a WSL shell in the repository's `infra/servicebus` folder (for example `/mnt/c/path/to/service-bus-poc/infra/servicebus`):
 
 ```bash
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env pull
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env up -d
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env pull
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env up -d
 ```
 
 Compose reuses existing containers and local images by default. The `pull` step
@@ -68,7 +67,7 @@ The emulator listens on:
 Stop and remove containers:
 
 ```bash
-PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file .env down
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env down
 ```
 
 Or run `..\..\scripts\stop-service-bus-poc.ps1` from PowerShell to stop the POC processes and the emulator together.

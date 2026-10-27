@@ -36,7 +36,12 @@ $envFilePath = Join-Path $projectRoot '.env'
 Write-Host "Stopping Service Bus POC processes for: $projectRoot" -ForegroundColor Cyan
 
 # Stop an active transcript in the current PowerShell session if one exists.
-Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+# Stop-Transcript throws when no transcript is active, which $ErrorActionPreference = 'Stop' would make fatal.
+try {
+    Stop-Transcript -ErrorAction Stop | Out-Null
+}
+catch {
+}
 
 $processes = @(Get-CimInstance Win32_Process)
 $processById = @{}

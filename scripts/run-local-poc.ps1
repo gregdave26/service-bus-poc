@@ -46,9 +46,7 @@
 param(
     [int]$RunTime = 30,
     
-    [bool]$NoCleanup = $false,
-    
-    [bool]$Verbose = $false
+    [bool]$NoCleanup = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -96,12 +94,12 @@ catch {
     exit 1
 }
 
-$runtime = Get-ContainerRuntime
+$containerRuntime = Get-ContainerRuntime
 if (-not (Test-ContainerRuntimeAvailable)) {
-    Write-Error "❌ $runtime not found or not running in WSL distro '$(Get-WslDistro)'"
+    Write-Error "❌ $containerRuntime not found or not running in WSL distro '$(Get-WslDistro)'"
     exit 1
 }
-Write-Host "  ✓ $runtime available"
+Write-Host "  ✓ $containerRuntime available"
 
 $solutionPath = Join-Path $srcPath 'ServiceBusPoc.slnx'
 if (-not (Test-Path $solutionPath)) {
@@ -153,6 +151,7 @@ Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
 $env:ServiceBus__Namespace = "localhost"
 $env:ServiceBus__TopicName = "contact.events"
+$env:ServiceBus__TopologyConfigPath = Join-Path $infraPath 'servicebus' 'config.json'
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = if ($Verbose) { "Debug" } else { "Information" }
 

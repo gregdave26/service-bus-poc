@@ -13,6 +13,16 @@ Local equivalent of the Azure `contact.events` topic described in [PROJECT_BRIEF
 
 Defined declaratively in [config.json](./config.json), following the [official emulator config schema](https://github.com/Azure/azure-service-bus-emulator-installer/blob/main/ServiceBus-Emulator/Config/Config.json). Filter property names (`hasInsurance`, `hasParksResorts`, `hasCarwashProduct`) match the application properties producers must set on each message — see [contracts/attributes.schema.json](../../contracts/attributes.schema.json).
 
+The `verifier-*` subscriptions mirror the four consumer subscriptions with identical filters. The routing verifier receives from these so it does not compete with live consumers for the same messages.
+
+| Verifier subscription | Mirrors |
+|---|---|
+| `verifier-digital-channels` | `digital-channels` |
+| `verifier-insurance` | `insurance` |
+| `verifier-parks-resorts` | `parks-resorts` |
+| `verifier-carwash` | `carwash` |
+
+
 ## Prerequisites
 
 - Podman (rootless) installed in WSL, with `podman-compose` as the compose provider (default), **or** Docker Engine with the Compose v2 plugin installed in WSL (`CONTAINER_RUNTIME=docker`)

@@ -65,7 +65,7 @@ public sealed class VerifierService
         foreach (var subscriptionName in SubscriptionNames.All)
         {
             var received = await _transport.ReceiveAsync(
-                subscriptionName,
+                SubscriptionNames.ForVerifier(subscriptionName),
                 scenario.ExpectedSubscriptions.Contains(subscriptionName)
                     ? ExpectedMessageWait
                     : UnexpectedMessageWait,

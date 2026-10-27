@@ -5,11 +5,17 @@
 
 .DESCRIPTION
     Verifies:
-    - Docker is running
-    - Emulator container is running
+    - The container runtime (CONTAINER_RUNTIME, Podman by default) is running in WSL
+    - Emulator containers are running
     - Port 5672 is listening
     - AMQP protocol is responding
 #>
+
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
+$envFilePath = Get-RootEnvFilePath
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -17,19 +23,15 @@ Write-Host "║                    SERVICE BUS EMULATOR DIAGNOSTICS             
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
-# Check 1: Docker is running
-Write-Host "CHECK 1: Docker Status" -ForegroundColor Yellow
-try {
-    docker version 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✓ Docker is running"
-    } else {
-        Write-Host "  ✗ Docker is NOT responding"
-        Write-Host "    Action: Start Docker Desktop"
-        exit 1
-    }
-} catch {
-    Write-Host "  ✗ Docker command failed: $_"
+$runtime = Get-ContainerRuntime
+
+# Check 1: Container runtime is running
+Write-Host "CHECK 1: $runtime Status" -ForegroundColor Yellow
+if (Test-ContainerRuntimeAvailable) {
+    Write-Host "  ✓ $runtime is running in WSL distro '$(Get-WslDistro)'"
+} else {
+    Write-Host "  ✗ $runtime is NOT responding in WSL distro '$(Get-WslDistro)'"
+    Write-Host "    Action: Start $runtime in WSL or set CONTAINER_WSL_DISTRO"
     exit 1
 }
 
@@ -37,9 +39,17 @@ Write-Host ""
 
 # Check 2: Containers running
 Write-Host "CHECK 2: Emulator Containers" -ForegroundColor Yellow
-$containers = docker-compose -f infra/servicebus/compose.yaml ps --quiet 2>&1
-if ($LASTEXITCODE -eq 0 -and $containers) {
-    $containerList = docker-compose -f infra/servicebus/compose.yaml ps 2>&1
+$containerIds = @()
+try {
+    $containerIds = @(Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('ps', '--quiet') |
+        Where-Object { $_.Trim() })
+}
+catch {
+    $containerIds = @()
+}
+
+if ($containerIds.Count -gt 0) {
+    $containerList = Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('ps')
     Write-Host "  ✓ Containers are running:"
     $containerList | ForEach-Object { Write-Host "    $_" }
 } else {
@@ -60,7 +70,7 @@ try {
     $socket.Close()
 } catch {
     Write-Host "  ✗ Port 5672 NOT accepting connections: $($_.Exception.Message)"
-    Write-Host "    Action: Check emulator logs: docker logs servicebus-emulator"
+    Write-Host "    Action: Check emulator logs: $runtime logs servicebus-emulator"
     exit 1
 } finally {
     if ($socket) {
@@ -101,7 +111,7 @@ try {
     $socket.Close()
 } catch {
     Write-Host "  ✗ AMQP protocol test failed: $($_.Exception.Message)"
-    Write-Host "    Action: Try restarting emulator: docker-compose -f infra/servicebus/compose.yaml restart"
+    Write-Host "    Action: Try restarting emulator: .\scripts\start-servicebus-emulator.ps1"
     exit 1
 }
 
@@ -109,8 +119,14 @@ Write-Host ""
 
 # Check 5: Emulator logs
 Write-Host "CHECK 5: Emulator Container Logs (last 20 lines)" -ForegroundColor Yellow
-$logs = docker logs servicebus-emulator 2>&1 | Tail -20
-if ($logs) {
+$logs = @()
+try {
+    $logs = @(Invoke-ContainerRuntime -Arguments @('logs', '--tail', '20', 'servicebus-emulator') | Where-Object { $_.Trim() })
+}
+catch {
+    $logs = @()
+}
+if ($logs.Count -gt 0) {
     Write-Host "  Container logs:"
     $logs | ForEach-Object { Write-Host "    $_" }
 } else {

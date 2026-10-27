@@ -27,7 +27,7 @@ Do not invent layers or frameworks that the repository does not use.
 - Prefer explicit Bicep resources over hidden module abstractions so Service Bus topology and RBAC scope stay reviewable.
 - Never commit secrets, subscription keys, or connection strings; use secure parameters, environment variables, or `.gitignore`d local files.
 - Validate Bicep with `az bicep build` (and deployment what-if/validate where credentials are available) before treating IaC work as done.
-- For local verification, use the Service Bus emulator via Docker Compose; do not require live Azure credentials for local test runs.
+- For local verification, use the Service Bus emulator via Podman (or Docker) Compose; do not require live Azure credentials for local test runs.
 - Follow `.github/instructions/unit-test-coverage.instructions.md`: maintain at least 80% meaningful line coverage through unit tests, ignoring property getters/setters and constructors that only assign values. Report the coverage result in every implementation handoff.
 
 ## Boundaries

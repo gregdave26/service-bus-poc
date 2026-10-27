@@ -93,7 +93,11 @@ foreach ($processId in ($targetIds | Sort-Object -Descending)) {
 
 if (Test-Path $composePath) {
     if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run compose down')) {
-        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath (Get-RootEnvFilePath) -Arguments @('down')
+        $composeEnvFilePath = Get-RootEnvFilePath -Optional
+        if (-not $composeEnvFilePath) {
+            Write-Warning 'Root .env not found; running compose down without an env file. Teardown does not need SQL_PASSWORD.'
+        }
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $composeEnvFilePath -Arguments @('down')
     }
 }
 

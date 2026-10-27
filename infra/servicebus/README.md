@@ -42,7 +42,7 @@ Copy-Item .env.example .env   # from the repository root
 # Edit .env: set ACCEPT_EULA=Y and a strong SQL_PASSWORD
 ```
 
-All emulator scripts read the repository-root `.env`. Its emulator placeholders (`ACCEPT_EULA`, `SQL_PASSWORD`, `SQL_WAIT_INTERVAL`, `EMULATOR_HTTP_PORT`) are documented in [.env.example](../../.env.example).
+All emulator scripts read the repository-root `.env` and fail with a message if it is missing. Its emulator placeholders (`ACCEPT_EULA`, `SQL_PASSWORD`, `SQL_WAIT_INTERVAL`, `EMULATOR_HTTP_PORT`) are documented in [.env.example](../../.env.example).
 
 The usual entry point is the script, which uses the configured runtime:
 

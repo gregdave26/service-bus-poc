@@ -138,6 +138,7 @@ Write-Host ""
 # Start emulator if requested
 $emulatorJobName = 'ServiceBusEmulator'
 if ($Emulator) {
+    $envFilePath = Get-RootEnvFilePath
     Write-Host "Starting Azure Service Bus emulator..." -ForegroundColor Yellow
     
     $composePath = Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml'
@@ -146,14 +147,14 @@ if ($Emulator) {
         Write-Warning "   Skipping emulator startup. Ensure Service Bus is accessible."
     }
     else {
-        $runningContainers = Invoke-ContainerCompose -ComposePath $composePath -Arguments @('ps', '--quiet')
+        $runningContainers = Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('ps', '--quiet')
         if ($runningContainers) {
             Write-Host "  ℹ Containers already running. Restarting..." -ForegroundColor Cyan
-            Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
+            Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('down') | Out-Null
         }
         
         try {
-            Invoke-ContainerCompose -ComposePath $composePath -Arguments @('up', '-d') | Out-Null
+            Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('up', '-d') | Out-Null
             Write-Host "  ✓ Emulator containers started"
             
             Wait-ServiceBusEmulatorReady -ComposePath $composePath -InitialDelaySeconds $WaitSeconds
@@ -184,7 +185,7 @@ Write-Host "Setting environment variables..." -ForegroundColor Yellow
 # Service Bus Configuration
 # These values should match your emulator setup
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
-$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__TopicName = "contact.events"
 $env:DOTNET_Environment = "Development"
 $env:DOTNET_LOG_LEVEL = "Information"
@@ -374,7 +375,7 @@ finally {
         $composePath = Join-Path $projectRoot 'infra' 'servicebus' 'compose.yaml'
         if (Test-Path $composePath) {
             try {
-                Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
+                Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('down') | Out-Null
                 Write-Host "  ✓ Emulator stopped"
             }
             catch {

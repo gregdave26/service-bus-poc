@@ -15,7 +15,7 @@
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
-$envFilePath = Join-Path $projectRoot '.env'
+$envFilePath = Get-RootEnvFilePath
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan

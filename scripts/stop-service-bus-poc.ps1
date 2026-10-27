@@ -29,7 +29,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
-$envFilePath = Join-Path $projectRoot '.env'
 
 . (Join-Path $PSScriptRoot 'container-runtime.ps1')
 
@@ -94,7 +93,7 @@ foreach ($processId in ($targetIds | Sort-Object -Descending)) {
 
 if (Test-Path $composePath) {
     if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run compose down')) {
-        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('down')
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath (Get-RootEnvFilePath) -Arguments @('down')
     }
 }
 

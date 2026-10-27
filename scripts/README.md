@@ -265,7 +265,7 @@ Both scripts set these automatically, but you can override:
 # Service Bus configuration
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/..."
 $env:ServiceBus__TopicName = "contact.events"
-$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__SubscriptionName = "insurance" # Consumer-specific
 
 # Dashboard configuration (run-dashboard.ps1 only)

@@ -455,6 +455,7 @@ catch {
 }
 
 if (-not $NoEmulator) {
+    $envFilePath = Get-RootEnvFilePath
     $runtime = Get-ContainerRuntime
     if (-not (Test-ContainerRuntimeAvailable)) {
         Write-Error "❌ $runtime not found or not running in WSL distro '$(Get-WslDistro)'"
@@ -599,7 +600,7 @@ Write-Host ""
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
 $env:ServiceBus__ConnectionString = "Endpoint=sb://127.0.0.1;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
-$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__TopicName = "contact.events"
 $env:Dashboard__Port = $DashboardPort
 $env:PORT = $DashboardPort

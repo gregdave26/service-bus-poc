@@ -204,3 +204,12 @@ function Test-ContainerRuntimeAvailable {
         return $false
     }
 }
+
+function Get-RootEnvFilePath {
+    $envFilePath = Join-Path (Split-Path -Parent $PSScriptRoot) '.env'
+    if (-not (Test-Path -LiteralPath $envFilePath -PathType Leaf)) {
+        throw "Root .env was not found at '$envFilePath'. Copy .env.example to .env and set ACCEPT_EULA=Y and SQL_PASSWORD."
+    }
+
+    return $envFilePath
+}

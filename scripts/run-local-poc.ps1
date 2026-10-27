@@ -288,7 +288,7 @@ if (-not $NoCleanup) {
     Write-Host "  ✓ Consumer processes stopped"
     
     try {
-        Invoke-ContainerCompose -ComposePath $composePath -Arguments @('down') | Out-Null
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath (Get-RootEnvFilePath) -Arguments @('down') | Out-Null
         Write-Host "  ✓ Emulator stopped"
     }
     catch {

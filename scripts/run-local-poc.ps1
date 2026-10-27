@@ -149,7 +149,7 @@ Write-Host ""
 Write-Host "STEP 3: Configuring environment..." -ForegroundColor Yellow
 
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true"
-$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__TopicName = "contact.events"
 $env:ServiceBus__TopologyConfigPath = Join-Path $infraPath 'servicebus' 'config.json'
 $env:DOTNET_Environment = "Development"

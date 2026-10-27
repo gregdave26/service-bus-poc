@@ -52,6 +52,10 @@ How do we run the local emulator without Docker Desktop while keeping the compos
 - We accept a WSL dependency and a runtime-specific shim in exchange for not needing Docker Desktop or a second virtual machine.
 - We keep one compose file rather than maintaining Podman-specific and Docker-specific files.
 
+## Orchestration Lifetime
+
+`podman-compose` and `docker compose` are temporary orchestration for this worktree only. The team intends to move to .NET Aspire and then remove both compose providers. This ADR does not select Aspire. A separate ADR is required before that migration starts. Until then, the compose file and the runtime helper remain the only local orchestration path.
+
 ## Implementation Notes
 
 - Helper: [`scripts/container-runtime.ps1`](../../scripts/container-runtime.ps1).

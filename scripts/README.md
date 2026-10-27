@@ -9,10 +9,12 @@ the `scripts` directory; each script resolves paths relative to its own location
 - PowerShell 7+ (cross-platform)
 - .NET 10 SDK
 - Node.js 20+
-- Docker Desktop (for emulator)
+- Podman in WSL (default), or Docker Engine with the Compose v2 plugin in WSL when
+  `CONTAINER_RUNTIME=docker` is set in the shell. `CONTAINER_WSL_DISTRO` selects the
+  WSL distribution (default `Ubuntu`).
 - 4 GB free disk space (for emulator container)
-- For emulator checks, Docker Desktop must be running with Linux containers and the
-  emulator EULA accepted in the repository-root `.env`.
+- For emulator checks, the selected runtime must be running in WSL with Linux containers
+  and the emulator EULA accepted in the repository-root `.env`.
 - SDK-based checks use the local emulator connection string by default. Set
   `ServiceBus__ConnectionString` to override it; no credentials are committed.
 
@@ -48,7 +50,7 @@ unavailable, an entity is missing, or a filter is wrong.
 
 ### `test-emulator-connectivity.ps1` — SDK Connectivity Probe
 
-Checks Docker before starting the compose services, then runs the Verifier's SDK
+Checks the container runtime before starting the compose services, then runs the Verifier's SDK
 probe. The probe creates a sender and message batch without publishing a message.
 It uses no temporary project, downloaded package, or generated source file.
 
@@ -77,7 +79,7 @@ from starting, because CommerceApi performs its own Stub fallback.
 
 ### `check-emulator-status.ps1` — Diagnostics
 
-Reports Docker, container, TCP, AMQP, and recent log status. It is diagnostic only
+Reports runtime, container, TCP, AMQP, and recent log status. It is diagnostic only
 and does not prove that the configured topic topology is correct.
 
 ### `wait-for-servicebus-emulator.ps1` — Readiness Helper
@@ -92,8 +94,8 @@ messages. This is separate from the non-publishing SDK connectivity probe.
 
 ### Other supported lifecycle scripts
 
-`run-local-poc.ps1`, `run-dashboard.ps1`, `debug-run.ps1`, `test-carwash-api.ps1`,
-and `stop-service-bus-poc.ps1` cover application lifecycle, dashboard, API, and
+`run-dashboard.ps1`, `run-aspire.ps1`, `test-carwash-api.ps1`, and
+`stop-service-bus-poc.ps1` cover application lifecycle, dashboard, API, and
 cleanup workflows. Read each script's help before use; lifecycle scripts can start
 processes or containers and may write to `logs/`.
 
@@ -139,13 +141,15 @@ exited are skipped; other process-stop errors are reported rather than ignored.
 ```
 
 The emulator startup reuses existing containers and local images. It does not
-pull the `latest` images on every run. To explicitly refresh the images:
+pull the `latest` images on every run. To explicitly refresh the images, open a WSL
+shell in the repository's `infra/servicebus` folder and run:
 
-```powershell
-cd ..\infra\servicebus
-docker compose pull
-docker compose up -d
+```bash
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env pull
+PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --env-file ../../.env up -d
 ```
+
+With Docker, run `docker compose` with the same arguments, without the `PODMAN_COMPOSE_PROVIDER` prefix.
 
 Pressing `Ctrl+C` in `run-dashboard.ps1` still stops and removes the emulator
 containers as part of normal cleanup.
@@ -173,95 +177,36 @@ See [ADR-014](../docs/decisions/014-digital-site-commerce-flow.md) and [`ui/READ
 
 ---
 
-### 2. `debug-run.ps1` — Debug Start (for Development Without Dashboard)
+### 2. `validate-emulator-topology.ps1` — Routing Verification (for CI/CD and PR Checks)
 
-**Purpose:** Start the entire POC in debug mode with all 7 applications running locally.
+**Purpose:** Check the running emulator's topology and run all 8 contact-event routing scenarios through the Verifier.
 
 **Use this when:**
-- You're actively developing and want hot-reload capability
-- You need to debug a single consumer or producer
-- You want to see real-time logs from all applications
-- You prefer console-based testing over the browser dashboard
+- You changed the topology in `infra/servicebus/config.json` or subscription filters
+- You're preparing a PR that touches routing or topology
+- You need a pass/fail result that CI can read
 
 **Usage:**
 ```powershell
-# Start everything in debug mode
-.\debug-run.ps1
+# Confirm the emulator is running first
+.\check-emulator-status.ps1
 
-# Start only specific roles (Insurance consumer + DigitalChannels)
-.\debug-run.ps1 -Role insurance,digitalchannels
-
-# Start without emulator (assume external Service Bus)
-.\debug-run.ps1 -Emulator $false
-
-# Save logs to custom location
-.\debug-run.ps1 -LogPath "./my-logs/debug.log"
+.\validate-emulator-topology.ps1
 ```
 
-**Output:**
-- Real-time logs from all applications printed to console
-- Structured logs saved to `logs/debug-run-{timestamp}.log`
-- All 7 apps running as PowerShell background jobs
-- Press `Ctrl+C` to gracefully shutdown all
-
-**Applications Started:**
-1. **DigitalChannels** — Receives all events (no filter)
-2. **Insurance** — Receives events with `hasInsurance=true`
-3. **ParksResorts** — Receives events with `hasParksResorts=true`
-4. **Carwash** — Receives events with `hasCarwashProduct=true`
-5. **Producer** — Publishes contact events (manual trigger)
-6. **Verifier** — Scenario validator
-
----
-
-### 3. `run-local-poc.ps1` — Local POC Run (for Verification & CI/CD)
-
-**Purpose:** Run the complete end-to-end POC with automatic scenario verification.
-
-**Use this when:**
-- You want to validate the entire system in one command
-- You're preparing a PR and need to verify all scenarios
-- You want CI/CD-friendly output
-- You need to generate test reports
-
-**Usage:**
-```powershell
-# Run complete POC with default settings (30 sec run time)
-.\run-local-poc.ps1
-
-# Run with longer setup time (60 seconds) and keep services running
-.\run-local-poc.ps1 -RunTime 60 -NoCleanup
-
-# Run with verbose logging (shows debug output)
-.\run-local-poc.ps1 -Verbose
-```
-
-**Output:**
-- Step-by-step progress (emulator start → build → verify)
-- Verification report: `logs/poc-report-{timestamp}.txt`
-- Full execution logs: `logs/poc-run-{timestamp}.log`
-- Structured results for CI/CD parsing
-- Auto cleanup (containers stopped, processes killed)
-
-**Flow:**
-1. Start Azure Service Bus emulator
-2. Build entire solution
-3. Start all 4 consumer applications
-4. Run Verifier with test scenarios
-5. Collect results and generate report
-6. Cleanup (optional: keep running with `-NoCleanup`)
+Exit code 0 means the topology and all routing scenarios passed. Any failure exits non-zero.
 
 ---
 
 ## Environment Variables
 
-Both scripts set these automatically, but you can override:
+The launchers set these automatically, but you can override:
 
 ```powershell
 # Service Bus configuration
 $env:ServiceBus__ConnectionString = "Endpoint=sb://localhost:5672/..."
 $env:ServiceBus__TopicName = "contact.events"
-$env:ServiceBus__Namespace = "localhost"
+$env:ServiceBus__Namespace = "sbemulatorns"
 $env:ServiceBus__SubscriptionName = "insurance" # Consumer-specific
 
 # Dashboard configuration (run-dashboard.ps1 only)
@@ -272,9 +217,7 @@ $env:Dashboard__HeartbeatIntervalSeconds = "5"
 
 # Logging
 $env:DOTNET_LOG_LEVEL = "Information"  # or "Debug" for verbose
-$env:DOTNET_Environment = "Development"
-
-# Carwash API
+$env:DOTNET_ENVIRONMENT = "Development"  # Required for the optional CommerceApi Adyen fallback; the launcher no longer sets it
 $env:Carwash__ApiPort = "5000"
 
 # Digital Site (run-dashboard.ps1 only; each app also gets its own ServiceBus__TopicName/SubscriptionName)
@@ -294,10 +237,7 @@ All scripts save logs to `logs/` folder:
 ```
 logs/
 ├── run-dashboard-20260916-155500.log   # From run-dashboard.ps1
-├── debug-run-20260915-154201.log       # From debug-run.ps1
-├── poc-run-20260915-154300.log         # From run-local-poc.ps1
-├── poc-report-20260915-154300.txt      # Test results summary
-└── emulator-20260915-154300.log        # Docker Compose output (if saved)
+└── emulator-20260915-154300.log        # Compose output (if saved)
 ```
 
 **View logs in real-time:**
@@ -310,8 +250,9 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 
 ## Troubleshooting
 
-### "Docker not found or not running"
-→ Start Docker Desktop and retry
+### "Container runtime not found or not running"
+→ Start Podman (or Docker, with `CONTAINER_RUNTIME=docker`) in WSL and retry
+→ Confirm the WSL distribution: `CONTAINER_WSL_DISTRO` (default `Ubuntu`)
 
 ### ".NET SDK not found"
 → Install .NET 10 SDK from https://dotnet.microsoft.com/download
@@ -323,16 +264,16 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 → Check `dotnet build` output in console; ensure all projects exist
 
 ### Applications start but don't receive messages
-→ Verify Service Bus emulator is running: `docker-compose ps`
+→ Verify Service Bus emulator is running: `.\scripts\check-emulator-status.ps1`
 → Check environment variables are set: `$env:ServiceBus__ConnectionString`
 ### Dashboard not opening in browser
 → Manually navigate to `http://localhost:5100` or `http://localhost:{DashboardPort}`
 → Check firewall is not blocking port 5100
 
 ### Emulator times out or doesn't start
-→ Ensure Docker Desktop is running
-→ Check disk space: `docker system df`
-→ Cleanup old containers: `docker system prune`
+→ Ensure the container runtime is running in WSL
+→ Check disk space: `podman system df` (or `docker system df`)
+→ Cleanup old containers: `podman system prune` (or `docker system prune`)
 
 ---
 
@@ -350,31 +291,13 @@ Get-Content -Path logs/run-dashboard-*.log -Wait
 # 4. Press Ctrl+C here to stop all services
 ```
 
-### For Local Console-Based Testing:
+### For Routing Verification (CI/CD and PRs):
 ```powershell
-# Terminal 1: Start debug session (keeps running)
-.\debug-run.ps1
+# Requires the emulator to be running
+.\validate-emulator-topology.ps1
 
-# Terminal 2: Run producer to emit test events
-# (trigger via PowerShell or REST API)
-```
-
-### For CI/CD Validation:
-```powershell
-# Single command validates entire system
-.\run-local-poc.ps1
-
-# Exit code: 0 = all scenarios passed, non-zero = failure
+# Exit code: 0 = topology and all 8 routing scenarios passed, non-zero = failure
 $exitCode = $LASTEXITCODE
-```
-
-### For Specific Role Testing:
-```powershell
-# Debug only Insurance consumer
-.\debug-run.ps1 -Role insurance
-
-# or start multiple specific roles
-.\debug-run.ps1 -Role insurance,carwash
 ```
 
 ---
@@ -384,10 +307,6 @@ $exitCode = $LASTEXITCODE
 | Setting | Impact | Usage |
 |---------|--------|-------|
 | `run-dashboard.ps1` (default) | Fast interactive testing | Best for development |
-| `-RunTime 60` | Longer setup (slower machines) | `run-local-poc.ps1 -RunTime 60` |
-| `-Verbose` | More logging (slower) | `debug-run.ps1 -Verbose` |
-| Single role | Faster startup | `debug-run.ps1 -Role insurance` |
-| `-NoCleanup` | Keep services running | Skip restart time for multiple runs |
 | `-NoEmulator` | Use external Service Bus | `run-dashboard.ps1 -NoEmulator` |
 
 ---
@@ -397,8 +316,7 @@ $exitCode = $LASTEXITCODE
 | Goal | Script | Start Time | Best For |
 |------|--------|-----------|----------|
 | Interactive testing & demos | `run-dashboard.ps1` | 30 sec | Development, demos, manual testing |
-| Console debugging | `debug-run.ps1` | 30 sec | Debugging, specific role testing |
-| Automated validation (CI/CD) | `run-local-poc.ps1` | 60 sec | PR validation, automated testing |
+| Routing verification (CI/PR) | `validate-emulator-topology.ps1` | Emulator running | Topology and all 8 routing scenarios |
 
 ---
 
@@ -406,8 +324,8 @@ $exitCode = $LASTEXITCODE
 
 1. **Start Interactive:** Run `.\run-dashboard.ps1` to see live dashboard
 2. **Manual Testing:** Publish events and watch filters work in real-time
-3. **Automated Validation:** Run `.\run-local-poc.ps1` in CI/CD for regression tests
-4. **Debugging:** Use `.\debug-run.ps1 -Verbose` for detailed troubleshooting
+3. **Routing Verification:** Run `.\validate-emulator-topology.ps1` in CI/CD or before merging routing changes
+4. **Debugging:** Use the per-service logs from `run-dashboard.ps1`
 
 ---
 

@@ -65,6 +65,7 @@ public sealed class PaymentGatewaySelectionTests
 
     [Theory]
     [InlineData("")]
+    [InlineData("   ")]
     [InlineData("yes")]
     [InlineData("1")]
     public async Task ResolveAsync_InvalidFlag_FailsInsteadOfSelectingStub(string flag)

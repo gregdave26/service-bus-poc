@@ -180,14 +180,17 @@ $env:DigitalSite__AllowDevelopmentAdyenFallback = "true"
 This applies to both `Adyen` and `AdyenComponent`. The resolved .NET hosting
 environment must be `Development`; Adyen's `test` environment is not sufficient.
 The permission is rejected outside Development, including when Stub was selected.
-Local launch scripts do not implicitly enable this permission or change the
-hosting environment: configure both variables explicitly, or use the local
-`.env` file with the dashboard launcher.
+The dashboard launcher does not set the hosting environment. Put
+`DOTNET_ENVIRONMENT=Development` in the local `.env` file (it is applied to all
+services the launcher starts), or set both variables explicitly when running
+CommerceApi directly.
 
-Missing or invalid required settings still fail validation. Only recognised
-startup gateway/HTTP failures and HTTP timeouts permit fallback; cancellation
-and unexpected application errors propagate. The check creates a session, not
-a payment authorisation.
+Missing or invalid required settings still fail validation. Only transport
+failures, HTTP timeouts and gateway responses HTTP 408, 429 or 5xx permit
+fallback. Authentication and authorisation rejections (HTTP 401 and 403), other
+rejections (for example HTTP 400 or 404), cancellation and unexpected application
+errors propagate and stop startup. The check creates a session, not a payment
+authorisation.
 
 When fallback occurs:
 

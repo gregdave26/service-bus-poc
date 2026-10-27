@@ -24,6 +24,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | [013](013-digital-site-racwa-component-library.md) | Digital Site Tab and RACWA Component Library | ✅ Approved | RSA purchase flow using published `@racwa/react-components`; orders publish `ProductHoldingChange` |
 | [014](014-digital-site-commerce-flow.md) | Digital Site Commerce Flow | ✅ Approved | commercetools API stub, Adyen Sessions Drop-in behind a gateway adapter, webhook-driven order creation on `commerce.events` |
 | [015](015-startup-payment-feature-management.md) | Startup Payment Feature Management | Accepted | Microsoft.FeatureManagement startup selection preserving all existing payment modes |
+| [016](016-podman-container-runtime.md) | Podman Container Runtime via WSL | ✅ Approved | Podman in WSL replaces Docker Desktop for the local emulator; Docker kept as fallback |
 
 ---
 
@@ -66,7 +67,7 @@ This folder contains all architecture and technical decisions for the Service Bu
 | Validation | ✅ JSON Schema + annotations (ADR-005) |
 | Configuration | ✅ Environment variables (ADR-006) |
 | Architecture | ✅ Separate console apps (ADR-007) |
-| Infrastructure | ✅ Docker Compose emulator |
+| Infrastructure | ✅ Compose emulator (Podman in WSL, ADR-016) |
 
 ### Phase 4+ (Post-MVP)
 | Area | Post-MVP Enhancement |

@@ -289,10 +289,10 @@ Document the decision to validate with local emulator before cloud deployment, i
 
 **Goal:** Automate local emulator and Azure cloud deployment.
 
-**Status:** ⏳ Partial — `scripts/run-local-poc.ps1` exists and starts consumers and the verifier. Its presence does not prove end-to-end emulator routing. `deploy-azure.ps1` is not started.
+**Status:** ⏳ Partial — `scripts/validate-emulator-topology.ps1` runs the routing verifier against the running emulator. The former `run-local-poc.ps1` was retired. Its presence does not prove end-to-end emulator routing. `deploy-azure.ps1` is not started.
 
 ### 5.1 Local POC Script
-**File:** `scripts/run-local-poc.ps1`
+**File:** `scripts/validate-emulator-topology.ps1`
 
 **Status:** ⏳ Exists and starts consumers/verifier; end-to-end completion and routing results are not yet proven.
 
@@ -347,7 +347,7 @@ Document the decision to validate with local emulator before cloud deployment, i
 **Status:** ⏳ Not started.
 
 - Prerequisites (.NET 10, Docker, Azure CLI, PowerShell 7+)
-- Quick start (clone, `scripts/run-local-poc.ps1`)
+- Quick start (clone, `scripts/run-dashboard.ps1`)
 - Event contract reference
 - Adding a new consumer (template + checklist)
 - Adding a new event type
@@ -399,7 +399,7 @@ The MVP aims to demonstrate:
 - Sagas, load testing, custom domains
 
 **MVP Validation Criteria:**
-- ⏳ `scripts/run-local-poc.ps1` completes with all 8 routing scenarios passing
+- ⏳ `scripts/validate-emulator-topology.ps1` completes with all 8 routing scenarios passing
 - ✅ Carwash exposes `POST /carwash/v1/verify` for Pulse or mock Pulse to call
 - ✅ No secrets committed; all sensitive config externalized
 - ⏳ README and DEVELOPER.md enable onboarding (README exists; DEVELOPER.md not started)
@@ -428,7 +428,7 @@ Phase 3: Tests (parallel with Phase 2)
 └── Settings tests
 
 Phase 5.1: Local Scripts
-└── run-local-poc.ps1
+└── validate-emulator-topology.ps1
 
 Phase 4: Cloud IaC (after MVP)
 ├── Bicep modules
@@ -475,7 +475,7 @@ Phase 6: Documentation (parallel with others)
 - [x] Carwash exposes its verification API contract for Pulse or mock Pulse callers
 - [ ] No schema validation errors on valid events
 - [ ] Graceful error handling on invalid events (schema, network, malformed)
-- [ ] Single command (`scripts/run-local-poc.ps1`) validates entire system
+- [ ] Routing validation (`scripts/validate-emulator-topology.ps1`) passes all 8 scenarios
 - [ ] Test coverage ≥80% for business logic
 - [ ] Sensitive configuration remains externalized
 - [ ] README enables new dev onboarding in <30 min

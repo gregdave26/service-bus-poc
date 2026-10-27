@@ -6,8 +6,9 @@
 ## Context
 
 Payment integration already has three modes: Stub, Adyen and AdyenComponent.
-Development can optionally fall back to simulated payments after a failed
-startup connectivity check. Environment variables remain the configuration
+Previously, a failed startup connectivity check automatically selected simulated
+payments. This checkpoint deliberately replaces that behavior with explicit,
+Development-only permission. Environment variables remain the configuration
 source under ADR-006.
 
 ## Problem Statement
@@ -38,12 +39,27 @@ registering or validating an unselected real gateway.
 
 Capture the selected mode in options registration and runtime state. All
 request-time services use that snapshot; configuration changes require restart.
-The existing Development-only fallback permission and visible reporting remain
-independent. Selecting real Adyen does not select live versus sandbox.
+Fallback requires `DigitalSite__AllowDevelopmentAdyenFallback=true` and the
+Development hosting environment. Only transient startup connectivity failures
+qualify: transport failures, HTTP timeouts, and gateway responses HTTP 408, 429
+or 5xx. Authentication and authorisation rejections (HTTP 401 and 403), other
+rejections (for example HTTP 400 or 404), missing or invalid configuration,
+cancellation, unexpected failures, and payment request failures all fail startup
+or the request and never select Stub. Status and a persistent UI warning
+distinguish fallback from deliberate Stub selection. Selecting real Adyen does
+not select live versus sandbox.
+
+The startup check runs as a hosted service that completes before the host
+begins serving requests, so no request reaches Adyen before the gateway is
+verified or a permitted fallback is selected. Runtime verification showed
+requests held until the check finished, then answered through the selected
+gateway.
 
 ## Consequences
 
 - Existing environment setups continue working without adding a flag.
+- Startup failure behavior intentionally changes even when the flag is absent:
+  operators must explicitly opt in to Development fallback or repair connectivity.
 - Explicit flags override valid legacy modes according to a documented table.
 - Payment adapter, SDK setup, validation and status use the same selected mode.
 - No live refresh, targeting, rollout percentages or Azure resources are added.
@@ -56,6 +72,8 @@ independent. Selecting real Adyen does not select live versus sandbox.
 - False can intentionally override a real mode: status and startup logs expose
   the resolved gateway; this is not an automatic fallback.
 - Credentials remain external configuration and must never be stored in flags.
+- Removing the flag restores legacy mode selection, not automatic fallback.
+  Revert the payment checkpoint if the stricter fallback policy must be undone.
 
 ## Trade-offs
 

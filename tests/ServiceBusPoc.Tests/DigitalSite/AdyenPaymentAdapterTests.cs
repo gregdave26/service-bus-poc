@@ -53,7 +53,9 @@ public sealed class AdyenPaymentAdapterTests
             .Setup(p => p.SessionsAsync(It.IsAny<CreateCheckoutSessionRequest>(), It.IsAny<Adyen.Core.Client.RequestOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(response.Object);
 
-        await Assert.ThrowsAsync<PaymentGatewayException>(() => CreateAdapter().CreateCheckoutSessionAsync(SessionRequest(), CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<PaymentGatewayException>(() => CreateAdapter().CreateCheckoutSessionAsync(SessionRequest(), CancellationToken.None));
+
+        Assert.Equal((int)HttpStatusCode.Unauthorized, exception.HttpStatusCode);
     }
 
     [Fact]

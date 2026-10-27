@@ -27,4 +27,11 @@ public static class SubscriptionNames
         ParksResorts,
         Carwash
     ];
+
+    /// <summary>
+    /// Name of the verifier-owned subscription that mirrors <paramref name="subscriptionName"/>.
+    /// Each subscription receives its own copy of a message, so the verifier uses these instead of the
+    /// consumer subscriptions to avoid competing with live consumers for the same messages.
+    /// </summary>
+    public static string ForVerifier(string subscriptionName) => $"verifier-{subscriptionName}";
 }

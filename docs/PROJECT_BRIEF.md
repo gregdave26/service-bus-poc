@@ -16,7 +16,7 @@ Proof of concept demonstrating `contact.events` as an Azure Service Bus enterpri
 - Carwash member-verification API at `POST /carwash/v1/verify`, called by Pulse or mock Pulse.
 - Browser-based dashboard for real-time service status visibility and interactive event publishing (ADR-010).
 - Bicep IaC for the above, deployable to a real Azure subscription.
-- .NET 10 console harness that runs the same topology against the official Azure Service Bus emulator (Docker Compose) to deterministically prove filter routing without cloud credentials.
+- .NET 10 console harness that runs the same topology against the official Azure Service Bus emulator (Compose, Podman in WSL by default) to deterministically prove filter routing without cloud credentials.
 
 **Out of scope**
 - Production sizing, private networking, custom domains, multi-region, and publisher authentication design.
@@ -27,7 +27,7 @@ Proof of concept demonstrating `contact.events` as an Azure Service Bus enterpri
 - Runtime/language: .NET 10 / C# (nullable enabled), Bicep, JSON Schema.
 - Frameworks/libraries: Azure Service Bus SDK, Microsoft.Extensions.Hosting/Options, xUnit, Moq.
 - Data/services: Azure Service Bus (cloud + emulator).
-- Deployment: Bicep via Azure CLI (`az deployment group create`); local emulator via Docker Compose.
+- Deployment: Bicep via Azure CLI (`az deployment group create`); local emulator via Compose (Podman in WSL by default).
 - Tests/checks: `dotnet build`, `dotnet test`, `az bicep build`.
 - Architecture reference: [`docs/architecture/project-goal.md`](docs/architecture/project-goal.md).
 
@@ -54,8 +54,8 @@ The architecture reference defines the project context:
 
 ## 5. How to Work
 
-- Setup: .NET 10 SDK, Docker Desktop, Azure CLI + Bicep, PowerShell 7+ (see prerequisites in README).
-- Run (local): `scripts/run-local-poc.ps1`
+- Setup: .NET 10 SDK, Podman or Docker in WSL, Azure CLI + Bicep, PowerShell 7+ (see prerequisites in README).
+- Run (local): `scripts/run-dashboard.ps1`
 - Test: `dotnet test`
 - Deploy (Azure, optional/credentialed): `scripts/deploy-azure.ps1`
 - Repository rules: see `.github/copilot-instructions.md`

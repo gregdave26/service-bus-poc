@@ -4,9 +4,10 @@
     Starts the Service Bus POC emulator and applications through .NET Aspire.
 
 .DESCRIPTION
-    This is an alternative local entry point to run-dashboard.ps1. Docker Compose
-    continues to own the Service Bus emulator while Aspire owns the application
-    processes and dashboard. The existing custom dashboard is not started.
+    This is an alternative local entry point to run-dashboard.ps1. The container
+    runtime (Podman by default, see CONTAINER_RUNTIME) continues to own the Service
+    Bus emulator while Aspire owns the application processes and dashboard. The
+    existing custom dashboard is not started.
 
 .PARAMETER NoEmulator
     Do not start or stop the emulator; assume it is already running.
@@ -35,6 +36,7 @@ $appHostProject = Join-Path $projectRoot 'src\ServiceBusPoc.AppHost\ServiceBusPo
 $logsPath = Join-Path $projectRoot 'logs'
 $appHostBuildProcess = $null
 $emulatorStartedByScript = $false
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
 
 function Import-EnvironmentFile {
@@ -65,7 +67,7 @@ function Stop-Emulator {
     }
 
     Write-Host 'Stopping Service Bus emulator...' -ForegroundColor Yellow
-    docker compose --env-file $envFilePath -f $composePath down
+    Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('down')
 }
 
 function Resolve-AspireCli {
@@ -113,8 +115,9 @@ try {
     }
 
     if (-not $NoEmulator) {
-        if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-            throw 'Docker was not found.'
+        $runtime = Get-ContainerRuntime
+        if (-not (Test-ContainerRuntimeAvailable)) {
+            throw "$runtime is unavailable in WSL distro '$(Get-WslDistro)'. Start the runtime or set CONTAINER_WSL_DISTRO."
         }
 
         if (-not (Test-Path -LiteralPath $envFilePath -PathType Leaf)) {
@@ -125,20 +128,10 @@ try {
             throw "SQL_PASSWORD is required. Set it in $envFilePath or the current environment."
         }
 
-        $composeDirectory = Split-Path -Parent $composePath
-        Push-Location $composeDirectory
-        try {
-            $existingContainers = @(docker compose --env-file $envFilePath -f $composePath ps -q 2>$null)
-        }
-        finally {
-            Pop-Location
-        }
+        $existingContainers = @(Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('ps', '--quiet'))
 
-        Write-Host 'Starting or reusing Service Bus emulator...' -ForegroundColor Yellow
-        docker compose --env-file $envFilePath -f $composePath up -d
-        if ($LASTEXITCODE -ne 0) {
-            throw "Docker Compose failed with exit code $LASTEXITCODE."
-        }
+        Write-Host "Starting or reusing Service Bus emulator with $runtime..." -ForegroundColor Yellow
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $envFilePath -Arguments @('up', '-d')
 
         $emulatorStartedByScript = $existingContainers.Count -eq 0
         Wait-ServiceBusEmulatorReady -ComposePath $composePath

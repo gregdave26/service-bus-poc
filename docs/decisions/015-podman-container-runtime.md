@@ -8,7 +8,7 @@
 
 The local Azure Service Bus emulator and its Azure SQL Edge dependency run from [`infra/servicebus/compose.yaml`](../../infra/servicebus/compose.yaml). Until now the PowerShell scripts called `docker` and `docker-compose` on the Windows host, which required Docker Desktop.
 
-The developer workstation already runs Podman 5.7 rootless inside WSL Ubuntu, and Docker Engine is also installed there. Docker Desktop is therefore not required for the local emulator.
+Docker Desktop for Windows is not endorsed by RAC and must not be used. Podman for Windows is not available for download through approved channels. The developer workstation runs Podman 5.7 rootless and Docker Engine inside WSL Ubuntu, so the local emulator can run without either Windows product.
 
 ## Problem Statement
 
@@ -16,9 +16,9 @@ How do we run the local emulator without Docker Desktop while keeping the compos
 
 ## Options Considered
 
-1. **Keep Docker Desktop.** No change, but it requires a commercial licence on some machines and a separate desktop runtime.
-2. **Install Podman for Windows (Podman machine).** Native Windows CLI, but it adds a second virtual machine and a new install path that the developer does not need.
-3. **Call the Podman and Docker CLIs in the existing WSL distribution from the PowerShell scripts (selected).** Uses the installed runtimes, adds no Windows dependency, and keeps the compose file as the single source of truth.
+1. **Keep Docker Desktop for Windows.** Rejected. RAC does not endorse Docker Desktop.
+2. **Install Podman for Windows (Podman machine).** Rejected. The Windows build is not available for download, so it cannot be installed as an approved tool.
+3. **Call the Podman and Docker CLIs in the existing WSL distribution from the PowerShell scripts (selected).** Uses runtimes that are available inside WSL, needs no Windows container product, and keeps the compose file as the single source of truth.
 
 ## Decision
 
@@ -32,7 +32,7 @@ How do we run the local emulator without Docker Desktop while keeping the compos
 ## Consequences
 
 **Positive**
-- No Docker Desktop is needed for the local emulator.
+- No Docker Desktop for Windows is needed for the local emulator, which keeps the setup within RAC's endorsed tooling.
 - One compose file and one set of script entry points serve both runtimes.
 - Docker remains available as a fallback with `CONTAINER_RUNTIME=docker`.
 
@@ -49,7 +49,7 @@ How do we run the local emulator without Docker Desktop while keeping the compos
 
 ## Trade-offs
 
-- We accept a WSL dependency and a runtime-specific shim in exchange for not needing Docker Desktop or a second virtual machine.
+- We accept a WSL dependency and a runtime-specific shim, because neither Docker Desktop nor Podman for Windows is an available option.
 - We keep one compose file rather than maintaining Podman-specific and Docker-specific files.
 
 ## Orchestration Lifetime

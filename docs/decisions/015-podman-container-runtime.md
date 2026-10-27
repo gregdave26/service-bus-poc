@@ -1,6 +1,6 @@
 # ADR 015: Podman as the Local Container Runtime via WSL
 
-**Status:** PROPOSED (awaiting Product Owner sign-off)
+**Status:** APPROVED
 
 **Supersedes:** the Docker Desktop and `docker compose` parts of [ADR-001](001-emulator-first-validation.md). The emulator topology and compose file in ADR-001 still apply.
 
@@ -71,4 +71,4 @@ How do we run the local emulator without Docker Desktop while keeping the compos
 
 | Role | Decision | Date | Sign-Off |
 |------|----------|------|----------|
-| Product Owner | ADR-015 | TBD | ⏳ Pending |
+| Product Owner | ADR-015 | 2026-10-27 | ✅ Approved |

@@ -168,7 +168,7 @@ function Invoke-AdyenConnectivityCheck {
         return
     }
 
-    $probeScript = Join-Path $PSScriptRoot 'test-adyen-connectivity.ps1'
+    $probeScript = Join-Path $projectRoot 'test-scripts\test-adyen-connectivity.ps1'
     if (-not (Test-Path -LiteralPath $probeScript -PathType Leaf)) {
         Write-Host "  ✗ Adyen connectivity check unavailable: $probeScript was not found" -ForegroundColor Red
         return

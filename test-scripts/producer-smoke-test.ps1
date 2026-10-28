@@ -11,8 +11,8 @@
     - ServiceBus__ConnectionString environment variable set
     - .NET 10 SDK installed
 .EXAMPLE
-    .\producer-smoke-test.ps1
-    .\producer-smoke-test.ps1 -Verbose
+    .\test-scripts\producer-smoke-test.ps1
+    .\test-scripts\producer-smoke-test.ps1 -Verbose
 .NOTES
     Exit codes:
     - 0: Success

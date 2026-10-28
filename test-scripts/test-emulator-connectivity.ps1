@@ -10,7 +10,7 @@ param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-. (Join-Path $PSScriptRoot 'container-runtime.ps1')
+. (Join-Path $PSScriptRoot '..\scripts\container-runtime.ps1')
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'

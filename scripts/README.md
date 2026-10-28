@@ -1,8 +1,9 @@
 # Service Bus POC - Scripts
 
 This folder contains the supported PowerShell entry points for running, testing, and
-debugging the Service Bus POC application. Run them from the repository root or from
-the `scripts` directory; each script resolves paths relative to its own location.
+debugging the Service Bus POC application. Test and probe scripts live in
+[`test-scripts/`](../test-scripts/). Run each script from the repository root, or from
+its own folder; each script resolves paths relative to its own location.
 
 ## Prerequisites
 
@@ -26,14 +27,14 @@ the `scripts` directory; each script resolves paths relative to its own location
 
 **Usage:**
 ```powershell
-.\test-all.ps1
+.\test-scripts\test-all.ps1
 ```
 
 This runs the complete test project without coverage collection. To run the same
 suite with coverage enforcement, use `test-coverage.ps1`:
 
 ```powershell
-.\test-coverage.ps1
+.\test-scripts\test-coverage.ps1
 ```
 
 ### `test-coverage.ps1` — Tests with Coverage Enforcement
@@ -63,7 +64,7 @@ APIM subscription-key settings. It reports the HTTP status and response body
 without printing credential values.
 
 ```powershell
-.\test-adyen-connectivity.ps1
+.\test-scripts\test-adyen-connectivity.ps1
 ```
 
 The script exits with code `0` for a successful session response and `1` when
@@ -94,9 +95,9 @@ messages. This is separate from the non-publishing SDK connectivity probe.
 
 ### Other supported lifecycle scripts
 
-`run-dashboard.ps1`, `run-aspire.ps1`, `test-carwash-api.ps1`, and
-`stop-service-bus-poc.ps1` cover application lifecycle, dashboard, API, and
-cleanup workflows. Read each script's help before use; lifecycle scripts can start
+`run-dashboard.ps1`, `run-aspire.ps1`, and `stop-service-bus-poc.ps1` cover application
+lifecycle, dashboard, and cleanup workflows. `test-scripts/test-carwash-api.ps1` covers
+the Carwash API. Read each script's help before use; lifecycle scripts can start
 processes or containers and may write to `logs/`.
 
 ## Archived scripts

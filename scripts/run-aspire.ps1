@@ -141,6 +141,7 @@ function Start-DashboardUI {
     $env:Dashboard__Enabled = "true"
     
     $uiLogPath = Join-Path $logsPath "dashboard-ui-$(Get-Date -Format 'ddMMyyyy-HHmmss').log"
+    $uiErrorPath = Join-Path $logsPath "dashboard-ui-$(Get-Date -Format 'ddMMyyyy-HHmmss').error.log"
     
     $process = Start-Process -FilePath 'node' `
         -ArgumentList @($serverPath) `
@@ -148,7 +149,7 @@ function Start-DashboardUI {
         -NoNewWindow `
         -PassThru `
         -RedirectStandardOutput $uiLogPath `
-        -RedirectStandardError $uiLogPath
+        -RedirectStandardError $uiErrorPath
     
     Write-Host "Dashboard UI started (PID: $($process.Id)). Log: $uiLogPath" -ForegroundColor Green
     

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Aspire.Hosting;
-using ServiceBusPoc.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -54,13 +53,6 @@ ConfigureServiceBus(carwash, "carwash");
 
 var producer = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Producer>("producer");
 ConfigureServiceBus(producer);
-producer.WithEnvironment(context =>
-{
-    foreach (var setting in ProducerEnvironment.Create(builder.Configuration))
-    {
-        context.EnvironmentVariables[setting.Key] = setting.Value;
-    }
-});
 
 var verifier = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Verifier>("verifier")
     .WithArgs("--connectivity-probe");

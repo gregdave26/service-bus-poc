@@ -66,13 +66,11 @@ ConfigureServiceBus(verifier);
 
 // Digital Site commerce services
 var commerceToolsStub = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_CommerceToolsStub>("commerce-tools-stub")
-    .WithHttpEndpoint(port: 5201, name: "http")
-    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5201");
+    .WithHttpEndpoint(port: 5201, name: "http");
 ConfigureServiceBus(commerceToolsStub);
 
 var commerceApi = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_CommerceApi>("commerce-api")
     .WithHttpEndpoint(port: 5200, name: "http")
-    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5200")
     .WithEnvironment("DigitalSite__AllowedOrigins", "http://localhost:5100,http://localhost:3000")
     .WithEnvironment(context =>
     {

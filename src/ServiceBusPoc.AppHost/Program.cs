@@ -20,6 +20,12 @@ var commonSettings = new Dictionary<string, string>
     ["ServiceBus__TopicName"] = serviceBusTopic
 };
 
+var commerceToolsSettings = new Dictionary<string, string>
+{
+    ["CommerceTools__ApiUrl"] = "http://localhost:5201",
+    ["CommerceTools__ProjectKey"] = "rac-rsa-poc"
+};
+
 void ConfigureServiceBus(IResourceBuilder<ProjectResource> resource, string? subscriptionName = null)
 {
     resource
@@ -61,22 +67,42 @@ ConfigureServiceBus(verifier);
 // Digital Site commerce services
 var commerceToolsStub = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_CommerceToolsStub>("commerce-tools-stub")
     .WithHttpEndpoint(port: 5201, name: "http")
-    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5201")
-    .WithEnvironment("ServiceBus__TopicName", "commerce.events");
+    .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5201");
 ConfigureServiceBus(commerceToolsStub);
 
 var commerceApi = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_CommerceApi>("commerce-api")
     .WithHttpEndpoint(port: 5200, name: "http")
     .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5200")
-    .WithEnvironment("DigitalSite__AllowedOrigins", "http://localhost:5100,http://localhost:3000");
+    .WithEnvironment("DigitalSite__AllowedOrigins", "http://localhost:5100,http://localhost:3000")
+    .WithEnvironment(context =>
+    {
+        foreach (var setting in commerceToolsSettings)
+        {
+            context.EnvironmentVariables[setting.Key] = setting.Value;
+        }
+    });
 ConfigureServiceBus(commerceApi);
 
 var cartProcessor = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_CartProcessor>("cart-processor")
-    .WithEnvironment("ServiceBus__TopicName", "commerce.events");
+    .WithEnvironment("ServiceBus__TopicName", "commerce.events")
+    .WithEnvironment(context =>
+    {
+        foreach (var setting in commerceToolsSettings)
+        {
+            context.EnvironmentVariables[setting.Key] = setting.Value;
+        }
+    });
 ConfigureServiceBus(cartProcessor, "cart-processor");
 
 var fulfilmentStub = builder.AddProject<Projects.ServiceBusPoc_DigitalSite_FulfilmentStub>("fulfilment-stub")
-    .WithEnvironment("ServiceBus__TopicName", "commerce.events");
+    .WithEnvironment("ServiceBus__TopicName", "commerce.events")
+    .WithEnvironment(context =>
+    {
+        foreach (var setting in commerceToolsSettings)
+        {
+            context.EnvironmentVariables[setting.Key] = setting.Value;
+        }
+    });
 ConfigureServiceBus(fulfilmentStub, "fulfilment-d365-stub");
 
 builder.Build().Run();

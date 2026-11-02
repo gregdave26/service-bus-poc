@@ -12,10 +12,10 @@
     Environment file to load. Defaults to the repository-root .env file.
 
 .EXAMPLE
-    .\scripts\test-adyen-connectivity.ps1
+    .\test-scripts\test-adyen-connectivity.ps1
 
 .EXAMPLE
-    .\scripts\test-adyen-connectivity.ps1 -EnvironmentFile .\.env
+    .\test-scripts\test-adyen-connectivity.ps1 -EnvironmentFile .\.env
 #>
 
 [CmdletBinding()]

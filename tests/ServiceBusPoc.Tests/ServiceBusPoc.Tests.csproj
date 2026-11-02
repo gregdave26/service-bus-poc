@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/ServiceBusPoc.AppHost/ServiceBusPoc.AppHost.csproj" />
     <ProjectReference Include="../../src/ServiceBusPoc.Core/ServiceBusPoc.Core.csproj" />
     <ProjectReference Include="../../src/ContactEvents/Consumers/Carwash/ServiceBusPoc.ContactEvents.Consumers.Carwash.csproj" />
     <ProjectReference Include="../../src/ContactEvents/Consumers/DigitalChannels/ServiceBusPoc.ContactEvents.Consumers.DigitalChannels.csproj" />

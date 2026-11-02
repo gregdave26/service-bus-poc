@@ -15,19 +15,23 @@ public sealed class CommerceApiFactory : WebApplicationFactory<CheckoutService>
     private readonly CommerceToolsStubFactory _commerceTools;
     private readonly IReadOnlyDictionary<string, string?> _settings;
     private readonly Action<IServiceCollection>? _configureServices;
+    private readonly string _environmentName;
 
     public CommerceApiFactory(
         CommerceToolsStubFactory commerceTools,
         IReadOnlyDictionary<string, string?>? settings = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        string environmentName = "Development")
     {
         _commerceTools = commerceTools;
         _settings = settings ?? new Dictionary<string, string?>();
         _configureServices = configureServices;
+        _environmentName = environmentName;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment(_environmentName);
         builder.UseSetting("CommerceTools:ApiUrl", "http://localhost");
         builder.UseSetting("CommerceTools:ProjectKey", CommerceToolsStubFactory.ProjectKey);
         builder.UseSetting("DigitalSite:AllowedOrigins", AllowedOrigin);

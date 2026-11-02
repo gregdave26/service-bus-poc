@@ -21,6 +21,7 @@ import {
 } from "./digitalSiteFlowState.js";
 import { ConfirmationStep, ConfirmPayStep, CoverSelectionStep, StepButtons, YourDetailsStep } from "./digitalSiteSteps.jsx";
 import { MemberHistory } from "./MemberHistory.jsx";
+import { PaymentGatewayNotice } from "./PaymentGatewayNotice.js";
 
 const REDIRECT_RESULT_PARAM = "redirectResult";
 
@@ -58,7 +59,8 @@ function DigitalSiteFlow({ api }) {
   const [history, setHistory] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [paymentGateway, setPaymentGateway] = useState("Stub");
+  const [paymentConfig, setPaymentConfig] = useState(null);
+  const paymentGateway = paymentConfig?.gateway ?? "Stub";
   const { crmId } = state;
 
   const refreshMember = useCallback(() => {
@@ -77,7 +79,7 @@ function DigitalSiteFlow({ api }) {
   }, [api]);
 
   useEffect(() => {
-    api.getConfig().then((config) => setPaymentGateway(config.gateway ?? "Stub")).catch((configError) => setError(configError.message));
+    api.getConfig().then(setPaymentConfig).catch((configError) => setError(configError.message));
   }, [api]);
 
   useEffect(() => {
@@ -95,7 +97,7 @@ function DigitalSiteFlow({ api }) {
         if (!cancelled) dispatch({ type: "paymentSessionPrepared", session });
       })
       .catch((sessionError) => {
-        if (!cancelled) setError(`Adyen is unavailable, so the standard card form is being used. ${sessionError.message}`);
+        if (!cancelled) setError(`Adyen session could not be created. No stub fallback has occurred. ${sessionError.message}`);
       })
       .finally(() => {
         if (!cancelled) setBusy(false);
@@ -174,6 +176,7 @@ function DigitalSiteFlow({ api }) {
   const isOutsideStepper = state.page === "coverSelection" || state.page === "finished";
 
   return <Stack spacing={3}>
+    <PaymentGatewayNotice config={paymentConfig} />
     <ThemeProvider theme={racwaTheme}>
       <GlobalStyles styles={{ "@font-face": fontFaces }} />
       <Paper

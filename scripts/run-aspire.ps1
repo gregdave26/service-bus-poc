@@ -1,17 +1,14 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Starts the Service Bus POC emulator and applications through .NET Aspire with dashboard UI.
+    Starts the Service Bus POC emulator, Digital Site services and applications through .NET Aspire.
 
 .DESCRIPTION
-    This script manages the complete Service Bus POC development environment:
-    1. Starts the Azure Service Bus emulator via container runtime (Podman by default)
-    2. Starts Aspire orchestration for .NET services
-    3. Starts the Node.js dashboard UI on port 5100
-    
-    The dashboard UI provides the landing page to view the system status and publish events.
-    Access the dashboard at: http://localhost:5100
-    Access the Aspire dashboard at: https://localhost:<random-port>
+    This is an alternative local entry point to run-dashboard.ps1. The container
+    runtime (Podman by default, see CONTAINER_RUNTIME) continues to own the Service
+    Bus emulator while Aspire owns the application processes and dashboard.
+    The Node.js dashboard UI (the landing page) is started on http://localhost:5100
+    unless -NoUI is specified. The Aspire dashboard URL is printed when Aspire starts.
 
 .PARAMETER NoEmulator
     Do not start or stop the emulator; assume it is already running.
@@ -20,10 +17,10 @@
     Skip the Aspire AppHost build and restore.
 
 .PARAMETER NoUI
-    Don't start the Node.js dashboard UI.
+    Do not start the Node.js dashboard UI.
 
 .PARAMETER NoBrowser
-    Don't automatically open the dashboard in a browser.
+    Do not open the dashboard UI in a browser.
 
 .EXAMPLE
     .\scripts\run-aspire.ps1
@@ -33,10 +30,6 @@
 
 .EXAMPLE
     .\scripts\run-aspire.ps1 -NoUI
-
-.NOTES
-    The Node.js dashboard UI is the primary landing page. It connects to the Aspire-managed services.
-    To stop: Press Ctrl+C in this terminal.
 #>
 
 [CmdletBinding()]
@@ -53,7 +46,10 @@ $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
 $appHostProject = Join-Path $projectRoot 'src\ServiceBusPoc.AppHost\ServiceBusPoc.AppHost.csproj'
 $logsPath = Join-Path $projectRoot 'logs'
+$dashboardUiPath = Join-Path $projectRoot 'ui'
+$dashboardUiPort = 5100
 $appHostBuildProcess = $null
+$dashboardUiProcess = $null
 $emulatorStartedByScript = $false
 . (Join-Path $PSScriptRoot 'container-runtime.ps1')
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
@@ -110,70 +106,44 @@ function Resolve-AspireCli {
     throw "Aspire CLI was not found. Install Aspire CLI or run 'dotnet run --project $appHostProject'."
 }
 
-$uiServerProcess = $null
-
 function Start-DashboardUI {
-    param([int]$DashboardPort = 5100)
-    
     if ($NoUI) {
-        Write-Host 'Skipping Node.js dashboard UI (--NoUI specified)' -ForegroundColor Gray
+        Write-Host 'Skipping dashboard UI (-NoUI specified).' -ForegroundColor Gray
         return $null
     }
 
-    $uiPath = Join-Path $projectRoot 'ui'
-    $serverPath = Join-Path $uiPath 'server.js'
-
+    $serverPath = Join-Path $dashboardUiPath 'server.js'
     if (-not (Test-Path -LiteralPath $serverPath -PathType Leaf)) {
-        Write-Host "Warning: Node.js dashboard UI not found at $serverPath" -ForegroundColor Yellow
-        return $null
+        throw "Dashboard UI server was not found: $serverPath"
     }
 
-    Write-Host "Starting Node.js dashboard UI on port $DashboardPort..." -ForegroundColor Yellow
-    
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-        Write-Host "Warning: Node.js not found. Skipping dashboard UI. Install Node.js to enable the dashboard." -ForegroundColor Yellow
-        return $null
+        throw 'Node.js was not found. Install Node.js or run with -NoUI.'
     }
 
-    $env:PORT = $DashboardPort
-    $env:Dashboard__Port = $DashboardPort
-    $env:Dashboard__Url = "http://localhost:$DashboardPort"
-    $env:Dashboard__Enabled = "true"
-    
-    $uiLogPath = Join-Path $logsPath "dashboard-ui-$(Get-Date -Format 'ddMMyyyy-HHmmss').log"
-    $uiErrorPath = Join-Path $logsPath "dashboard-ui-$(Get-Date -Format 'ddMMyyyy-HHmmss').error.log"
-    
+    New-Item -ItemType Directory -Path $logsPath -Force | Out-Null
+    $uiTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+    $env:PORT = "$dashboardUiPort"
+
+    Write-Host "Starting dashboard UI on http://localhost:$dashboardUiPort..." -ForegroundColor Yellow
     $process = Start-Process -FilePath 'node' `
         -ArgumentList @($serverPath) `
-        -WorkingDirectory $uiPath `
+        -WorkingDirectory $dashboardUiPath `
         -NoNewWindow `
         -PassThru `
-        -RedirectStandardOutput $uiLogPath `
-        -RedirectStandardError $uiErrorPath
-    
-    Write-Host "Dashboard UI started (PID: $($process.Id)). Log: $uiLogPath" -ForegroundColor Green
-    
+        -RedirectStandardOutput (Join-Path $logsPath "dashboard-ui-$uiTimestamp.log") `
+        -RedirectStandardError (Join-Path $logsPath "dashboard-ui-error-$uiTimestamp.log")
+    Write-Host "Dashboard UI started (PID: $($process.Id))." -ForegroundColor Green
     return $process
 }
 
 function Stop-DashboardUI {
-    param([object]$Process)
-    
-    if ($null -eq $Process -or $Process.HasExited) {
+    if ($null -eq $dashboardUiProcess -or $dashboardUiProcess.HasExited) {
         return
     }
-    
-    Write-Host "Stopping Node.js dashboard UI (PID: $($Process.Id))..." -ForegroundColor Yellow
-    try {
-        $Process.CloseMainWindow() | Out-Null
-        if (-not $Process.WaitForExit(5000)) {
-            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
-        }
-        Write-Host "Dashboard UI stopped." -ForegroundColor Green
-    }
-    catch {
-        Write-Host "Error stopping dashboard UI: $_" -ForegroundColor Yellow
-    }
+
+    Write-Host "Stopping dashboard UI (PID: $($dashboardUiProcess.Id))..." -ForegroundColor Yellow
+    Stop-Process -Id $dashboardUiProcess.Id -Force -ErrorAction SilentlyContinue
 }
 
 try {
@@ -252,18 +222,10 @@ try {
         Write-Host 'Aspire AppHost build completed.' -ForegroundColor Green
     }
 
-    # Start the Node.js dashboard UI
-    $uiServerProcess = Start-DashboardUI -DashboardPort 5100
-    
-    # Give the UI a moment to start before opening browser
-    if ($null -ne $uiServerProcess) {
+    $dashboardUiProcess = Start-DashboardUI
+    if ($null -ne $dashboardUiProcess -and -not $NoBrowser) {
         Start-Sleep -Milliseconds 2000
-        
-        if (-not $NoBrowser) {
-            Write-Host "Opening dashboard in browser: http://localhost:5100" -ForegroundColor Cyan
-            Start-Process "http://localhost:5100"
-        }
-        Write-Host "📊 Dashboard UI: http://localhost:5100" -ForegroundColor Green
+        Start-Process "http://localhost:$dashboardUiPort"
     }
 
     $aspireArguments = @(
@@ -275,8 +237,9 @@ try {
     )
 
     Write-Host ''
+    Write-Host "Dashboard landing page: http://localhost:$dashboardUiPort" -ForegroundColor Green
     Write-Host 'Starting Aspire AppHost...' -ForegroundColor Cyan
-    Write-Host 'The Aspire dashboard URL will be printed below.' -ForegroundColor Gray
+    Write-Host 'The Aspire dashboard URL (https://localhost:<port>/login?t=...) will be printed below.' -ForegroundColor Gray
     & $aspireCli @aspireArguments
     if ($LASTEXITCODE -ne 0) {
         throw "Aspire exited with code $LASTEXITCODE."
@@ -286,6 +249,6 @@ finally {
     if ($null -ne $appHostBuildProcess -and -not $appHostBuildProcess.HasExited) {
         Stop-Process -Id $appHostBuildProcess.Id -Force -ErrorAction SilentlyContinue
     }
-    Stop-DashboardUI -Process $uiServerProcess
+    Stop-DashboardUI
     Stop-Emulator
 }

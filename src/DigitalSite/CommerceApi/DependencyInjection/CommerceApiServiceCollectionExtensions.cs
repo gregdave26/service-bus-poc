@@ -21,14 +21,16 @@ public static class CommerceApiServiceCollectionExtensions
     /// <summary>Registers the commerce API services and the configured payment gateway.</summary>
     /// <param name="builder">The web application builder.</param>
     /// <returns>The configured payment gateway mode.</returns>
-    public static PaymentGatewayMode AddCommerceApi(this WebApplicationBuilder builder)
+    public static async Task<PaymentGatewayMode> AddCommerceApiAsync(this WebApplicationBuilder builder)
     {
         var services = builder.Services;
         var configuration = builder.Configuration;
+        var paymentGateway = await PaymentGatewaySelection.ResolveAsync(configuration);
 
         services
             .AddOptions<DigitalSiteSettings>()
             .Bind(configuration.GetSection(DigitalSiteSettings.SectionName))
+            .PostConfigure(settings => settings.PaymentGateway = paymentGateway)
             .ValidateDataAnnotations()
             .ValidateOnStart();
         services.AddCommerceToolsClient(configuration);
@@ -54,8 +56,10 @@ public static class CommerceApiServiceCollectionExtensions
         services.AddSingleton<PaymentGatewayRuntimeState>(serviceProvider =>
             new PaymentGatewayRuntimeState(
                 serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DigitalSiteSettings>>().Value.PaymentGateway));
+        services.AddHostedService<AdyenConnectivityStartupCheck>();
 
         var siteSettings = configuration.GetSection(DigitalSiteSettings.SectionName).Get<DigitalSiteSettings>() ?? new DigitalSiteSettings();
+        siteSettings.PaymentGateway = paymentGateway;
         services.AddCors(options => options.AddPolicy(CorsPolicy, policy => policy
             .WithOrigins([.. siteSettings.AllowedOriginList])
             .WithMethods("GET", "POST", "PUT", "DELETE")
@@ -68,7 +72,6 @@ public static class CommerceApiServiceCollectionExtensions
             services.AddScoped<AdyenPaymentAdapter>();
             services.AddScoped<RuntimePaymentGatewayAdapter>();
             services.AddScoped<IPaymentGatewayAdapter>(provider => provider.GetRequiredService<RuntimePaymentGatewayAdapter>());
-            services.AddHostedService<AdyenConnectivityStartupCheck>();
         }
         else
         {

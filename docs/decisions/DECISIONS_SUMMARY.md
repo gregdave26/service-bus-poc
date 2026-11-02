@@ -84,7 +84,7 @@ Phase 3: Tests (2-3 days, parallel with Phase 2)
 └─ Configuration tests
 
 Phase 5.1: Local Scripts (1 day)
-└─ run-local-poc.ps1 (orchestrates MVP)
+└─ validate-emulator-topology.ps1 (routing verification)
 
 [MVP Complete ✅]
 
@@ -187,7 +187,7 @@ Consumers
 - [ ] Mock Pulse client makes valid HTTP calls to Carwash API
 
 ### Integration Validation
-- [ ] `scripts/run-local-poc.ps1` completes end-to-end without errors
+- [ ] `scripts/validate-emulator-topology.ps1` passes all routing scenarios without errors
 - [ ] Scenario verifier logs show all test scenarios passed
 - [ ] Docker Compose spins up emulator and applies topology correctly
 - [ ] Consumers start and process messages within 10 seconds
@@ -216,7 +216,7 @@ Consumers
 3. ✅ All automated tests pass (≥80% coverage)
 4. ✅ All 8 filter routing scenarios validated locally
 5. ✅ Carwash integration produces valid API responses
-6. ✅ Single command (`run-local-poc.ps1`) validates end-to-end
+6. ✅ Routing validation (`validate-emulator-topology.ps1`) passes all scenarios
 7. ✅ Zero secrets leaked to repository
 8. ✅ New developer can onboard in <30 minutes
 9. ✅ ADRs document all key decisions

@@ -11,8 +11,8 @@ To start the complete Service Bus POC development environment with Aspire:
 This will:
 1. ✓ Start the Service Bus emulator
 2. ✓ Start the Node.js dashboard UI (landing page)
-3. ✓ Start all 10 Aspire-managed services
-4. ✓ Open the dashboard in your browser
+3. ✓ Start the Aspire-managed services
+4. ✓ Open the landing page in your browser (unless `-NoBrowser`)
 
 ## Dashboard URLs
 
@@ -24,9 +24,9 @@ After `run-aspire.ps1` starts, you'll have access to:
 - **Automatically opens**: in your default browser on startup
 
 ### 🔧 Aspire Dashboard
-- **URL**: Printed to console (typically https://localhost:17149 or similar)
+- **URL**: Printed to the console as `https://localhost:<port>/login?t=<token>`. The port and token change on every run, so copy the link from the console output.
 - **Purpose**: Service management, logs, traces, resource monitoring
-- **Shows**: Status of all 10 services with detailed telemetry
+- **Shows**: Status and telemetry for the Aspire-managed services
 
 ### 🛒 Digital Site Services
 - **CommerceApi (BFF)**: http://localhost:5200
@@ -37,7 +37,7 @@ After `run-aspire.ps1` starts, you'll have access to:
 The Aspire orchestration manages 10 services:
 
 ### Contact Events (Service Bus topology)
-1. **producer** - Publishes sample events every 3 seconds
+1. **producer** - Publishes one sample event at startup, then exits. Its status shows as `Offline` (heartbeats stop once it exits). Use the landing page's publish form to send further events.
 2. **digital-channels** - Consumes all events
 3. **insurance** - Consumes events where hasInsurance=true
 4. **parks-resorts** - Consumes events where hasParksResorts=true
@@ -70,24 +70,22 @@ The Aspire orchestration manages 10 services:
 ### Development Tips
 
 1. **Accessing the landing page**: Open http://localhost:5100 in your browser
-2. **Publishing events**: Use the Node.js dashboard UI to publish test contact events
+2. **Publishing events**: Use the landing page's publish form to send test contact events (`POST /api/publish`)
 3. **Monitoring services**: Check the Aspire dashboard for live logs and traces
 4. **Testing commerce APIs**: Use CommerceApi on http://localhost:5200
 
 ## About the Old Dashboard Script
 
-The old `run-dashboard.ps1` script is now **superseded** by `run-aspire.ps1`.
+The old `run-dashboard.ps1` script is superseded by `run-aspire.ps1`.
 
 **Why the change?**
-- `run-aspire.ps1` uses Aspire's standardized orchestration (better for .NET development)
-- Aspire provides superior service lifecycle management and observability
-- The Node.js dashboard UI is still included for the familiar landing page experience
+- `run-aspire.ps1` uses Aspire's orchestration for the .NET services and telemetry
+- The Node.js dashboard UI is still started by the launcher, so the landing page is unchanged
 
 **Can I still use it?**
-- The old script is kept for reference but no longer recommended
-- It can be archived if you're fully migrated to Aspire
+- `run-dashboard.ps1` is still in the repository but is no longer recommended. It can be removed once the team confirms it is not needed.
 
-**Migration status**: ✓ **Complete** - All services are now Aspire-managed
+**Migration status**: The .NET services run under the Aspire AppHost. The Node.js UI is started by `run-aspire.ps1`, not by the AppHost.
 
 ## Troubleshooting
 
@@ -106,8 +104,8 @@ The old `run-dashboard.ps1` script is now **superseded** by `run-aspire.ps1`.
 - Review service logs in Aspire dashboard
 
 ### Port already in use
-- Check what's using port 5100, 5200, 5201
-- Modify ports in `Program.cs` if needed
+- Check what's using port 5100 (`$dashboardUiPort` in `run-aspire.ps1`), 5200, or 5201 (set in `src/ServiceBusPoc.AppHost/Program.cs`)
+- Change the ports in those files if needed
 - Restart any conflicting services
 
 ## Architecture
@@ -117,7 +115,7 @@ The old `run-dashboard.ps1` script is now **superseded** by `run-aspire.ps1`.
 │  ├─ Service Bus Emulator (Podman/Docker)
 │  ├─ Node.js Dashboard UI (http://localhost:5100)
 │  │  └─ Landing page for event publishing
-│  └─ Aspire AppHost (https://localhost:PORT)
+│  └─ Aspire AppHost (dashboard URL printed at startup)
 │     ├─ Service orchestration
 │     ├─ 6 Contact Events services
 │     ├─ 4 Digital Site services
@@ -128,7 +126,7 @@ The old `run-dashboard.ps1` script is now **superseded** by `run-aspire.ps1`.
 
 1. Run `.\scripts\run-aspire.ps1`
 2. Navigate to http://localhost:5100 (auto-opens)
-3. Use the dashboard to publish test events
+3. Use the landing page to publish test events
 4. Monitor services in the Aspire dashboard
 5. Develop and test your features
 

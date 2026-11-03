@@ -20,7 +20,7 @@ After `run-aspire.ps1` starts, you'll have access to:
 
 ### 📊 Primary Landing Page (Node.js Dashboard)
 - **URL**: http://localhost:5100
-- **Purpose**: Event publishing UI and system status visualization
+- **Purpose**: Event publishing UI and message activity. The header shows the Service Bus emulator state; service status is shown in the Aspire dashboard
 - **Automatically opens**: in your default browser on startup
 
 ### 🔧 Aspire Dashboard

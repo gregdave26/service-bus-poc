@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Alert,
@@ -8,8 +8,6 @@ import {
   AccordionSummary,
   Box,
   Button,
-  Card,
-  CardActionArea,
   Checkbox,
   Chip,
   CircularProgress,
@@ -123,27 +121,6 @@ function messageType(payload, fallback) {
   }
 }
 
-function MessageDialog({ service, messages, config, onClose }) {
-  const sent = service === "producer";
-  const filtered = messages.filter((message) => message.serviceName === service && message.direction === (sent ? "sent" : "received"));
-  return <Dialog open={Boolean(service)} onClose={onClose} fullWidth maxWidth="lg" aria-labelledby="service-dialog-title">
-    <DialogTitle id="service-dialog-title" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      {displayName(service, config)}
-      <IconButton aria-label="Close service details" onClick={onClose}><CloseIcon /></IconButton>
-    </DialogTitle>
-    <DialogContent dividers>
-      <Typography variant="h6" gutterBottom>Message activity</Typography>
-      <Typography color="text.secondary" variant="body2" gutterBottom>{sent ? "Messages published by this service." : "Messages received by this service subscription."}</Typography>
-      {filtered.length === 0 ? <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>No {sent ? "published" : "received"} messages for this service yet.</Typography> :
-        <Stack spacing={1}>{filtered.slice().reverse().map((message) => <Paper key={message.messageId} variant="outlined" sx={{ p: 1.5 }}>
-          <Typography variant="subtitle2">{message.eventId}</Typography>
-          <Typography variant="caption" color="text.secondary">{new Date(message.timestamp).toLocaleString()} · {message.direction}</Typography>
-          <Box component="pre" sx={{ mt: 1, mb: 0, overflow: "auto", p: 1.5, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>{message.payload}</Box>
-        </Paper>)}</Stack>}
-    </DialogContent>
-  </Dialog>;
-}
-
 function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
   const types = Object.entries(config.messageTypes ?? {});
   const [name, setName] = useState("");
@@ -242,38 +219,17 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
     </Dialog>;
 }
 
-function ServiceCard({ service, config, selected, onClick, receivedFlash }) {
-  const state = String(service.state).toLowerCase();
-  const connected = state !== "offline" && state !== "completed";
-  const name = displayName(service.serviceName, config);
-  const labels = service.serviceName === "producer" ? config.producerLabels : config.subscriberLabels?.[service.serviceName];
-  const stateLabel = state === "completed"
-    ? (labels?.CompletedLabel || "Completed")
-    : connected ? (labels?.ConnectedLabel || "Connected") : (labels?.OfflineLabel || "Offline");
-  const countLabel = labels?.MessagesHandledLabel || "handled";
-  return <Card variant="outlined" aria-label={receivedFlash ? `${name} received a message` : name} sx={{ borderColor: selected ? "primary.main" : "divider", bgcolor: selected ? "primary.light" : "background.paper", animation: receivedFlash ? "serviceReceiveFlash 900ms ease-out" : "none", "@media (prefers-reduced-motion: reduce)": { animation: "none" }, "@keyframes serviceReceiveFlash": { "0%": { backgroundColor: processFlowColors.completed.background, boxShadow: `0 0 0 6px ${processFlowColors.completed.background}` }, "100%": { backgroundColor: selected ? undefined : "background.paper", boxShadow: "0 0 0 0 transparent" } } }}>
-    <CardActionArea onClick={service.selectable === false ? undefined : onClick} disabled={service.selectable === false} sx={{ p: 2, minHeight: 132 }}>
-      <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between"><Typography variant="caption" color="text.secondary">{service.infrastructure ? "Infrastructure" : "Service"}</Typography><Typography color="primary.main">{service.icon || "◎"}</Typography></Stack>
-        <Typography variant="h6">{name}</Typography>
-        <Stack direction="row" spacing={1} alignItems="center"><Box component="span" className={`status-dot ${connected ? "connected" : "offline"}`} /><Typography variant="body2" color="text.secondary">{stateLabel}{service.messagesHandled === null ? "" : ` · ${service.messagesHandled ?? 0} ${countLabel}`}</Typography></Stack>
-      </Stack>
-    </CardActionArea>
-  </Card>;
-}
-
-function ActivityStream({ messages, statuses, config }) {
-  const statusMap = useMemo(() => new Map(statuses.map((status) => [status.serviceName, status])), [statuses]);
+function ActivityStream({ messages, config }) {
   const [expanded, setExpanded] = useState(null);
   const activity = messages.slice().sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
   return <Paper variant="outlined" sx={{ overflow: "hidden" }}>
     <Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Event activity stream</Typography><Typography variant="body2" color="text.secondary">Published and received events from the dashboard</Typography></Box><Chip label="Live" color="success" size="small" /></Box>
     <Divider />
     {activity.length === 0 ? <Typography color="text.secondary" sx={{ p: 4, textAlign: "center" }}>No published or received events yet.</Typography> :
-      <Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Event activity stream" sx={{ minWidth: 760 }}><TableHead><TableRow><TableCell>Event</TableCell><TableCell>Service</TableCell><TableCell>Direction</TableCell><TableCell>Status</TableCell><TableCell>Time</TableCell><TableCell /></TableRow></TableHead><TableBody>
-        {activity.map((message, index) => { const rowId = String(index); const open = expanded === rowId; const status = message.direction === "sent" ? "Published" : (statusMap.get(message.serviceName)?.state || "Observed"); return <React.Fragment key={rowId}>
-          <TableRow hover onClick={() => setExpanded(open ? null : rowId)} sx={{ cursor: "pointer" }}><TableCell sx={{ fontWeight: 700 }}>{messageType(message.payload, message.eventId)}</TableCell><TableCell>{displayName(message.serviceName, config)}</TableCell><TableCell><Chip size="small" label={message.direction === "sent" ? "Published" : "Received"} color={message.direction === "sent" ? "primary" : "secondary"} /></TableCell><TableCell><Chip size="small" label={status} color={status === "Offline" ? "warning" : "default"} /></TableCell><TableCell>{new Date(message.timestamp).toLocaleString()}</TableCell><TableCell>{open ? <ExpandLessIcon /> : <ExpandMoreIcon />}</TableCell></TableRow>
-          <TableRow><TableCell colSpan={6} sx={{ p: 0, border: 0 }}><Collapse in={open}><Box component="pre" sx={{ m: 1.5, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>{message.payload}</Box></Collapse></TableCell></TableRow>
+      <Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Event activity stream" sx={{ minWidth: 760 }}><TableHead><TableRow><TableCell>Event</TableCell><TableCell>Service</TableCell><TableCell>Direction</TableCell><TableCell>Time</TableCell><TableCell /></TableRow></TableHead><TableBody>
+        {activity.map((message, index) => { const rowId = String(index); const open = expanded === rowId; return <React.Fragment key={rowId}>
+          <TableRow hover onClick={() => setExpanded(open ? null : rowId)} sx={{ cursor: "pointer" }}><TableCell sx={{ fontWeight: 700 }}>{messageType(message.payload, message.eventId)}</TableCell><TableCell>{displayName(message.serviceName, config)}</TableCell><TableCell><Chip size="small" label={message.direction === "sent" ? "Published" : "Received"} color={message.direction === "sent" ? "primary" : "secondary"} /></TableCell>          <TableCell>{new Date(message.timestamp).toLocaleString()}</TableCell><TableCell>{open ? <ExpandLessIcon /> : <ExpandMoreIcon />}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} sx={{ p: 0, border: 0 }}><Collapse in={open}><Box component="pre" sx={{ m: 1.5, overflow: "auto", p: 2, bgcolor: "grey.900", color: "grey.100", borderRadius: 1, fontSize: 12 }}>{message.payload}</Box></Collapse></TableCell></TableRow>
         </React.Fragment>; })}
       </TableBody></Table></Box>}
   </Paper>;
@@ -465,14 +421,11 @@ function App() {
     producerLabels: {},
     digitalSiteApiBaseUrl: "http://localhost:5200",
   });
-  const [statuses, setStatuses] = useState([]);
   const [messages, setMessages] = useState([]);
   const [posCatalog, setPosCatalog] = useState(null);
   const [posReceipts, setPosReceipts] = useState([]);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [emulator, setEmulator] = useState({ running: false });
-  const [selectedService, setSelectedService] = useState(null);
-  const [activeService, setActiveService] = useState(null);
   const [newMessageOpen, setNewMessageOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState(drafts[0]);
@@ -481,12 +434,10 @@ function App() {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [receivedFlashServices, setReceivedFlashServices] = useState(new Set());
-  const previousMessageIds = useRef(null);
 
   async function refresh() {
     try {
-      const [nextConfig, nextEmulator, nextStatuses, nextMessages, nextPosReceipts] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/status"), getJson("/api/messages"), getJson("/api/pos/receipts")]);
+      const [nextConfig, nextEmulator, nextMessages, nextPosReceipts] = await Promise.all([getJson("/api/config"), getJson("/api/emulator-status"), getJson("/api/messages"), getJson("/api/pos/receipts")]);
       setConfig({
         subscriberLabels: nextConfig.subscriberLabels || {},
         producerLabels: nextConfig.producerLabels || {},
@@ -495,7 +446,7 @@ function App() {
         rosteringMappings: nextConfig.rosteringMappings || {},
         rosteringInputDefinitions: nextConfig.rosteringInputDefinitions || {},
       });
-      setEmulator(nextEmulator); setStatuses(nextStatuses); setMessages(nextMessages); setPosReceipts(nextPosReceipts); setError(null);
+      setEmulator(nextEmulator); setMessages(nextMessages); setPosReceipts(nextPosReceipts); setError(null);
     } catch (refreshError) { setError(refreshError.message); } finally { setLoading(false); }
   }
 
@@ -512,32 +463,6 @@ function App() {
     setPosReceipts(latestReceipts);
     return receipt;
   }
-
-  useEffect(() => {
-    if (loading) return;
-    const currentIds = new Set(messages.map((message) => message.messageId ?? message.id ?? `${message.serviceName}-${message.timestamp}`));
-    if (previousMessageIds.current === null) {
-      previousMessageIds.current = currentIds;
-      return;
-    }
-    const receivedServices = new Set(messages
-      .filter((message) => message.direction === "received")
-      .filter((message) => !previousMessageIds.current.has(message.messageId ?? message.id ?? `${message.serviceName}-${message.timestamp}`))
-      .map((message) => message.serviceName));
-    previousMessageIds.current = currentIds;
-    if (!receivedServices.size) return;
-    setReceivedFlashServices(receivedServices);
-    const timer = setTimeout(() => setReceivedFlashServices(new Set()), 1000);
-    return () => clearTimeout(timer);
-  }, [messages, loading]);
-
-  const services = useMemo(() => {
-    const reported = statuses.filter((service) => !["Dashboard", "producer"].includes(service.serviceName));
-    const names = new Set(reported.map((service) => service.serviceName));
-    const observed = [...new Set(messages.map((message) => message.serviceName))].filter((name) => !names.has(name) && !["Dashboard", "producer"].includes(name)).map((serviceName) => ({ serviceName, state: "Live", messagesHandled: messages.filter((message) => message.serviceName === serviceName).length, selectable: true }));
-    const producer = statuses.find((service) => service.serviceName === "producer") || { serviceName: "producer", state: "Ready", messagesHandled: messages.filter((message) => message.serviceName === "producer").length, selectable: true, infrastructure: true };
-    return [{ serviceName: "Service Bus emulator", state: emulator.running ? "Running" : "Offline", messagesHandled: null, selectable: false, infrastructure: true, icon: "◈" }, { ...producer, icon: "◉" }, ...reported, ...observed];
-  }, [statuses, messages, emulator]);
 
   function selectDraft(draft) { setSelectedDraft(draft); setForm({ ...draft.data }); setMessageName(draft.name); setEditorOpen(true); }
   function updateForm(event) { const { name, value, type, checked } = event.target; setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value })); }
@@ -566,15 +491,13 @@ function App() {
   const duplicateEditorName = drafts.some((draft) => draft !== selectedDraft && normalizedName(draft.name) === normalizedName(messageName));
 
   return <Container maxWidth="xl" sx={{ py: 3 }}>
-    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{tabTitles[activeTab]}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button><Button size="small" variant={activeTab === "digitalSite" ? "contained" : "text"} onClick={() => setActiveTab("digitalSite")} role="tab" aria-selected={activeTab === "digitalSite"} startIcon={<StorefrontIcon />}>Digital Site</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
+    <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{tabTitles[activeTab]}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button><Button size="small" variant={activeTab === "digitalSite" ? "contained" : "text"} onClick={() => setActiveTab("digitalSite")} role="tab" aria-selected={activeTab === "digitalSite"} startIcon={<StorefrontIcon />}>Digital Site</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}><Chip size="small" label={emulator.running ? "Service Bus emulator running" : "Service Bus emulator offline"} color={emulator.running ? "success" : "default"} /><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
-    {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) : <>
-    <Stack direction="row" flexWrap="wrap" spacing={2} useFlexGap sx={{ mb: 3 }}>{services.map((service) => <Box key={service.serviceName} sx={{ flex: { xs: "1 1 100%", sm: "1 1 220px" }, minWidth: 0 }}><ServiceCard service={service} config={config} selected={selectedService === service.serviceName} receivedFlash={receivedFlashServices.has(service.serviceName)} onClick={() => { setSelectedService(service.serviceName); setActiveService(service.serviceName); }} /></Box>)}</Stack>
+    {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) :     <>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
-      <ActivityStream messages={messages} statuses={statuses} config={config} />
+      <ActivityStream messages={messages} config={config} />
     </Box>
-    <MessageDialog service={activeService} messages={messages} config={config} onClose={() => setActiveService(null)} />
     <NewMessageDialog open={newMessageOpen} config={config} existingNames={drafts.map((draft) => draft.name)} onClose={() => setNewMessageOpen(false)} onCreate={createDraft} />
     <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} messageName={messageName} duplicateName={duplicateEditorName} onNameChange={setMessageName} onChange={updateForm} onSave={saveDraft} onPublish={(event) => { if (duplicateEditorName || !messageName.trim()) { event.preventDefault(); return; } saveDraft(); publish(event); }} onClose={() => setEditorOpen(false)} />
     <Snackbar open={Boolean(toast)} autoHideDuration={4500} onClose={() => setToast(null)} message={toast} />

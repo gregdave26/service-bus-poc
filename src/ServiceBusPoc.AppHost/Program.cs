@@ -60,7 +60,7 @@ ConfigureServiceBus(parksResorts, "parks-resorts");
 var carwash = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Consumers_Carwash>("carwash");
 ConfigureServiceBus(carwash, "carwash");
 
-var producer = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Producer>("producer");
+var producer = builder.AddProject<Projects.ServiceBusPoc_ContactEvents_Producer>("contact-event-simulator");
 ConfigureServiceBus(producer);
 producer.WithEnvironment(context =>
 {

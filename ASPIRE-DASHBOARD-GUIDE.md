@@ -37,7 +37,7 @@ After `run-aspire.ps1` starts, you'll have access to:
 The Aspire orchestration manages 10 services:
 
 ### Contact Events (Service Bus topology)
-1. **producer** - Publishes one sample event at startup, then exits. Its status shows as `Offline` (heartbeats stop once it exits). Use the landing page's publish form to send further events.
+1. **Contact Event Simulator** (`producer` service, Aspire resource `contact-event-simulator`) - Publishes one sample contact event per run, then shows `Completed`. Completed is not an error and does not age to `Offline`. Use the landing page's publish form to send further events. Continuous randomised simulation is on the backlog.
 2. **digital-channels** - Consumes all events
 3. **insurance** - Consumes events where hasInsurance=true
 4. **parks-resorts** - Consumes events where hasParksResorts=true

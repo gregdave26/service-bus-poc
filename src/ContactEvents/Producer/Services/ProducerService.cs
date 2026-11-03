@@ -45,6 +45,8 @@ public sealed class ProducerService(
     {
         await ReportHeartbeatAsync(ServiceState.Running, 0, null, null);
 
+        var finalState = ServiceState.Stopped;
+        long messagesPublished = 0;
         try
         {
             var contactEvent = new ContactUpdatedEvent
@@ -69,15 +71,17 @@ public sealed class ProducerService(
                 _settings.CorrelationId,
                 cancellationToken).ConfigureAwait(false);
 
+            messagesPublished = 1;
             await ReportHeartbeatAsync(
                 ServiceState.Online,
-                1,
+                messagesPublished,
                 _timeProvider.GetUtcNow(),
                 null);
+            finalState = ServiceState.Completed;
         }
         finally
         {
-            await ReportHeartbeatAsync(ServiceState.Stopped, 0, null, null);
+            await ReportHeartbeatAsync(finalState, messagesPublished, null, null);
         }
     }
 

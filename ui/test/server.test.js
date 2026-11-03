@@ -13,6 +13,7 @@ import {
   validateDashboardMessage,
   validatePublishRequest,
 } from "../server/contactEvents/index.js";
+import { recordHeartbeat } from "../server/contactEvents/messageStore.js";
 import {
   processRosteringBatch,
   parseDelimited,
@@ -421,4 +422,15 @@ test("uploads a valid roster batch and extracts lineup XML through the API", asy
     assert.match(extracted.xml, /<Agent AgentID="E1"/);
     assert.match(extracted.filename, /^Lineup_RAC_/);
   });
+});
+
+test("keeps a completed service visible after its heartbeat window", () => {
+  const staleSentAt = new Date(Date.now() - 60_000).toISOString();
+  recordHeartbeat({ serviceName: "completed-simulator", state: "completed", sentAt: staleSentAt, messagesHandled: 1 });
+  recordHeartbeat({ serviceName: "stale-simulator", state: "running", sentAt: staleSentAt, messagesHandled: 0 });
+
+  const statuses = Object.fromEntries(getServiceStatuses().map((status) => [status.serviceName, status.state]));
+
+  assert.equal(statuses["completed-simulator"], "completed");
+  assert.equal(statuses["stale-simulator"], "Offline");
 });

@@ -26,7 +26,7 @@ The POC validates event contracts, message routing, independent consumers, and a
 | Carwash consumer | Receives messages with `hasCarwashProduct = true`. |
 | Carwash verification API | Exposes `POST /carwash/v1/verify` for Pulse or mock Pulse. It is independent of the Carwash Service Bus consumer. |
 | Verifier | Runs scenarios to prove that subscription filters route messages correctly. |
-| Dashboard | Shows Service Bus service status and message activity and provides an event-publishing interface. |
+| Dashboard | Shows the Service Bus emulator state and message activity, and provides an event-publishing interface. Service status is shown in the Aspire dashboard. |
 
 ### Event and routing flow
 
@@ -153,7 +153,7 @@ The POS database is local application state used to demonstrate processing and r
 
 The React/Vite UI provides two views over these separate demonstrations:
 
-- **Contact Events** - Service Bus emulator status, producer/consumer heartbeats, event publishing, and message activity.
+- **Contact Events** - Service Bus emulator state, event publishing, and message activity. Service and heartbeat status is shown in the Aspire dashboard.
 - **Local Processing** - POS receipt processing backed by the local SQLite `PosEvents` table.
 
 The shared dashboard is a presentation and local orchestration surface. Its presence does not make the two processing paths one system.

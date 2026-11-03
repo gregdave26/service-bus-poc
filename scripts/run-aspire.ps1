@@ -1,13 +1,14 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Starts the Service Bus POC emulator and applications through .NET Aspire.
+    Starts the Service Bus POC emulator, Digital Site services and applications through .NET Aspire.
 
 .DESCRIPTION
     This is an alternative local entry point to run-dashboard.ps1. The container
     runtime (Podman by default, see CONTAINER_RUNTIME) continues to own the Service
-    Bus emulator while Aspire owns the application processes and dashboard. The
-    existing custom dashboard is not started.
+    Bus emulator while Aspire owns the application processes and dashboard.
+    The Node.js dashboard UI (the landing page) is started on http://localhost:5100
+    unless -NoUI is specified. The Aspire dashboard URL is printed when Aspire starts.
 
 .PARAMETER NoEmulator
     Do not start or stop the emulator; assume it is already running.
@@ -15,17 +16,28 @@
 .PARAMETER NoBuild
     Skip the Aspire AppHost build and restore.
 
+.PARAMETER NoUI
+    Do not start the Node.js dashboard UI.
+
+.PARAMETER NoBrowser
+    Do not open the dashboard UI in a browser.
+
 .EXAMPLE
     .\scripts\run-aspire.ps1
 
 .EXAMPLE
     .\scripts\run-aspire.ps1 -NoEmulator -NoBuild
+
+.EXAMPLE
+    .\scripts\run-aspire.ps1 -NoUI
 #>
 
 [CmdletBinding()]
 param(
     [switch]$NoEmulator,
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [switch]$NoUI,
+    [switch]$NoBrowser
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,7 +46,10 @@ $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
 $envFilePath = Join-Path $projectRoot '.env'
 $appHostProject = Join-Path $projectRoot 'src\ServiceBusPoc.AppHost\ServiceBusPoc.AppHost.csproj'
 $logsPath = Join-Path $projectRoot 'logs'
+$dashboardUiPath = Join-Path $projectRoot 'ui'
+$dashboardUiPort = 5100
 $appHostBuildProcess = $null
+$dashboardUiProcess = $null
 $emulatorStartedByScript = $false
 . (Join-Path $PSScriptRoot 'container-runtime.ps1')
 . (Join-Path $PSScriptRoot 'wait-for-servicebus-emulator.ps1')
@@ -89,6 +104,46 @@ function Resolve-AspireCli {
     }
 
     throw "Aspire CLI was not found. Install Aspire CLI or run 'dotnet run --project $appHostProject'."
+}
+
+function Start-DashboardUI {
+    if ($NoUI) {
+        Write-Host 'Skipping dashboard UI (-NoUI specified).' -ForegroundColor Gray
+        return $null
+    }
+
+    $serverPath = Join-Path $dashboardUiPath 'server.js'
+    if (-not (Test-Path -LiteralPath $serverPath -PathType Leaf)) {
+        throw "Dashboard UI server was not found: $serverPath"
+    }
+
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        throw 'Node.js was not found. Install Node.js or run with -NoUI.'
+    }
+
+    New-Item -ItemType Directory -Path $logsPath -Force | Out-Null
+    $uiTimestamp = Get-Date -Format 'ddMMyyyy-HHmmss'
+    $env:PORT = "$dashboardUiPort"
+
+    Write-Host "Starting dashboard UI on http://localhost:$dashboardUiPort..." -ForegroundColor Yellow
+    $process = Start-Process -FilePath 'node' `
+        -ArgumentList @($serverPath) `
+        -WorkingDirectory $dashboardUiPath `
+        -NoNewWindow `
+        -PassThru `
+        -RedirectStandardOutput (Join-Path $logsPath "dashboard-ui-$uiTimestamp.log") `
+        -RedirectStandardError (Join-Path $logsPath "dashboard-ui-error-$uiTimestamp.log")
+    Write-Host "Dashboard UI started (PID: $($process.Id))." -ForegroundColor Green
+    return $process
+}
+
+function Stop-DashboardUI {
+    if ($null -eq $dashboardUiProcess -or $dashboardUiProcess.HasExited) {
+        return
+    }
+
+    Write-Host "Stopping dashboard UI (PID: $($dashboardUiProcess.Id))..." -ForegroundColor Yellow
+    Stop-Process -Id $dashboardUiProcess.Id -Force -ErrorAction SilentlyContinue
 }
 
 try {
@@ -167,6 +222,12 @@ try {
         Write-Host 'Aspire AppHost build completed.' -ForegroundColor Green
     }
 
+    $dashboardUiProcess = Start-DashboardUI
+    if ($null -ne $dashboardUiProcess -and -not $NoBrowser) {
+        Start-Sleep -Milliseconds 2000
+        Start-Process "http://localhost:$dashboardUiPort"
+    }
+
     $aspireArguments = @(
         'run',
         '--apphost', $appHostProject,
@@ -176,8 +237,9 @@ try {
     )
 
     Write-Host ''
+    Write-Host "Dashboard landing page: http://localhost:$dashboardUiPort" -ForegroundColor Green
     Write-Host 'Starting Aspire AppHost...' -ForegroundColor Cyan
-    Write-Host 'The Aspire dashboard URL will be printed below.' -ForegroundColor Gray
+    Write-Host 'The Aspire dashboard URL (https://localhost:<port>/login?t=...) will be printed below.' -ForegroundColor Gray
     & $aspireCli @aspireArguments
     if ($LASTEXITCODE -ne 0) {
         throw "Aspire exited with code $LASTEXITCODE."
@@ -187,5 +249,6 @@ finally {
     if ($null -ne $appHostBuildProcess -and -not $appHostBuildProcess.HasExited) {
         Stop-Process -Id $appHostBuildProcess.Id -Force -ErrorAction SilentlyContinue
     }
+    Stop-DashboardUI
     Stop-Emulator
 }

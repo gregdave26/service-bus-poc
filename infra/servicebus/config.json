@@ -268,8 +268,9 @@
       }
     },
     "ProducerLabels": {
-      "DisplayName": "Message Publisher",
+      "DisplayName": "Contact Event Simulator",
       "ConnectedLabel": "Ready",
+      "CompletedLabel": "Completed",
       "OfflineLabel": "Offline",
       "MessagesHandledLabel": "published"
     },

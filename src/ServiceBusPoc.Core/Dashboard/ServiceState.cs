@@ -17,6 +17,9 @@ public enum ServiceState
     /// <summary>The service is online and ready (used by dashboard to indicate last known good state).</summary>
     Online,
 
+    /// <summary>The service finished its work successfully and will send no further heartbeats.</summary>
+    Completed,
+
     /// <summary>The service has shut down and will send no further heartbeats.</summary>
     Stopped,
 

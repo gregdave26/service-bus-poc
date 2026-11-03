@@ -27,11 +27,14 @@ export function getServiceStatuses() {
 
   return [...heartbeats.values()].map((heartbeat) => ({
     ...heartbeat,
-    state:
-      now - Date.parse(heartbeat.sentAt) < heartbeatTimeoutMs
-        ? heartbeat.state
-        : "Offline",
+    state: isFinalState(heartbeat.state) || now - Date.parse(heartbeat.sentAt) < heartbeatTimeoutMs
+      ? heartbeat.state
+      : "Offline",
   }));
+}
+
+function isFinalState(state) {
+  return String(state).toLowerCase() === "completed";
 }
 
 export function getMessages(service, direction) {

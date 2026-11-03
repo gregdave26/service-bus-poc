@@ -111,7 +111,7 @@ async function getJson(url, options) {
 
 function displayName(service, config) {
   if (!service) return "Unknown service";
-  if (service === "producer") return config.producerLabels?.DisplayName || "Message Publisher";
+  if (service === "producer") return config.producerLabels?.DisplayName || "Contact Event Simulator";
   return config.subscriberLabels?.[service]?.DisplayName || service.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -243,10 +243,13 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
 }
 
 function ServiceCard({ service, config, selected, onClick, receivedFlash }) {
-  const connected = String(service.state).toLowerCase() !== "offline";
+  const state = String(service.state).toLowerCase();
+  const connected = state !== "offline" && state !== "completed";
   const name = displayName(service.serviceName, config);
   const labels = service.serviceName === "producer" ? config.producerLabels : config.subscriberLabels?.[service.serviceName];
-  const stateLabel = connected ? (labels?.ConnectedLabel || "Connected") : (labels?.OfflineLabel || "Offline");
+  const stateLabel = state === "completed"
+    ? (labels?.CompletedLabel || "Completed")
+    : connected ? (labels?.ConnectedLabel || "Connected") : (labels?.OfflineLabel || "Offline");
   const countLabel = labels?.MessagesHandledLabel || "handled";
   return <Card variant="outlined" aria-label={receivedFlash ? `${name} received a message` : name} sx={{ borderColor: selected ? "primary.main" : "divider", bgcolor: selected ? "primary.light" : "background.paper", animation: receivedFlash ? "serviceReceiveFlash 900ms ease-out" : "none", "@media (prefers-reduced-motion: reduce)": { animation: "none" }, "@keyframes serviceReceiveFlash": { "0%": { backgroundColor: processFlowColors.completed.background, boxShadow: `0 0 0 6px ${processFlowColors.completed.background}` }, "100%": { backgroundColor: selected ? undefined : "background.paper", boxShadow: "0 0 0 0 transparent" } } }}>
     <CardActionArea onClick={service.selectable === false ? undefined : onClick} disabled={service.selectable === false} sx={{ p: 2, minHeight: 132 }}>

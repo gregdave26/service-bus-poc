@@ -493,6 +493,7 @@ Phase 6: Documentation (parallel with others)
 6. **Load Testing** (Future): Validate throughput, latency, subscription filter performance
 7. **Producer Integration** (Future): Integrate real CRM/MDM and product systems as publishers
 7. **Consumer Integration** (Future): Connect Insurance, Parks & Resorts digital channels
+8. **Contact Event Simulator Scheduler** (Future): Run the producer as a long-running randomised scheduler that continually publishes contact changes to simulate real-life activity. Today it is a one-shot command-line run.
 
 ---
 

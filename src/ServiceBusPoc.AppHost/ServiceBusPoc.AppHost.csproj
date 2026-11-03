@@ -21,6 +21,10 @@
     <ProjectReference Include="..\ContactEvents\Consumers\ParksResorts\ServiceBusPoc.ContactEvents.Consumers.ParksResorts.csproj" />
     <ProjectReference Include="..\ContactEvents\Producer\ServiceBusPoc.ContactEvents.Producer.csproj" />
     <ProjectReference Include="..\ContactEvents\Verifier\ServiceBusPoc.ContactEvents.Verifier.csproj" />
+    <ProjectReference Include="..\DigitalSite\CommerceApi\ServiceBusPoc.DigitalSite.CommerceApi.csproj" />
+    <ProjectReference Include="..\DigitalSite\CommerceToolsStub\ServiceBusPoc.DigitalSite.CommerceToolsStub.csproj" />
+    <ProjectReference Include="..\DigitalSite\CartProcessor\ServiceBusPoc.DigitalSite.CartProcessor.csproj" />
+    <ProjectReference Include="..\DigitalSite\FulfilmentStub\ServiceBusPoc.DigitalSite.FulfilmentStub.csproj" />
   </ItemGroup>
 
 </Project>

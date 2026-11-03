@@ -46,14 +46,14 @@ and restart, not Ctrl+C or abrupt-process termination behavior.
 | Producer | Existing console project | Same project, with AppHost defaults | Different startup input; see Producer findings. |
 | Verifier | Not started by `run-dashboard.ps1` | Started with `--connectivity-probe` | Intentional diagnostic addition, not a filter test. |
 | Carwash API | Hosted inside the Carwash process | Same process | Same HTTP implementation; not an Aspire proxy. |
-| Custom dashboard | Node UI, event publishing, reporting, and log files | Not started | Intentional scope limitation; Aspire's dashboard is not a replacement for the POC UI. |
-| Digital Site | CommerceToolsStub, CommerceApi, CartProcessor, FulfilmentStub | Not started | Intentional scope limitation; not a complete replacement launcher. |
+| Custom dashboard | Node UI, event publishing, reporting, and log files | Node UI started on `http://localhost:5100` by the launcher (`-NoUI` skips it) | Aspire's dashboard is separate and is not a replacement for the POC UI. |
+| Digital Site | CommerceToolsStub, CommerceApi, CartProcessor, FulfilmentStub | Same four projects; CommerceTools URL comes from the stub endpoint | Commerce services use the `commerce.events` topic; end-to-end workflow parity is not verified. |
 
 Sources: the baseline launcher's `$apps` list and `Start-NodeDashboardWithLogging`,
 the [AppHost project references](../../src/ServiceBusPoc.AppHost/ServiceBusPoc.AppHost.csproj),
 and [Compose](../../infra/servicebus/compose.yaml).
-The configured `commerce.events` topic remains in the emulator even though
-Aspire does not launch its Digital Site consumers.
+The configured `commerce.events` topic is used by the CommerceToolsStub publisher
+and the CartProcessor and FulfilmentStub subscriptions.
 
 ## Topic and subscription configuration
 
@@ -97,7 +97,7 @@ comparison evidence.
 | `ServiceBus__SubscriptionName` | Sets each consumer's fixed name before starting its process | Explicitly sets each resource's fixed name |
 | `Dashboard__*` | Forces reporting enabled, selected URL/port, heartbeat 5s, timeout 5s | No explicit AppHost override; reporting defaults to enabled, URL `http://localhost:5100`, heartbeat 5s, timeout 3s unless configured |
 | Environment/logging | Loads `.env` into the process environment (including `DOTNET_ENVIRONMENT` when set there) and sets several logging variables | No equivalent assignments in the launcher/AppHost; do not assume identical effective environment without runtime inspection |
-| Digital Site settings | Sets local commerce URLs and per-app overrides | No Digital Site resources or equivalent wiring |
+| Digital Site settings | Sets local commerce URLs and per-app overrides | Sets `CommerceTools__ApiUrl` from the stub endpoint, `CommerceTools__ProjectKey` (default `rac-rsa-poc`), and `commerce.events` for Digital Site services |
 
 The two default connection strings address the same local AMQP port, but
 `localhost` versus IPv4 loopback is not byte-for-byte equivalence and can behave
@@ -271,11 +271,11 @@ prove graceful disposal or absence of orphan processes.
 | C2 | Producer routing flags previously ignored false overrides | All 26 configuration cases and eight Producer message-property cases passed. Isolated AppHost delivery with false/true/false overrides was observed. |
 | C3 | One-shot apps require emulator readiness | Launcher invokes the shared readiness helper after Compose startup. Isolated AMQP readiness was established externally before AppHost launch; full default Compose launcher path is not verified. |
 | C4 | Service Bus target precedence/defaults differ | Record as a deliberate launcher distinction; explicitly set identical target values for comparison and decide whether broader launcher parity is required. |
-| C5 | Custom dashboard absent but reporting defaults remain enabled | Intentional UI scope exclusion with a reporting side effect; use `Dashboard__Enabled=false` for isolated Aspire comparisons and verify the effective setting. |
+| C5 | Dashboard UI is started by the launcher; reporting defaults remain enabled | The Node UI is on `http://localhost:5100` (`-NoUI` skips it). Use `Dashboard__Enabled=false` for isolated Aspire comparisons and verify the effective setting. |
 | C6 | Carwash API not declared as an Aspire endpoint | Current fixed local address preserved; endpoint discovery is absent, not an API regression. |
 | C7 | Verifier connectivity branch differs from normal validation | Intentional probe only; do not count it as topology/filter proof. |
 | C8 | Container cleanup ownership differs; baseline can affect other .NET sessions | Documented operational difference; run workflows sequentially in a controlled environment. |
-| C9 | Digital Site and custom publishing UI are absent from Aspire | Intentional spike scope; no full-workflow replacement claim. |
+| C9 | Digital Site services and the Node UI are started by the launcher | Startup is verified through health and catalog/config endpoints; end-to-end workflow parity is not verified. |
 
 ### Next increment
 

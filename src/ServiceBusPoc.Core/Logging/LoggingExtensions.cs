@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
 
 namespace ServiceBusPoc.Core.Logging;
 
@@ -26,6 +28,24 @@ public static class LoggingExtensions
         
         // Add the formatter configuration
         builder.AddConsoleFormatter<TimestampedConsoleFormatter, SimpleConsoleFormatterOptions>();
+
+        var otlpEndpoint =
+            Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+
+        var logsEndpoint =
+            Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT");
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint)
+            || !string.IsNullOrWhiteSpace(logsEndpoint))
+        {
+            builder.AddOpenTelemetry(options =>
+            {
+                options.IncludeFormattedMessage = true;
+                options.IncludeScopes = true;
+                options.SetResourceBuilder(ResourceBuilder.CreateDefault());
+                options.AddOtlpExporter();
+            });
+        }
 
         return builder;
     }

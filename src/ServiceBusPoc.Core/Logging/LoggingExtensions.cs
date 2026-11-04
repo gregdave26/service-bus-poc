@@ -18,9 +18,10 @@ public static class LoggingExtensions
     /// <returns>The logging builder for chaining.</returns>
     public static ILoggingBuilder AddStructuredConsoleLogging(this ILoggingBuilder builder)
     {
-        builder.ClearProviders();
+        // Do NOT clear providers: Aspire injected OpenTelemetry provider must be preserved
+        // to send logs to the Aspire Dashboard. Just enhance the console output with custom formatter.
         
-        // Register the custom timestamped formatter
+        // Register the custom timestamped formatter for console output
         builder.AddConsole(options =>
         {
             options.FormatterName = TimestampedConsoleFormatter.FormatterName;

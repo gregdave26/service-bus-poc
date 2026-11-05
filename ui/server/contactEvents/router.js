@@ -3,6 +3,7 @@ import { logContact } from "./log.js";
 import { getEmulatorStatus } from "./emulatorStatus.js";
 import { messageTypes, subscriberLabels, producerLabels } from "./messageTypes.js";
 import { publishAndRecordContactEvent, validatePublishRequest } from "./publisher.js";
+import { getContactHistory } from "./contactHistory.js";
 import {
   getMessages,
   getServiceStatuses,
@@ -71,4 +72,14 @@ router.get("/api/messages", (request, response) => {
 router.get("/api/messages/:id", (request, response) => {
   const message = messageHistory.find((candidate) => candidate.messageId === request.params.id);
   return message ? response.json(message) : response.status(404).json({ error: "Message not found" });
+});
+
+router.get("/api/contacts/:contactId/history", (request, response) => {
+  const contactId = request.params.contactId.trim();
+  if (!contactId) return response.status(400).json({ error: "contactId is required" });
+
+  const entries = getContactHistory(contactId);
+  return entries
+    ? response.json({ contactId, entries })
+    : response.status(404).json({ error: "No history recorded for this contact" });
 });

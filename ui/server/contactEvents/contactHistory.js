@@ -1,0 +1,57 @@
+import { diff } from "deep-object-diff";
+
+const contactHistories = new Map();
+
+export function recordContactUpdate(event) {
+  const contactId = event.data.contactId;
+  if (typeof contactId !== "string" || contactId.trim() === "") return null;
+  const history = contactHistories.get(contactId) ?? { snapshot: {}, entries: [] };
+  const fields = withoutContactId(event.data);
+  const changes = changedFields(history.snapshot, fields);
+
+  if (changes.length > 0) {
+    history.entries.unshift({
+      eventId: event.id,
+      correlationId: event.correlationId,
+      source: event.source,
+      timestamp: event.timestamp,
+      kind: history.entries.length === 0 ? "created" : "updated",
+      changes,
+    });
+  }
+
+  history.snapshot = structuredClone(fields);
+  contactHistories.set(contactId, history);
+  return changes.length > 0 ? history.entries[0] : null;
+}
+
+export function getContactHistory(contactId) {
+  return contactHistories.get(contactId)?.entries ?? null;
+}
+
+// contactId selects the history, so it is never reported as a changed field.
+function withoutContactId(data) {
+  return Object.fromEntries(Object.entries(data).filter(([key]) => key !== "contactId"));
+}
+
+function changedFields(previous, current) {
+  return leafPaths(diff(previous, current)).map((path) => ({
+    field: path.join("."),
+    previous: valueAt(previous, path) ?? null,
+    current: valueAt(current, path) ?? null,
+  }));
+}
+
+// deep-object-diff reports removed keys as undefined, so values are read from the snapshots instead.
+function leafPaths(node, prefix = []) {
+  return Object.entries(node).flatMap(([key, value]) =>
+    isPlainObject(value) ? leafPaths(value, [...prefix, key]) : [[...prefix, key]]);
+}
+
+function valueAt(source, path) {
+  return path.reduce((value, key) => value?.[key], source);
+}
+
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

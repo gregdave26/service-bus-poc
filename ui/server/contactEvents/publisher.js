@@ -3,6 +3,7 @@ import { ServiceBusClient } from "@azure/service-bus";
 import { randomUUID } from "node:crypto";
 import { messageTypes } from "./messageTypes.js";
 import { storeMessage } from "./messageStore.js";
+import { recordContactUpdate } from "./contactHistory.js";
 
 export function validatePublishRequest(body) {
   const type = body?.type ?? "ContactUpdated";
@@ -105,5 +106,6 @@ export async function publishAndRecordContactEvent(request) {
     timestamp: event.timestamp,
     payload: JSON.stringify(event),
   });
+  if (event.type === "ContactUpdated") recordContactUpdate(event);
   return event;
 }

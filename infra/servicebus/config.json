@@ -279,7 +279,7 @@
         "DisplayName": "Contact updated",
         "Schema": "contact-updated-v1.schema.json",
         "FormFields": {
-          "contactId": { "Label": "Contact ID", "Order": 1 },
+          "contactId": { "Label": "Contact event ID", "Order": 1 },
           "firstName": { "Label": "First name", "Order": 2 },
           "lastName": { "Label": "Last name", "Order": 3 },
           "phone": { "Label": "Phone", "Order": 4 },
@@ -293,7 +293,7 @@
         "DisplayName": "Product holding change",
         "Schema": "product-holding-change-v1.schema.json",
         "FormFields": {
-          "contactId": { "Label": "Contact ID", "Order": 1 },
+          "contactId": { "Label": "Contact event ID", "Order": 1 },
           "holdingId": { "Label": "Holding ID", "Order": 2 },
           "productType": { "Label": "Product type", "Order": 3 },
           "action": { "Label": "Action", "Order": 4 }

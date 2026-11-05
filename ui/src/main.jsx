@@ -51,6 +51,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import { generateRosterFile } from "./rosteringGenerator.js";
 import { PosProcessing } from "./localPosProcessing.jsx";
 import { processFlowColors, processStageSx } from "./processFlowStyles.js";
+import { shortContactId } from "./contactIdDisplay.js";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
 
@@ -185,7 +186,7 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
               <Box component="ul" sx={{ m: 0, pl: 2 }}>{configurationErrors.map((configurationError) => <li key={configurationError}>{configurationError}</li>)}</Box>
             </Alert>}
             <TextField label="Message name" value={messageName} onChange={(event) => onNameChange(event.target.value)} error={duplicateName} helperText={duplicateName ? "A message with this name already exists." : "Choose a unique name for this message."} required fullWidth />
-            <TextField label="Contact ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
+            <TextField label="Contact event ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
             <Typography variant="subtitle2">{config.messageTypes?.[draft.type]?.DisplayName || draft.type}</Typography>
             {fields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} name={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={form[field.Name] ?? ""} onChange={onChange} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
             <Stack direction="row" flexWrap="wrap">{fields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox name={field.Name} checked={Boolean(form[field.Name])} onChange={onChange} />} label={field.Label || field.Name} />)}</Stack>
@@ -441,7 +442,7 @@ function ContactHistory({ refreshKey }) {
     <Box component="form" onSubmit={lookup} sx={{ p: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
       <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from contact.updated events published since the dashboard started</Typography></Box>
       <Stack direction="row" spacing={1} alignItems="center">
-        <TextField size="small" label="Contact ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} />
+        <TextField size="small" label="Contact event ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} />
         <Button type="submit" variant="contained" disabled={!contactIdInput.trim()}>View history</Button>
       </Stack>
     </Box>
@@ -531,7 +532,7 @@ function App() {
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
     {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) :     <>
     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(440px, 1.4fr) minmax(320px, 1fr)" }, gap: 2 }}>
-      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Draft explorer table"><TableHead><TableRow><TableCell>Contact ID</TableCell><TableCell>Type</TableCell><TableCell>Surname, firstname</TableCell><TableCell>Action</TableCell></TableRow></TableHead><TableBody>{drafts.map((draft) => <TableRow key={draft.id} hover selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ cursor: "pointer" }}><TableCell>{draft.data?.contactId ?? ""}</TableCell><TableCell>{draft.type}</TableCell><TableCell>{surnameFirstname(draft.data)}</TableCell><TableCell>{draft.name}</TableCell></TableRow>)}</TableBody></Table></Box></Paper>
+      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Draft explorer table"><TableHead><TableRow><TableCell>Contact event ID</TableCell><TableCell>Type</TableCell><TableCell>Surname, firstname</TableCell><TableCell>Action</TableCell></TableRow></TableHead><TableBody>{drafts.map((draft) => <TableRow key={draft.id} hover selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ cursor: "pointer" }}><TableCell><Tooltip title={draft.data?.contactId ?? ""}><Box component="span" sx={{ fontFamily: "monospace" }}>{shortContactId(draft.data?.contactId)}</Box></Tooltip></TableCell><TableCell>{draft.type}</TableCell><TableCell>{surnameFirstname(draft.data)}</TableCell><TableCell>{draft.name}</TableCell></TableRow>)}</TableBody></Table></Box></Paper>
       <ActivityStream messages={messages} config={config} />
     </Box>
     <Box sx={{ mt: 2 }}><ContactHistory refreshKey={messages[0]?.messageId} /></Box>

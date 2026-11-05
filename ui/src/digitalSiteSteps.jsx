@@ -354,7 +354,7 @@ function CoverSelector({ state, dispatch, covers }) {
             <Box component="span" className="upsell-option-offered" sx={{ display: "none" }} />
             <Box component="span" className="upsell-option-chosen" sx={{ display: "grid", gap: 0.35 }}>
               <Box component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>
-                <strong>{formatCurrency(cover.annualPrice)} a year</strong> or <strong>{formatCurrency(cover.monthlyPrice)} a month</strong>
+                <strong>{formatCurrency(cover.annualPrice)} a year</strong> or <strong>{formatCurrency(cover.annualPrice / 12)} a month</strong>
               </Box>
               {attributes.map((attribute, index) => <Box key={index} component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>{attribute}</Box>)}
             </Box>

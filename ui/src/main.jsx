@@ -40,6 +40,7 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
 import SaveIcon from "@mui/icons-material/Save";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContactPageIcon from "@mui/icons-material/ContactPage";
@@ -442,8 +443,8 @@ function ContactHistory({ refreshKey }) {
     <Box component="form" onSubmit={lookup} sx={{ p: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
       <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from contact.updated events published since the dashboard started</Typography></Box>
       <Stack direction="row" spacing={1} alignItems="center">
-        <TextField size="small" label="Contact event ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} />
-        <Button type="submit" variant="contained" disabled={!contactIdInput.trim()}>View history</Button>
+        <TextField size="small" label="Contact event ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} sx={{ minWidth: 380 }} />
+        <Tooltip title="View history"><span><IconButton type="submit" color="primary" aria-label="View history" disabled={!contactIdInput.trim()}><SearchIcon /></IconButton></span></Tooltip>
       </Stack>
     </Box>
     <Divider />

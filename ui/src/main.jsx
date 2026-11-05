@@ -85,7 +85,11 @@ const drafts = [
 ];
 
 function fieldsFor(type, config) { return config.messageTypes?.[type]?.Fields ?? []; }
-function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, field.Type === "boolean" ? false : ""])); }
+function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, initialValue(field)])); }
+function initialValue(field) {
+  if (field.Name === "contactId") return createUuid();
+  return field.Type === "boolean" ? false : "";
+}
 function createUuid() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function normalizedName(name) { return name.trim().toLowerCase(); }
 function surnameFirstname(data) { return [data?.lastName, data?.firstName].filter(Boolean).join(", "); }
@@ -151,7 +155,8 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
         <TextField autoFocus label="Message name" value={name} onChange={(event) => setName(event.target.value)} error={duplicate} helperText={duplicate ? "A message with this name already exists." : "Choose a unique name for this message."} required />
         <TextField select label="Message type" value={type} onChange={(event) => { setType(event.target.value); setValues(emptyData(fieldsFor(event.target.value, config))); }}>{types.map(([key, value]) => <MenuItem key={key} value={key}>{value.DisplayName || key}</MenuItem>)}</TextField>
         <Typography variant="subtitle2">{types.find(([key]) => key === type)?.[1]?.DisplayName || type} fields</Typography>
-        {selectedFields.filter((field) => field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
+        {selectedFields.some((field) => field.Name === "contactId") && <TextField label="Contact event ID" value={values.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />}
+        {selectedFields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
         <Stack direction="row" flexWrap="wrap">{selectedFields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox checked={Boolean(values[field.Name])} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.checked }))} />} label={field.Label || field.Name} />)}</Stack>
       </Stack></DialogContent>
       <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
@@ -522,8 +527,7 @@ function App() {
   function createDraft({ name, type, data }) {
     const fields = fieldsFor(type, config);
     const draftData = data || emptyData(fields);
-    if (fields.some((field) => field.Name === "contactId") && !draftData.contactId) draftData.contactId = createUuid();
-    const draft = { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: draftData };
+    const draft =  { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: draftData };
     drafts.push(draft);
     selectDraft(draft);
     setNewMessageOpen(false);

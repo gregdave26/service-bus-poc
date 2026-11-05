@@ -73,7 +73,7 @@ public sealed record SimulatePaymentRequest(string? Outcome);
 /// <param name="OrderNumber">The order number, once created.</param>
 /// <param name="OrderState">The order state, once created.</param>
 /// <param name="ProvisioningStatus"><c>NotStarted</c>, <c>Pending</c> or <c>Provisioned</c>.</param>
-/// <param name="HoldingEventPublished">Whether the ProductHoldingChange event was published.</param>
+/// <param name="HoldingEventPublished">Whether the product.holding.changed event was published.</param>
 /// <param name="CorrelationId">The POC correlation id.</param>
 /// <param name="Amount">The amount in dollars.</param>
 /// <param name="Currency">The currency.</param>

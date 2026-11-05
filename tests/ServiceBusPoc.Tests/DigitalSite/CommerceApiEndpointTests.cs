@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using Adyen.Checkout.Models;
 using Adyen.Checkout.Services;
 using Azure.Messaging.ServiceBus;
@@ -416,7 +417,7 @@ public sealed class CommerceApiEndpointTests : IDisposable
         var holding = Assert.Single(_publishedHoldings);
         Assert.Equal(cart.CorrelationId, holding.CorrelationId);
         var envelope = JsonDocument.Parse(holding.Body.ToString()).RootElement;
-        Assert.Equal("ProductHoldingChange", envelope.GetProperty("type").GetString());
+        Assert.Equal("product.holding.changed", envelope.GetProperty("type").GetString());
         Assert.Equal(CrmId, envelope.GetProperty("data").GetProperty("contactId").GetString());
         Assert.Equal("roadside-assistance", envelope.GetProperty("data").GetProperty("productType").GetString());
 

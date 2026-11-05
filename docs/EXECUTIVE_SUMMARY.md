@@ -32,8 +32,8 @@ The POC validates event contracts, message routing, independent consumers, and a
 
 The POC models a `contact.events` topic with:
 
-- `ContactUpdated` events for contact creation or changes.
-- `ProductHoldingChange` events for product or holding lifecycle changes.
+- `contact.updated` events for contact creation or changes.
+- `product.holding.changed` events for product or holding lifecycle changes.
 
 Events use a common `EventEnvelope` containing metadata such as event ID, type, source, timestamp, data version, and correlation ID. The JSON Schema files in [`contracts/`](../contracts/) are the canonical contract definitions.
 

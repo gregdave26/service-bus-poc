@@ -9,7 +9,7 @@ Proof of concept demonstrating `contact.events` as an Azure Service Bus enterpri
 ## 2. Current Scope
 
 **In scope**
-- An Azure Service Bus namespace and `contact.events` topic for `ContactUpdated` and product/holding-change events.
+- An Azure Service Bus namespace and `contact.events` topic for `contact.updated` and product/holding-change events.
 - Producer integration from CRM/MDM and product/holding systems.
 - Consumer routing to digital channels, Insurance, Parks & Resorts, and Carwash.
 - Subscription filters for Insurance (`hasInsurance = true`), Parks & Resorts (`hasParksResorts = true`), and Carwash (`hasCarwashProduct = true`).

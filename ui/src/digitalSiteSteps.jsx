@@ -786,10 +786,10 @@ export function ConfirmationStep({ state, getCheckoutStatus, onSettled, onRestar
       <StatusDetail label="Processing result" value={status.processingResult} />
       <StatusDetail label="Order state" value={status.orderState} />
       <StatusDetail label="Provisioning" value={status.provisioningStatus} />
-      <StatusDetail label="ProductHoldingChange published" value={status.orderId ? (status.holdingEventPublished ? "Yes" : "Not yet") : null} />
+      <StatusDetail label="product.holding.changed published" value={status.orderId ? (status.holdingEventPublished ? "Yes" : "Not yet") : null} />
       <StatusDetail label="Correlation id" value={status.correlationId} />
     </Card>}
-    {status?.holdingEventPublished && <RacwaAlertNotification severity="info">A ProductHoldingChange event was published to contact.events. Open the Contact Events tab to follow it.</RacwaAlertNotification>}
+    {status?.holdingEventPublished && <RacwaAlertNotification severity="info">A product.holding.changed event was published to contact.events. Open the Contact Events tab to follow it.</RacwaAlertNotification>}
     <Stack direction="row" spacing={2}>
       {status?.paymentState === "Refused" && <Button variant="contained" onClick={onTryAgain}>Try another payment</Button>}
       <Button variant={status?.paymentState === "Refused" ? "outlined" : "contained"} onClick={onRestart}>Start another purchase</Button>

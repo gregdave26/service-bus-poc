@@ -10,7 +10,7 @@ function contactEvent(contactId, data = {}, overrides = {}) {
   eventSequence += 1;
   return {
     id: `event-${eventSequence}`,
-    type: "ContactUpdated",
+    type: "contact.updated",
     source: "dashboard",
     timestamp: new Date(Date.UTC(2026, 10, 5, 2, eventSequence)).toISOString(),
     dataVersion: "1.0",
@@ -165,4 +165,52 @@ test("GET /api/contacts/:contactId/history rejects a blank contact identifier", 
     assert.equal(response.status, 400);
     assert.equal((await response.json()).error, "contactId is required");
   });
+});
+
+test("masks email to first and last characters and phone to its first three digits", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId));
+  recordContactUpdate(contactEvent(contactId, { email: "ada.new@example.com", phone: "0411222333" }));
+
+  const [latest] = getContactHistory(contactId);
+
+  assert.deepEqual(latest.changes.find((change) => change.field === "email"), {
+    field: "email",
+    previous: "a*************m",
+    current: "a*****************m",
+  });
+  assert.deepEqual(latest.changes.find((change) => change.field === "phone"), {
+    field: "phone",
+    previous: "040*******",
+    current: "041*******",
+  });
+});
+
+test("fully masks sensitive values too short to keep both ends hidden", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId, { phone: "", email: "" }));
+  recordContactUpdate(contactEvent(contactId, { phone: "1", email: "ab" }));
+
+  const [latest] = getContactHistory(contactId);
+
+  assert.deepEqual(latest.changes.find((change) => change.field === "phone"), {
+    field: "phone",
+    previous: "",
+    current: "*",
+  });
+  assert.deepEqual(latest.changes.find((change) => change.field === "email"), {
+    field: "email",
+    previous: "",
+    current: "**",
+  });
+});
+
+test("keeps recorded values unmasked for change detection", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId));
+  recordContactUpdate(contactEvent(contactId, { email: "ada.new@example.com" }));
+
+  const entry = recordContactUpdate(contactEvent(contactId, { email: "ada@example.com" }));
+
+  assert.deepEqual(entry.changes, [{ field: "email", previous: "ada.new@example.com", current: "ada@example.com" }]);
 });

@@ -49,6 +49,7 @@ azuredeploy.parameters.json
 **/servicebus/data/
 **/servicebus/logs/
 *.log
+src/ServiceBusPoc.AppHost/aspire.config.json
 ui/data/*.db
 
 # Docker and local tool state

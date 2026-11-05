@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.Core.Utilities;
+using System.Text.Json;
 
 namespace ServiceBusPoc.Tests;
 
@@ -151,6 +152,60 @@ public sealed class TestTopologyValidator
             Times.Once);
     }
 
+    [Fact]
+    public async Task ValidateAsync_EmulatorTopologyConfigurationIsValid_ReturnsTrue()
+    {
+        var configPath = CreateEmulatorConfig();
+        try
+        {
+            var settings = new ServiceBusSettings
+            {
+                ConnectionString = "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true",
+                Namespace = "test-namespace",
+                TopicName = "contact.events",
+                TopologyConfigPath = configPath
+            };
+            var validator = new TopologyValidator(
+                Options.Create(settings),
+                Mock.Of<ILogger<TopologyValidator>>());
+
+            var result = await validator.ValidateAsync();
+
+            Assert.True(result);
+        }
+        finally
+        {
+            File.Delete(configPath);
+        }
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EmulatorTopologyConfigurationMissingSubscription_ReturnsFalse()
+    {
+        var configPath = CreateEmulatorConfig(includeCarwash: false);
+        try
+        {
+            var settings = new ServiceBusSettings
+            {
+                ConnectionString = "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true",
+                Namespace = "test-namespace",
+                TopicName = "contact.events",
+                TopologyConfigPath = configPath
+            };
+            var validator = new TopologyValidator(
+                Options.Create(settings),
+                Mock.Of<ILogger<TopologyValidator>>());
+
+            var result = await validator.ValidateAsync();
+
+            Assert.False(result);
+        }
+        finally
+        {
+            File.Delete(configPath);
+        }
+    }
+
     /// <summary>
     /// Tests MaskConnectionString with various inputs using reflection to access the private method.
     /// </summary>
@@ -247,5 +302,63 @@ public sealed class TestTopologyValidator
         var result = await validator.ValidateAsync();
 
         Assert.False(result);
+    }
+
+    private static string CreateEmulatorConfig(bool includeCarwash = true)
+    {
+        var subscriptions = new List<object>
+        {
+            new { Name = "digital-channels", Rules = Array.Empty<object>() },
+            new
+            {
+                Name = "insurance",
+                Rules = new object[]
+                {
+                    new { Properties = new { SqlFilter = new { SqlExpression = "hasInsurance = true" } } }
+                }
+            },
+            new
+            {
+                Name = "parks-resorts",
+                Rules = new object[]
+                {
+                    new { Properties = new { SqlFilter = new { SqlExpression = "hasParksResorts = true" } } }
+                }
+            }
+        };
+
+        if (includeCarwash)
+        {
+            subscriptions.Add(new
+            {
+                Name = "carwash",
+                Rules = new object[]
+                {
+                    new { Properties = new { SqlFilter = new { SqlExpression = "hasCarwashProduct = true" } } }
+                }
+            });
+        }
+
+        var configuration = new
+        {
+            UserConfig = new
+            {
+                Namespaces = new[]
+                {
+                    new
+                    {
+                        Name = "test-namespace",
+                        Topics = new[]
+                        {
+                            new { Name = "contact.events", Subscriptions = subscriptions }
+                        }
+                    }
+                }
+            }
+        };
+
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(configuration));
+        return path;
     }
 }

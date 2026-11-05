@@ -6,7 +6,7 @@
 .DESCRIPTION
     Finds processes whose command lines reference this repository or one of the
     Service Bus POC applications, stops their child processes, and brings down
-    the local Docker Compose stack.
+    the local emulator stack through the configured container runtime.
 
     This script does not kill every dotnet or PowerShell process on the machine.
     An editor PowerShell host is stopped only when its PID is explicitly passed.
@@ -29,12 +29,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $composePath = Join-Path $projectRoot 'infra\servicebus\compose.yaml'
-$envFilePath = Join-Path $projectRoot '.env'
+
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
 
 Write-Host "Stopping Service Bus POC processes for: $projectRoot" -ForegroundColor Cyan
 
 # Stop an active transcript in the current PowerShell session if one exists.
-Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
+# Stop-Transcript throws when no transcript is active, which $ErrorActionPreference = 'Stop' would make fatal.
+try {
+    Stop-Transcript -ErrorAction Stop | Out-Null
+}
+catch {
+}
 
 $processes = @(Get-CimInstance Win32_Process)
 $processById = @{}
@@ -49,7 +55,7 @@ foreach ($process in $processes) {
     $commandLine = [string]$process.CommandLine
     if ($commandLine -match $escapedRoot -or
         $commandLine -match 'ServiceBusPoc\.(Dashboard|Producer|DigitalChannels|Insurance|ParksResorts|Carwash|Verifier|DigitalSite\.\w+)' -or
-        $commandLine -match 'run-(dashboard|local-poc|debug-run|simple)\.ps1') {
+        $commandLine -match 'run-(dashboard|simple)\.ps1') {
         if ([int]$process.ProcessId -ne $PID) {
             $null = $targetIds.Add([int]$process.ProcessId)
         }
@@ -86,15 +92,12 @@ foreach ($processId in ($targetIds | Sort-Object -Descending)) {
 }
 
 if (Test-Path $composePath) {
-    $composeDirectory = Split-Path -Parent $composePath
-    Push-Location $composeDirectory
-    try {
-        if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run docker-compose down')) {
-            docker-compose --env-file $envFilePath down
+    if ($PSCmdlet.ShouldProcess('Service Bus emulator compose stack', 'Run compose down')) {
+        $composeEnvFilePath = Get-RootEnvFilePath -Optional
+        if (-not $composeEnvFilePath) {
+            Write-Warning 'Root .env not found; running compose down without an env file. Teardown does not need SQL_PASSWORD.'
         }
-    }
-    finally {
-        Pop-Location
+        Invoke-ContainerCompose -ComposePath $composePath -EnvFilePath $composeEnvFilePath -Arguments @('down')
     }
 }
 

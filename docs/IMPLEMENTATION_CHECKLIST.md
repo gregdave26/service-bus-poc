@@ -90,7 +90,7 @@
 ## 🧪 Testing Strategy
 
 ### Manual Testing (Developer Environment)
-1. Start Service Bus emulator (Docker Compose)
+1. Start Service Bus emulator (Compose, Podman in WSL by default)
 2. Run producer: `dotnet run` in `ServiceBusPoc.ContactEvents.Producer/`
 3. Run consumer: `dotnet run` in `ServiceBusPoc.ContactEvents.Consumers.Insurance/`
 4. **Verify timestamps**: All logs have ISO 8601 timestamp prefix

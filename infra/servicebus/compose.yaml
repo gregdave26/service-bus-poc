@@ -3,6 +3,8 @@ services:
   emulator:
     container_name: "servicebus-emulator"
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    # Neither image shuts down on SIGTERM, so stop is a forced kill. No volumes are defined, so there is no state to flush.
+    stop_signal: SIGKILL
     pull_policy: missing
     volumes:
       - "./config.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
@@ -24,6 +26,7 @@ services:
   sqledge:
     container_name: "sqledge"
     image: "mcr.microsoft.com/azure-sql-edge:latest"
+    stop_signal: SIGKILL
     networks:
       sb-emulator:
         aliases:

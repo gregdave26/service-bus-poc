@@ -13,8 +13,11 @@ public sealed class DigitalSiteSettings
     /// <summary>Gets or sets the catalog provider used by the Digital Site.</summary>
     public CatalogProviderMode CatalogProvider { get; set; } = CatalogProviderMode.CommerceTools;
 
-    /// <summary>Gets or sets the payment gateway feature toggle.</summary>
+    /// <summary>Gets or sets the payment mode; CommerceApi applies the optional UseRealAdyen startup flag before use.</summary>
     public PaymentGatewayMode PaymentGateway { get; set; } = PaymentGatewayMode.Stub;
+
+    /// <summary>Gets or sets whether failed Adyen startup connectivity may select simulated payments in Development only.</summary>
+    public bool AllowDevelopmentAdyenFallback { get; set; }
 
     /// <summary>
     /// Gets or sets the comma-separated browser origins allowed to call the API and to receive payment redirects.

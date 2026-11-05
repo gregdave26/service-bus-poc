@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddStructuredConsoleLogging();
 
-var paymentGateway = builder.AddCommerceApi();
+var paymentGateway = await builder.AddCommerceApiAsync();
 builder.Services
     .AddDashboardConfiguration(builder.Configuration)
     .AddDashboardHeartbeat(ServiceName);
@@ -19,9 +19,4 @@ builder.Services
 var app = builder.Build();
 app.UseCors(CommerceApiServiceCollectionExtensions.CorsPolicy);
 app.MapDigitalSiteEndpoints(paymentGateway);
-using (var scope = app.Services.CreateScope())
-{
-    var runtimeGateway = scope.ServiceProvider.GetRequiredService<PaymentGatewayRuntimeState>();
-    app.Logger.LogInformation("Digital Site commerce API started with the {PaymentGateway} payment gateway", runtimeGateway.EffectiveMode);
-}
 await app.RunAsync();

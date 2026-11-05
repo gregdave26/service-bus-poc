@@ -7,12 +7,12 @@
     with different routing property combinations to verify the producer service works end-to-end.
     
     Prerequisites:
-    - Service Bus emulator running (via Docker Compose)
+    - Service Bus emulator running (via Compose, Podman in WSL by default)
     - ServiceBus__ConnectionString environment variable set
     - .NET 10 SDK installed
 .EXAMPLE
-    .\producer-smoke-test.ps1
-    .\producer-smoke-test.ps1 -Verbose
+    .\test-scripts\producer-smoke-test.ps1
+    .\test-scripts\producer-smoke-test.ps1 -Verbose
 .NOTES
     Exit codes:
     - 0: Success

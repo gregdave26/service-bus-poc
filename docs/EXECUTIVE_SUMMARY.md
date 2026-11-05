@@ -26,7 +26,7 @@ The POC validates event contracts, message routing, independent consumers, and a
 | Carwash consumer | Receives messages with `hasCarwashProduct = true`. |
 | Carwash verification API | Exposes `POST /carwash/v1/verify` for Pulse or mock Pulse. It is independent of the Carwash Service Bus consumer. |
 | Verifier | Runs scenarios to prove that subscription filters route messages correctly. |
-| Dashboard | Shows Service Bus service status and message activity and provides an event-publishing interface. |
+| Dashboard | Shows the Service Bus emulator state and message activity, and provides an event-publishing interface. Service status is shown in the Aspire dashboard. |
 
 ### Event and routing flow
 
@@ -57,11 +57,11 @@ The local topology is declared in [`infra/servicebus/config.json`](../infra/serv
 
 The Carwash HTTP path is separate from this flow: Pulse calls the verification endpoint directly and does not publish through, or depend on, the Carwash consumer.
 
-### How Docker is used
+### How containers are used
 
-Docker supplies a local substitute for the cloud Service Bus dependency. This allows the .NET applications and integration scenarios to run against a known topology without Azure credentials, an Azure subscription, or cloud messaging charges.
+A container runtime supplies a local substitute for the cloud Service Bus dependency. Podman is the default runtime and runs inside WSL; Docker is an optional fallback (see [ADR-016](decisions/016-podman-container-runtime.md)). This allows the .NET applications and integration scenarios to run against a known topology without Azure credentials, an Azure subscription, or cloud messaging charges.
 
-Running Docker Compose from [`infra/servicebus/`](../infra/servicebus/) starts two containers:
+Running Compose from [`infra/servicebus/`](../infra/servicebus/) starts two containers:
 
 1. **Service Bus emulator** - provides the local Service Bus namespace, topic, subscriptions, filters, AMQP endpoint, and management/health-check endpoint. It loads [`config.json`](../infra/servicebus/config.json) through a bind mount.
 2. **Azure SQL Edge** - provides the SQL dependency required internally by the emulator. The application does not connect to this database directly.
@@ -82,23 +82,23 @@ The images are defined in [`infra/servicebus/compose.yaml`](../infra/servicebus/
 
 The emulator uses `pull_policy: always`, and both images currently use the `latest` tag. This is convenient for a POC but means local reproducibility depends on the image versions available when they are pulled; production tooling should pin tested versions.
 
-Docker is **not** currently used to package the .NET applications or the browser UI. The scripts build and start the .NET projects as host processes, and the UI uses the Node/Vite toolchain. This is a dependency-emulator setup, not an all-in-one application container deployment.
+Containers are **not** currently used to package the .NET applications or the browser UI. The scripts build and start the .NET projects as host processes, and the UI uses the Node/Vite toolchain. This is a dependency-emulator setup, not an all-in-one application container deployment.
 
 ### Local execution
 
-[`scripts/run-local-poc.ps1`](../scripts/run-local-poc.ps1) checks prerequisites, starts the Compose stack, waits for the emulator, builds the .NET solution, sets emulator connection variables, starts the four consumers, runs the verifier, writes logs, and cleans up by default.
+[`scripts/run-dashboard.ps1`](../scripts/run-dashboard.ps1) checks prerequisites, starts the Compose stack, waits for the emulator, builds the .NET solution, sets emulator connection variables, starts the consumers and the dashboard, and cleans up on exit.
 
-Typical setup and execution:
+Typical setup and execution (Podman in WSL; use `docker compose` with `CONTAINER_RUNTIME=docker`):
 
 ```powershell
-Copy-Item infra/servicebus/.env.example infra/servicebus/.env
+Copy-Item .env.example .env
 # Set SQL_PASSWORD and accept the emulator EULA in .env
-docker compose -f infra/servicebus/compose.yaml up -d
-.\scripts\run-local-poc.ps1
-docker compose -f infra/servicebus/compose.yaml down
+.\scripts\start-servicebus-emulator.ps1
+.\scripts\run-dashboard.ps1
+.\scripts\stop-service-bus-poc.ps1
 ```
 
-[`scripts/check-emulator-status.ps1`](../scripts/check-emulator-status.ps1) checks Docker, container state, port `5672`, and an AMQP protocol response.
+[`scripts/check-emulator-status.ps1`](../scripts/check-emulator-status.ps1) checks the container runtime in WSL, container state, port `5672`, and an AMQP protocol response.
 
 ### Service Bus limitations
 
@@ -153,11 +153,11 @@ The POS database is local application state used to demonstrate processing and r
 
 The React/Vite UI provides two views over these separate demonstrations:
 
-- **Contact Events** - Service Bus emulator status, producer/consumer heartbeats, event publishing, and message activity.
+- **Contact Events** - Service Bus emulator state, event publishing, and message activity. Service and heartbeat status is shown in the Aspire dashboard.
 - **Local Processing** - POS receipt processing backed by the local SQLite `PosEvents` table.
 
 The shared dashboard is a presentation and local orchestration surface. Its presence does not make the two processing paths one system.
 
 ## Key takeaway
 
-The repository demonstrates two complementary but independent capabilities. The Service Bus POC proves asynchronous enterprise event distribution and filtered subscription routing. Local POS processing proves a small, local receipt-to-reporting workflow using SQLite. Docker is used for the first capability’s local Service Bus dependency; it is not used as the POS data store and does not containerize the application UI or .NET services.
+The repository demonstrates two complementary but independent capabilities. The Service Bus POC proves asynchronous enterprise event distribution and filtered subscription routing. Local POS processing proves a small, local receipt-to-reporting workflow using SQLite. The same boundary holds for the container runtime: it is used for the Service Bus dependency only, not as the POS data store, and it does not containerize the application UI or .NET services.

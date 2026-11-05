@@ -1,8 +1,12 @@
+. (Join-Path $PSScriptRoot 'container-runtime.ps1')
+
 function Wait-ServiceBusEmulatorReady {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [string]$ComposePath,
+
+        [string]$EnvFilePath,
 
         [int]$InitialDelaySeconds = 0,
 
@@ -85,11 +89,22 @@ function Wait-ServiceBusEmulatorReady {
 
     Write-Host ""
     Write-Host "AMQP readiness failed. Emulator diagnostics:" -ForegroundColor Red
-    docker-compose -f $ComposePath ps 2>&1 | ForEach-Object { Write-Host "  $_" }
+    try {
+        Invoke-ContainerCompose -ComposePath $ComposePath -EnvFilePath $EnvFilePath -Arguments @('ps') 2>&1 |
+            ForEach-Object { Write-Host "  $_" }
+    }
+    catch {
+        Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
+    }
     Write-Host ""
     Write-Host "Container logs (emulator and sqledge):" -ForegroundColor Red
-    docker-compose -f $ComposePath logs --tail 200 emulator sqledge 2>&1 |
-        ForEach-Object { Write-Host "  $_" }
+    try {
+        Invoke-ContainerCompose -ComposePath $ComposePath -EnvFilePath $EnvFilePath -Arguments @('logs', '--tail', '200', 'emulator', 'sqledge') 2>&1 |
+            ForEach-Object { Write-Host "  $_" }
+    }
+    catch {
+        Write-Host "  $($_.Exception.Message)" -ForegroundColor Red
+    }
 
     throw "Service Bus emulator did not complete the AMQP handshake on localhost:5672 within the readiness timeout."
 }

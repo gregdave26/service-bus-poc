@@ -4,11 +4,11 @@
     Runs the complete automated .NET test suite.
 
 .DESCRIPTION
-    Runs every test in the repository's xUnit test project. Use test-coverage.ps1
+    Runs every test in the repository's xUnit test project. Use test-scripts\test-coverage.ps1
     when coverage collection and the 80 percent threshold are required.
 
 .EXAMPLE
-    .\scripts\test-all.ps1
+    .\test-scripts\test-all.ps1
 #>
 
 [CmdletBinding()]

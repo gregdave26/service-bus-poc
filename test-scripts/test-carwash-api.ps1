@@ -9,7 +9,7 @@
   Requires the Carwash service to be running on http://localhost:5000.
 
 .EXAMPLE
-  .\test-carwash-api.ps1
+  .\test-scripts\test-carwash-api.ps1
 
 .NOTES
   Author: Service Bus POC Team

@@ -166,3 +166,51 @@ test("GET /api/contacts/:contactId/history rejects a blank contact identifier", 
     assert.equal((await response.json()).error, "contactId is required");
   });
 });
+
+test("masks email and phone values in the history read model, keeping first and last characters", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId));
+  recordContactUpdate(contactEvent(contactId, { email: "ada.new@example.com", phone: "0411222333" }));
+
+  const [latest] = getContactHistory(contactId);
+
+  assert.deepEqual(latest.changes.find((change) => change.field === "email"), {
+    field: "email",
+    previous: "a*************m",
+    current: "a*****************m",
+  });
+  assert.deepEqual(latest.changes.find((change) => change.field === "phone"), {
+    field: "phone",
+    previous: "0********0",
+    current: "0********3",
+  });
+});
+
+test("fully masks sensitive values too short to keep both ends hidden", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId, { phone: "", email: "" }));
+  recordContactUpdate(contactEvent(contactId, { phone: "1", email: "ab" }));
+
+  const [latest] = getContactHistory(contactId);
+
+  assert.deepEqual(latest.changes.find((change) => change.field === "phone"), {
+    field: "phone",
+    previous: "",
+    current: "*",
+  });
+  assert.deepEqual(latest.changes.find((change) => change.field === "email"), {
+    field: "email",
+    previous: "",
+    current: "**",
+  });
+});
+
+test("keeps recorded values unmasked for change detection", () => {
+  const contactId = uniqueContactId();
+  recordContactUpdate(contactEvent(contactId));
+  recordContactUpdate(contactEvent(contactId, { email: "ada.new@example.com" }));
+
+  const entry = recordContactUpdate(contactEvent(contactId, { email: "ada@example.com" }));
+
+  assert.deepEqual(entry.changes, [{ field: "email", previous: "ada.new@example.com", current: "ada@example.com" }]);
+});

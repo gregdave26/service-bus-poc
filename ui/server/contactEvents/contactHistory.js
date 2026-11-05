@@ -26,7 +26,28 @@ export function recordContactUpdate(event) {
 }
 
 export function getContactHistory(contactId) {
-  return contactHistories.get(contactId)?.entries ?? null;
+  const entries = contactHistories.get(contactId)?.entries;
+  return entries ? entries.map(maskSensitiveChanges) : null;
+}
+
+const SENSITIVE_FIELDS = new Set(["email", "phone"]);
+const MASK_CHARACTER = "*";
+const MIN_LENGTH_TO_KEEP_ENDS = 3;
+
+function maskSensitiveChanges(entry) {
+  return {
+    ...entry,
+    changes: entry.changes.map((change) => (SENSITIVE_FIELDS.has(change.field)
+      ? { ...change, previous: maskValue(change.previous), current: maskValue(change.current) }
+      : change)),
+  };
+}
+
+function maskValue(value) {
+  if (value === null || value === undefined) return value;
+  const text = String(value);
+  if (text.length < MIN_LENGTH_TO_KEEP_ENDS) return MASK_CHARACTER.repeat(text.length);
+  return text[0] + MASK_CHARACTER.repeat(text.length - 2) + text[text.length - 1];
 }
 
 // contactId selects the history, so it is never reported as a changed field.

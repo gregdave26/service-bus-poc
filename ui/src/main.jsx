@@ -503,7 +503,7 @@ function App() {
 
   function selectDraft(draft) { setSelectedDraft(draft); setForm({ ...draft.data }); setMessageName(draft.name); setEditorOpen(true); }
   async function copyContactId(contactId) {
-    try { await navigator.clipboard.writeText(contactId); setToast("Contact event ID copied"); } catch { setToast("Could not copy contact event ID"); }
+    try { await navigator.clipboard.writeText(contactId); setToast(`Contact event ID copied: ${shortContactId(contactId)}`); } catch { setToast("Could not copy contact event ID"); }
   }
   function updateForm(event) { const { name, value, type, checked } = event.target; setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value })); }
   function hasDuplicateName(name, currentDraft) {

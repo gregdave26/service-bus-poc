@@ -167,7 +167,7 @@ test("GET /api/contacts/:contactId/history rejects a blank contact identifier", 
   });
 });
 
-test("masks email and phone values in the history read model, keeping first and last characters", () => {
+test("masks email to first and last characters and phone to its first three digits", () => {
   const contactId = uniqueContactId();
   recordContactUpdate(contactEvent(contactId));
   recordContactUpdate(contactEvent(contactId, { email: "ada.new@example.com", phone: "0411222333" }));
@@ -181,8 +181,8 @@ test("masks email and phone values in the history read model, keeping first and 
   });
   assert.deepEqual(latest.changes.find((change) => change.field === "phone"), {
     field: "phone",
-    previous: "0********0",
-    current: "0********3",
+    previous: "040*******",
+    current: "041*******",
   });
 });
 

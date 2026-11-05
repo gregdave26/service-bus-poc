@@ -415,6 +415,44 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   </Stack>;
 }
 
+function displayValue(value) { return value === null ? "—" : String(value); }
+
+function ContactHistory({ refreshKey }) {
+  const defaultContactId = drafts[0].data.contactId;
+  const [contactIdInput, setContactIdInput] = useState(defaultContactId);
+  const [contactId, setContactId] = useState(defaultContactId);
+  const [entries, setEntries] = useState([]);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    getJson(`/api/contacts/${encodeURIComponent(contactId)}/history`)
+      .then((body) => { if (!ignore) { setEntries(body.entries); setMessage(null); } })
+      .catch((historyError) => { if (!ignore) { setEntries([]); setMessage(historyError.message); } });
+    return () => { ignore = true; };
+  }, [contactId, refreshKey]);
+
+  const rows = entries.flatMap((entry) => entry.changes.map((change) => ({ ...change, entry })));
+
+  function lookup(event) {
+    event.preventDefault();
+    if (contactIdInput.trim()) setContactId(contactIdInput.trim());
+  }
+
+  return <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+    <Box component="form" onSubmit={lookup} sx={{ p: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+      <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from ContactUpdated events published since the dashboard started</Typography></Box>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <TextField size="small" label="Contact ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} />
+        <Button type="submit" variant="contained" disabled={!contactIdInput.trim()}>View history</Button>
+      </Stack>
+    </Box>
+    <Divider />
+    {rows.length === 0 ? <Typography color="text.secondary" sx={{ p: 4, textAlign: "center" }}>{message ?? "No changes recorded for this contact yet."}</Typography> :
+      <Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Contact change history" sx={{ minWidth: 760 }}><TableHead><TableRow><TableCell>When</TableCell><TableCell>Type</TableCell><TableCell>Field</TableCell><TableCell>Previous</TableCell><TableCell>New</TableCell><TableCell>Source</TableCell><TableCell>Correlation ID</TableCell><TableCell>Event ID</TableCell></TableRow></TableHead><TableBody>{rows.map(({ entry, ...change }) => <TableRow key={`${entry.eventId}-${change.field}`}><TableCell>{new Date(entry.timestamp).toLocaleString()}</TableCell><TableCell>{entry.kind === "created" ? "Created" : "Updated"}</TableCell><TableCell>{change.field}</TableCell><TableCell>{displayValue(change.previous)}</TableCell><TableCell>{displayValue(change.current)}</TableCell><TableCell>{entry.source}</TableCell><TableCell>{entry.correlationId}</TableCell><TableCell>{entry.eventId}</TableCell></TableRow>)}</TableBody></Table></Box>}
+  </Paper>;
+}
+
 function App() {
   const [config, setConfig] = useState({
     subscriberLabels: {},
@@ -498,6 +536,7 @@ function App() {
       <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
       <ActivityStream messages={messages} config={config} />
     </Box>
+    <Box sx={{ mt: 2 }}><ContactHistory refreshKey={messages.length} /></Box>
     <NewMessageDialog open={newMessageOpen} config={config} existingNames={drafts.map((draft) => draft.name)} onClose={() => setNewMessageOpen(false)} onCreate={createDraft} />
     <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} messageName={messageName} duplicateName={duplicateEditorName} onNameChange={setMessageName} onChange={updateForm} onSave={saveDraft} onPublish={(event) => { if (duplicateEditorName || !messageName.trim()) { event.preventDefault(); return; } saveDraft(); publish(event); }} onClose={() => setEditorOpen(false)} />
     <Snackbar open={Boolean(toast)} autoHideDuration={4500} onClose={() => setToast(null)} message={toast} />

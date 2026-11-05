@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import test from "node:test";
 import { app } from "../server/app.js";
 import { getContactHistory, recordContactUpdate } from "../server/contactEvents/index.js";
@@ -33,10 +34,12 @@ function uniqueContactId() {
 
 async function withServer(callback) {
   const server = app.listen(0);
+  await once(server, "listening");
   try {
-    const address = server.address();
-    return await callback(`http://127.0.0.1:${address.port}`);
+    const { port } = server.address();
+    return await callback(`http://127.0.0.1:${port}`);
   } finally {
+    server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
   }
 }
@@ -120,6 +123,14 @@ test("returns history newest first with event and correlation identifiers", () =
 
 test("returns null for a contact with no recorded updates", () => {
   assert.equal(getContactHistory(uniqueContactId()), null);
+});
+
+test("ignores an update without a usable contact identifier", () => {
+  assert.equal(recordContactUpdate(contactEvent(undefined)), null);
+  assert.equal(recordContactUpdate(contactEvent("")), null);
+  assert.equal(recordContactUpdate(contactEvent("   ")), null);
+  assert.equal(getContactHistory(""), null);
+  assert.equal(getContactHistory("   "), null);
 });
 
 test("GET /api/contacts/:contactId/history returns the contact's history", async () => {

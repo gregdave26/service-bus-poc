@@ -4,6 +4,7 @@ const contactHistories = new Map();
 
 export function recordContactUpdate(event) {
   const contactId = event.data.contactId;
+  if (typeof contactId !== "string" || contactId.trim() === "") return null;
   const history = contactHistories.get(contactId) ?? { snapshot: {}, entries: [] };
   const fields = withoutContactId(event.data);
   const changes = changedFields(history.snapshot, fields);

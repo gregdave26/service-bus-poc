@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ServiceBusPoc.Core.Configuration;
 using ServiceBusPoc.DigitalSite.Shared.CommerceTools.Models;
 
@@ -40,17 +41,22 @@ public sealed record CheckoutSession(
 /// <param name="CorrelationId">The POC correlation id.</param>
 /// <param name="RedirectResult">The redirect result from the return URL.</param>
 /// <param name="ThreeDSResult">The 3D Secure result.</param>
+/// <param name="PaymentData">The opaque Adyen payment data returned with an action.</param>
+/// <param name="Details">The raw component details object.</param>
 public sealed record PaymentDetailsSubmission(
     string PaymentId,
     string CorrelationId,
     string? RedirectResult,
-    string? ThreeDSResult);
+    string? ThreeDSResult,
+    string? PaymentData = null,
+    JsonElement? Details = null);
 
 /// <summary>The gateway's interim answer to a payment-details submission.</summary>
 /// <param name="ResultCode">The gateway result code, for example <c>Authorised</c>.</param>
 /// <param name="PspReference">The gateway reference, when known.</param>
 /// <param name="RequiresAction">Whether the shopper must complete another action.</param>
-public sealed record PaymentActionResult(string ResultCode, string? PspReference, bool RequiresAction);
+/// <param name="Action">The gateway action for the browser, when another action is required.</param>
+public sealed record PaymentActionResult(string ResultCode, string? PspReference, bool RequiresAction, object? Action = null);
 
 /// <summary>A verified, gateway-neutral payment notification.</summary>
 /// <param name="EventCode">The event code, for example <c>AUTHORISATION</c>.</param>

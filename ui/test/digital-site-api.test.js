@@ -17,7 +17,7 @@ function recordingFetch(responses) {
 }
 
 test("builds CommerceApi routes from the configured base URL", async () => {
-  const { calls, fetchImpl } = recordingFetch(Array.from({ length: 11 }, () => ({ body: {} })));
+  const { calls, fetchImpl } = recordingFetch(Array.from({ length: 12 }, () => ({ body: {} })));
   const api = createDigitalSiteApi("http://localhost:5200/", fetchImpl);
 
   await api.getConfig();
@@ -29,6 +29,7 @@ test("builds CommerceApi routes from the configured base URL", async () => {
   await api.updateCart("cart/1", { version: 1 });
   await api.deleteCart({ id: "cart-1", version: 3 }, "CRM-00000001");
   await api.startCheckout({ cartId: "cart-1" });
+  await api.submitPaymentDetails("payment-1", { redirectResult: "redirect" }, "payment-data");
   await api.getCheckoutStatus("payment-1");
   await api.simulateStubPayment("payment-1", "Authorised");
 
@@ -43,12 +44,18 @@ test("builds CommerceApi routes from the configured base URL", async () => {
     "PUT /carts/cart%2F1",
     "DELETE /carts/cart-1?crmId=CRM-00000001&version=3",
     "POST /checkout/session",
+    "POST /checkout/details",
     "GET /checkout/status/payment-1",
     "POST /checkout/stub/payment-1/notify",
   ]);
   assert.equal(calls[0].options.body, undefined);
   assert.deepEqual(calls[5].options.headers, { "Content-Type": "application/json" });
-  assert.equal(calls[10].options.body, JSON.stringify({ outcome: "Authorised" }));
+  assert.deepEqual(JSON.parse(calls[9].options.body), {
+    paymentId: "payment-1",
+    details: { redirectResult: "redirect" },
+    paymentData: "payment-data",
+  });
+  assert.equal(calls[11].options.body, JSON.stringify({ outcome: "Authorised" }));
 });
 
 test("returns null for no-content responses", async () => {

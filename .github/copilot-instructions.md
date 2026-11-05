@@ -10,7 +10,7 @@ Prefer self-documenting code over comments. Comment only to explain non-obvious 
 
 A proof-of-concept demonstrating Azure Service Bus as an enterprise messaging backbone for `contact.events`, with **filtered subscriptions** and **JSON Schema** contracts.
 
-- **Producer** publishes `EventEnvelope`-wrapped events (e.g. `ContactUpdated`) to the `contact.events` topic.
+- **Producer** publishes `EventEnvelope`-wrapped events (e.g. `contact.updated`) to the `contact.events` topic.
 - **Consumers** (Carwash, DigitalChannels, Insurance, ParksResorts) receive events matching their subscription. Independently, Carwash exposes `POST /carwash/v1/verify` for Pulse or mock Pulse to call; the consumer must not call or be coupled to that API.
 - **Contracts** in `/contracts/*.schema.json` define event shapes and are the source of truth.
 - **Infrastructure**: Bicep for the Service Bus topology (topic, filtered subscriptions, RBAC) — planned, not yet implemented; local development uses the Service Bus emulator in containers.

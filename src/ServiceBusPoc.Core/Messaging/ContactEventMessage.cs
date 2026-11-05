@@ -15,7 +15,7 @@ public static class ContactEventMessage
     public const string ContactUpdatedDataVersion = "1.0";
 
     /// <summary>The envelope type for product holding change events.</summary>
-    public const string ProductHoldingChangeType = "ProductHoldingChange";
+    public const string ProductHoldingChangeType = "product.holding.changed";
 
     /// <summary>The envelope data version for product holding change events.</summary>
     public const string ProductHoldingChangeDataVersion = "1.0";

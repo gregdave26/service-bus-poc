@@ -20,9 +20,6 @@ import {
   FormControlLabel,
   IconButton,
   LinearProgress,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Snackbar,
   Stack,
@@ -43,6 +40,7 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
 import SaveIcon from "@mui/icons-material/Save";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContactPageIcon from "@mui/icons-material/ContactPage";
@@ -54,6 +52,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import { generateRosterFile } from "./rosteringGenerator.js";
 import { PosProcessing } from "./localPosProcessing.jsx";
 import { processFlowColors, processStageSx } from "./processFlowStyles.js";
+import { shortContactId } from "./contactIdDisplay.js";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import "./styles.css";
 
@@ -80,15 +79,20 @@ function initialTab() {
 }
 
 const drafts = [
-  { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
-  { id: "product-holding-change", name: "Product holding change", type: "ProductHoldingChange", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
-  { id: "regression", name: "Routing regression", type: "ContactUpdated", folder: "Regression checks", data: { contactId: "c0ffee00-0000-4000-8000-000000000099", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
+  { id: "contact-updated", name: "Contact updated", type: "contact.updated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
+  { id: "product-holding-change", name: "Product holding change", type: "product.holding.changed", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
+  { id: "regression", name: "Routing regression", type: "contact.updated", folder: "Regression checks", data: { contactId: "c0ffee00-0000-4000-8000-000000000099", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
 ];
 
 function fieldsFor(type, config) { return config.messageTypes?.[type]?.Fields ?? []; }
-function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, field.Type === "boolean" ? false : ""])); }
+function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, initialValue(field)])); }
+function initialValue(field) {
+  if (field.Name === "contactId") return createUuid();
+  return field.Type === "boolean" ? false : "";
+}
 function createUuid() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function normalizedName(name) { return name.trim().toLowerCase(); }
+function surnameFirstname(data) { return [data?.lastName, data?.firstName].filter(Boolean).join(", "); }
 // Field definitions (labels, columns, required/optional, aliases) are centralized server-side
 // and fetched from GET /api/config as `rosteringInputDefinitions`; see docs/rostering-workflow.md.
 const rosteringInputOrder = ["agentScheduleSummary", "agentScheduleDetail", "ctActiveForecast", "agentInfo"];
@@ -124,7 +128,7 @@ function messageType(payload, fallback) {
 function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
   const types = Object.entries(config.messageTypes ?? {});
   const [name, setName] = useState("");
-  const [type, setType] = useState(types[0]?.[0] ?? "ContactUpdated");
+  const [type, setType] = useState(types[0]?.[0] ?? "contact.updated");
   const [values, setValues] = useState({});
   const selectedFields = fieldsFor(type, config);
   const duplicate = existingNames.some((existingName) => normalizedName(existingName) === normalizedName(name));
@@ -135,8 +139,8 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
       let suffix = 2;
       while (existingNames.some((existingName) => normalizedName(existingName) === normalizedName(candidate))) candidate = `${base} ${suffix++}`;
       setName(candidate);
-      setType(types[0]?.[0] ?? "ContactUpdated");
-      setValues(emptyData(fieldsFor(types[0]?.[0] ?? "ContactUpdated", config)));
+      setType(types[0]?.[0] ?? "contact.updated");
+      setValues(emptyData(fieldsFor(types[0]?.[0] ?? "contact.updated", config)));
     }
   }, [open]);
   function submit(event) {
@@ -151,7 +155,8 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
         <TextField autoFocus label="Message name" value={name} onChange={(event) => setName(event.target.value)} error={duplicate} helperText={duplicate ? "A message with this name already exists." : "Choose a unique name for this message."} required />
         <TextField select label="Message type" value={type} onChange={(event) => { setType(event.target.value); setValues(emptyData(fieldsFor(event.target.value, config))); }}>{types.map(([key, value]) => <MenuItem key={key} value={key}>{value.DisplayName || key}</MenuItem>)}</TextField>
         <Typography variant="subtitle2">{types.find(([key]) => key === type)?.[1]?.DisplayName || type} fields</Typography>
-        {selectedFields.filter((field) => field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
+        {selectedFields.some((field) => field.Name === "contactId") && <TextField label="Contact event ID" value={values.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />}
+        {selectedFields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={values[field.Name] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.value }))} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
         <Stack direction="row" flexWrap="wrap">{selectedFields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox checked={Boolean(values[field.Name])} onChange={(event) => setValues((current) => ({ ...current, [field.Name]: event.target.checked }))} />} label={field.Label || field.Name} />)}</Stack>
       </Stack></DialogContent>
       <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
@@ -187,7 +192,7 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
               <Box component="ul" sx={{ m: 0, pl: 2 }}>{configurationErrors.map((configurationError) => <li key={configurationError}>{configurationError}</li>)}</Box>
             </Alert>}
             <TextField label="Message name" value={messageName} onChange={(event) => onNameChange(event.target.value)} error={duplicateName} helperText={duplicateName ? "A message with this name already exists." : "Choose a unique name for this message."} required fullWidth />
-            <TextField label="Contact ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
+            <TextField label="Contact event ID" value={form.contactId ?? ""} InputProps={{ readOnly: true }} helperText="Generated automatically." fullWidth />
             <Typography variant="subtitle2">{config.messageTypes?.[draft.type]?.DisplayName || draft.type}</Typography>
             {fields.filter((field) => field.Name !== "contactId" && field.Type !== "boolean").map((field) => <TextField key={field.Name} name={field.Name} select={Array.isArray(field.Options) && field.Options.length > 0} label={field.Label || field.Name} value={form[field.Name] ?? ""} onChange={onChange} required={field.Required} fullWidth size="small" type={field.Type || "text"}>{field.Options?.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}</TextField>)}
             <Stack direction="row" flexWrap="wrap">{fields.filter((field) => field.Type === "boolean").map((field) => <FormControlLabel key={field.Name} control={<Checkbox name={field.Name} checked={Boolean(form[field.Name])} onChange={onChange} />} label={field.Label || field.Name} />)}</Stack>
@@ -415,6 +420,44 @@ function RosteringWorkflow({ rosteringMappings = {}, rosteringInputDefinitions =
   </Stack>;
 }
 
+function displayValue(value) { return value === null ? "—" : String(value); }
+
+function ContactHistory({ refreshKey }) {
+  const defaultContactId = drafts[0].data.contactId;
+  const [contactIdInput, setContactIdInput] = useState(defaultContactId);
+  const [contactId, setContactId] = useState(defaultContactId);
+  const [entries, setEntries] = useState([]);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    getJson(`/api/contacts/${encodeURIComponent(contactId)}/history`)
+      .then((body) => { if (!ignore) { setEntries(body.entries); setMessage(null); } })
+      .catch((historyError) => { if (!ignore) { setEntries([]); setMessage(historyError.message); } });
+    return () => { ignore = true; };
+  }, [contactId, refreshKey]);
+
+  const rows = entries.flatMap((entry) => entry.changes.map((change) => ({ ...change, entry })));
+
+  function lookup(event) {
+    event.preventDefault();
+    if (contactIdInput.trim()) setContactId(contactIdInput.trim());
+  }
+
+  return <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+    <Box component="form" onSubmit={lookup} sx={{ p: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
+      <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from contact.updated events published since the dashboard started</Typography></Box>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <TextField size="small" label="Contact event ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} sx={{ minWidth: 380 }} />
+        <Tooltip title="View history"><span><IconButton type="submit" color="primary" aria-label="View history" disabled={!contactIdInput.trim()}><SearchIcon /></IconButton></span></Tooltip>
+      </Stack>
+    </Box>
+    <Divider />
+    {rows.length === 0 ? <Typography color="text.secondary" sx={{ p: 4, textAlign: "center" }}>{message ?? "No changes recorded for this contact yet."}</Typography> :
+      <Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Contact change history" sx={{ minWidth: 760 }}><TableHead><TableRow><TableCell>When</TableCell><TableCell>Type</TableCell><TableCell>Field</TableCell><TableCell>Previous</TableCell><TableCell>New</TableCell><TableCell>Source</TableCell><TableCell>Correlation ID</TableCell><TableCell>Event ID</TableCell></TableRow></TableHead><TableBody>{rows.map(({ entry, ...change }) => <TableRow key={`${entry.eventId}-${change.field}`}><TableCell>{new Date(entry.timestamp).toLocaleString()}</TableCell><TableCell>{entry.kind === "created" ? "Created" : "Updated"}</TableCell><TableCell>{change.field}</TableCell><TableCell>{displayValue(change.previous)}</TableCell><TableCell>{displayValue(change.current)}</TableCell><TableCell>{entry.source}</TableCell><TableCell>{entry.correlationId}</TableCell><TableCell>{entry.eventId}</TableCell></TableRow>)}</TableBody></Table></Box>}
+  </Paper>;
+}
+
 function App() {
   const [config, setConfig] = useState({
     subscriberLabels: {},
@@ -465,6 +508,9 @@ function App() {
   }
 
   function selectDraft(draft) { setSelectedDraft(draft); setForm({ ...draft.data }); setMessageName(draft.name); setEditorOpen(true); }
+  async function copyContactId(contactId) {
+    try { await navigator.clipboard.writeText(contactId); setToast(`Contact event ID copied: ${shortContactId(contactId)}`); } catch { setToast("Could not copy contact event ID"); }
+  }
   function updateForm(event) { const { name, value, type, checked } = event.target; setForm((current) => ({ ...current, [name]: type === "checkbox" ? checked : value })); }
   function hasDuplicateName(name, currentDraft) {
     return drafts.some((draft) => draft !== currentDraft && normalizedName(draft.name) === normalizedName(name));
@@ -481,8 +527,7 @@ function App() {
   function createDraft({ name, type, data }) {
     const fields = fieldsFor(type, config);
     const draftData = data || emptyData(fields);
-    if (fields.some((field) => field.Name === "contactId") && !draftData.contactId) draftData.contactId = createUuid();
-    const draft = { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: draftData };
+    const draft =  { id: `new-${Date.now()}`, name, type, folder: "New drafts", data: draftData };
     drafts.push(draft);
     selectDraft(draft);
     setNewMessageOpen(false);
@@ -494,10 +539,11 @@ function App() {
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{tabTitles[activeTab]}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button><Button size="small" variant={activeTab === "digitalSite" ? "contained" : "text"} onClick={() => setActiveTab("digitalSite")} role="tab" aria-selected={activeTab === "digitalSite"} startIcon={<StorefrontIcon />}>Digital Site</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}><Chip size="small" label={emulator.running ? "Service Bus emulator running" : "Service Bus emulator offline"} color={emulator.running ? "success" : "default"} /><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
     {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) :     <>
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
-      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(440px, 1.4fr) minmax(320px, 1fr)" }, gap: 2 }}>
+      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Draft explorer table"><TableHead><TableRow><TableCell>Contact event ID</TableCell><TableCell>Type</TableCell><TableCell>Surname, firstname</TableCell><TableCell>Action</TableCell></TableRow></TableHead><TableBody>{drafts.map((draft) => <TableRow key={draft.id} hover selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ cursor: "pointer" }}><TableCell><Tooltip title={draft.data?.contactId ?? ""}><Box component="button" type="button" aria-label={`Copy contact event ID ${draft.data?.contactId ?? ""}`} onClick={(event) => { event.stopPropagation(); copyContactId(draft.data?.contactId ?? ""); }} sx={{ fontFamily: "monospace", background: "none", border: 0, p: 0, color: "inherit", font: "inherit", cursor: "copy" }}>{shortContactId(draft.data?.contactId)}</Box></Tooltip></TableCell><TableCell>{draft.type}</TableCell><TableCell>{surnameFirstname(draft.data)}</TableCell><TableCell>{draft.name}</TableCell></TableRow>)}</TableBody></Table></Box></Paper>
       <ActivityStream messages={messages} config={config} />
     </Box>
+    <Box sx={{ mt: 2 }}><ContactHistory refreshKey={messages[0]?.messageId} /></Box>
     <NewMessageDialog open={newMessageOpen} config={config} existingNames={drafts.map((draft) => draft.name)} onClose={() => setNewMessageOpen(false)} onCreate={createDraft} />
     <MessageEditorDialog open={editorOpen} draft={selectedDraft} form={form} fields={editorFields} config={config} messageName={messageName} duplicateName={duplicateEditorName} onNameChange={setMessageName} onChange={updateForm} onSave={saveDraft} onPublish={(event) => { if (duplicateEditorName || !messageName.trim()) { event.preventDefault(); return; } saveDraft(); publish(event); }} onClose={() => setEditorOpen(false)} />
     <Snackbar open={Boolean(toast)} autoHideDuration={4500} onClose={() => setToast(null)} message={toast} />

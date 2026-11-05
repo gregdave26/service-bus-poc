@@ -25,7 +25,7 @@ flowchart LR
         CarwashApi["Carwash Verification API<br/>POST /carwash/v1/verify"]
     end
 
-    CRM -->|"ContactUpdated Event"| ContactTopic
+    CRM -->|"contact.updated Event"| ContactTopic
     ProductSys -->|"Product / Holding Changes"| ContactTopic
 
     SB --> ContactTopic
@@ -57,7 +57,7 @@ The central routing point for all contact-related events in the enterprise.
 
 ## Event Types
 
-### ContactUpdated (v1)
+### contact.updated (v1)
 
 **Purpose:** Notify of contact creation or modification in CRM/MDM.
 
@@ -91,7 +91,7 @@ The central routing point for all contact-related events in the enterprise.
 **Required Fields:** contactId, firstName, lastName  
 **Optional Fields:** email, phone, membershipNumber, attributes
 
-### ProductHoldingChange (v1)
+### product.holding.changed (v1)
 
 **Purpose:** Notify of product or holding lifecycle changes (create, modify, remove).
 

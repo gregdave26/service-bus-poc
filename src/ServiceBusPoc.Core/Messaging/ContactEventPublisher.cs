@@ -89,7 +89,7 @@ public sealed class ContactEventPublisher
     }
 
     /// <summary>
-    /// Validates and publishes a <c>ProductHoldingChange</c> event. Holding changes carry no capability
+    /// Validates and publishes a <c>product.holding.changed</c> event. Holding changes carry no capability
     /// flags, so only unfiltered subscriptions receive them.
     /// </summary>
     /// <param name="holdingChange">The holding change payload; validated against its data annotations.</param>

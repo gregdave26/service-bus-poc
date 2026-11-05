@@ -36,6 +36,6 @@ public static class DigitalSiteCustomFields
     /// <summary>Why the cart processor did not create an order, on payments.</summary>
     public const string ProcessingResult = "processingResult";
 
-    /// <summary>The ProductHoldingChange event id, on orders, once published.</summary>
+    /// <summary>The product.holding.changed event id, on orders, once published.</summary>
     public const string HoldingEventId = "holdingEventId";
 }

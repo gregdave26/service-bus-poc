@@ -35,6 +35,7 @@
     "@racwa/styles": "8.0.33",
     "@racwa/validation": "7.0.26",
     "date-fns": "4.1.0",
+    "deep-object-diff": "^1.1.9",
     "express": "^5.1.0",
     "framer-motion": "11.3.29",
     "lodash": "4.18.1",

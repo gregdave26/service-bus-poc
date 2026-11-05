@@ -29,7 +29,7 @@ How do we reuse RAC's internal MUI components in the dashboard without taking on
 - The backend follows ADR-012 in `ui/server/digitalSite/`:
   - Catalog, vehicle lookup, order service, SQLite repository (`DIGITAL_SITE_DB_PATH`) and router.
   - Prices are recalculated on the server.
-  - Orders are persisted before publishing a `ProductHoldingChange` (`productType: roadside-assistance`), and the publish status is recorded.
+  - Orders are persisted before publishing a `product.holding.changed` (`productType: roadside-assistance`), and the publish status is recorded.
 - `contracts/product-holding-change-v1.schema.json` adds `roadside-assistance` to the `productType` enum.
 
 ## Consequences

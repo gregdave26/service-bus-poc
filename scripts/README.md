@@ -171,7 +171,7 @@ containers as part of normal cleanup.
 6. **Carwash** — Receives `hasCarwashProduct=true`
 7. **CommerceToolsStub** — commercetools HTTP API subset on http://localhost:5201; publishes CT messages to `commerce.events`
 8. **CommerceApi** — Digital Site backend-for-frontend and Adyen webhook on http://localhost:5200
-9. **CartProcessor** — `commerce.events`/`cart-processor`: creates orders from authorised payments, publishes `ProductHoldingChange`
+9. **CartProcessor** — `commerce.events`/`cart-processor`: creates orders from authorised payments, publishes `product.holding.changed`
 10. **FulfilmentStub** — `commerce.events`/`fulfilment-d365-stub`: logs D365 provisioning and completes the order
 
 See [ADR-014](../docs/decisions/014-digital-site-commerce-flow.md) and [`ui/README.md`](../ui/README.md#digital-site-tab).

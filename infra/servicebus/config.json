@@ -275,7 +275,7 @@
       "MessagesHandledLabel": "published"
     },
     "MessageTypes": {
-      "ContactUpdated": {
+      "contact.updated": {
         "DisplayName": "Contact updated",
         "Schema": "contact-updated-v1.schema.json",
         "FormFields": {
@@ -289,7 +289,7 @@
           "hasCarwashProduct": { "Label": "Carwash", "Order": 8, "Type": "boolean" }
         }
       },
-      "ProductHoldingChange": {
+    "product.holding.changed": {
         "DisplayName": "Product holding change",
         "Schema": "product-holding-change-v1.schema.json",
         "FormFields": {

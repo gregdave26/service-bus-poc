@@ -10,7 +10,7 @@ function contactEvent(contactId, data = {}, overrides = {}) {
   eventSequence += 1;
   return {
     id: `event-${eventSequence}`,
-    type: "ContactUpdated",
+    type: "contact.updated",
     source: "dashboard",
     timestamp: new Date(Date.UTC(2026, 10, 5, 2, eventSequence)).toISOString(),
     dataVersion: "1.0",

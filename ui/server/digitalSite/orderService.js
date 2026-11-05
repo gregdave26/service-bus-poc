@@ -49,7 +49,7 @@ export function createOrder(request, { sequence, now = new Date(), createContact
 
 export function toProductHoldingChange(order) {
   return {
-    type: "ProductHoldingChange",
+    type: "product.holding.changed",
     contactId: order.contactId,
     holdingId: order.orderId,
     productType: RSA_PRODUCT_TYPE,

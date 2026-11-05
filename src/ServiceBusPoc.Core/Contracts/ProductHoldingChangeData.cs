@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ServiceBusPoc.Core.Contracts;
 
 /// <summary>
-/// Payload of a <c>ProductHoldingChange</c> event; mirrors <c>contracts/product-holding-change-v1.schema.json</c>.
+/// Payload of a <c>product.holding.changed</c> event; mirrors <c>contracts/product-holding-change-v1.schema.json</c>.
 /// </summary>
 public sealed class ProductHoldingChangeData
 {

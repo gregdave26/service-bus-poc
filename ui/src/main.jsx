@@ -20,9 +20,6 @@ import {
   FormControlLabel,
   IconButton,
   LinearProgress,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Snackbar,
   Stack,
@@ -80,15 +77,16 @@ function initialTab() {
 }
 
 const drafts = [
-  { id: "contact-updated", name: "Contact updated", type: "ContactUpdated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
-  { id: "product-holding-change", name: "Product holding change", type: "ProductHoldingChange", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
-  { id: "regression", name: "Routing regression", type: "ContactUpdated", folder: "Regression checks", data: { contactId: "c0ffee00-0000-4000-8000-000000000099", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
+  { id: "contact-updated", name: "Contact updated", type: "contact.updated", folder: "Contact events", data: { contactId: "1042c5b8-1a3d-4d7a-9f02-7c4f7e2b8c11", firstName: "Ada", lastName: "Lovelace", phone: "0400000000", email: "ada@example.com", hasInsurance: true, hasParksResorts: false, hasCarwashProduct: true } },
+  { id: "product-holding-change", name: "Product holding change", type: "product.holding.changed", folder: "Contact events", data: { contactId: "1088c5b8-2b4e-4e8b-a013-8d5f8f3c9d22", holdingId: "holding-1088", productType: "insurance", action: "created" } },
+  { id: "regression", name: "Routing regression", type: "contact.updated", folder: "Regression checks", data: { contactId: "c0ffee00-0000-4000-8000-000000000099", firstName: "Test", lastName: "Contact", phone: "0400000099", email: "test@example.com", hasInsurance: true, hasParksResorts: true, hasCarwashProduct: true } },
 ];
 
 function fieldsFor(type, config) { return config.messageTypes?.[type]?.Fields ?? []; }
 function emptyData(fields) { return Object.fromEntries(fields.map((field) => [field.Name, field.Type === "boolean" ? false : ""])); }
 function createUuid() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
 function normalizedName(name) { return name.trim().toLowerCase(); }
+function surnameFirstname(data) { return [data?.lastName, data?.firstName].filter(Boolean).join(", "); }
 // Field definitions (labels, columns, required/optional, aliases) are centralized server-side
 // and fetched from GET /api/config as `rosteringInputDefinitions`; see docs/rostering-workflow.md.
 const rosteringInputOrder = ["agentScheduleSummary", "agentScheduleDetail", "ctActiveForecast", "agentInfo"];
@@ -124,7 +122,7 @@ function messageType(payload, fallback) {
 function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
   const types = Object.entries(config.messageTypes ?? {});
   const [name, setName] = useState("");
-  const [type, setType] = useState(types[0]?.[0] ?? "ContactUpdated");
+  const [type, setType] = useState(types[0]?.[0] ?? "contact.updated");
   const [values, setValues] = useState({});
   const selectedFields = fieldsFor(type, config);
   const duplicate = existingNames.some((existingName) => normalizedName(existingName) === normalizedName(name));
@@ -135,8 +133,8 @@ function NewMessageDialog({ open, config, existingNames, onClose, onCreate }) {
       let suffix = 2;
       while (existingNames.some((existingName) => normalizedName(existingName) === normalizedName(candidate))) candidate = `${base} ${suffix++}`;
       setName(candidate);
-      setType(types[0]?.[0] ?? "ContactUpdated");
-      setValues(emptyData(fieldsFor(types[0]?.[0] ?? "ContactUpdated", config)));
+      setType(types[0]?.[0] ?? "contact.updated");
+      setValues(emptyData(fieldsFor(types[0]?.[0] ?? "contact.updated", config)));
     }
   }, [open]);
   function submit(event) {
@@ -441,7 +439,7 @@ function ContactHistory({ refreshKey }) {
 
   return <Paper variant="outlined" sx={{ overflow: "hidden" }}>
     <Box component="form" onSubmit={lookup} sx={{ p: 2, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
-      <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from ContactUpdated events published since the dashboard started</Typography></Box>
+      <Box><Typography variant="h6">Contact change history</Typography><Typography variant="body2" color="text.secondary">Field-level changes from contact.updated events published since the dashboard started</Typography></Box>
       <Stack direction="row" spacing={1} alignItems="center">
         <TextField size="small" label="Contact ID" value={contactIdInput} onChange={(event) => setContactIdInput(event.target.value)} />
         <Button type="submit" variant="contained" disabled={!contactIdInput.trim()}>View history</Button>
@@ -532,8 +530,8 @@ function App() {
     <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 3 }}><Toolbar disableGutters><Box className="brand-mark"><img src="/rac-logo.png" alt="RAC logo" /></Box><Box sx={{ ml: 1.5 }}><Typography variant="overline" color="text.secondary">Messaging Workspace</Typography><Typography variant="h5" color="text.primary">{tabTitles[activeTab]}</Typography></Box><Stack direction="row" spacing={1} sx={{ ml: { xs: 1.5, sm: 4 }, flexWrap: "wrap" }} role="tablist" aria-label="Messaging workspace pages"><Button size="small" variant={activeTab === "contact" ? "contained" : "text"} onClick={() => setActiveTab("contact")} role="tab" aria-selected={activeTab === "contact"} startIcon={<ContactPageIcon />}>Contact Events</Button><Button size="small" variant={activeTab === "pos" ? "contained" : "text"} onClick={() => setActiveTab("pos")} role="tab" aria-selected={activeTab === "pos"} startIcon={<ReceiptLongIcon />}>Local Processing</Button><Button size="small" variant={activeTab === "rostering" ? "contained" : "text"} onClick={() => setActiveTab("rostering")} role="tab" aria-selected={activeTab === "rostering"} startIcon={<CalendarMonthIcon />}>Rostering</Button><Button size="small" variant={activeTab === "digitalSite" ? "contained" : "text"} onClick={() => setActiveTab("digitalSite")} role="tab" aria-selected={activeTab === "digitalSite"} startIcon={<StorefrontIcon />}>Digital Site</Button></Stack><Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}><Chip size="small" label={emulator.running ? "Service Bus emulator running" : "Service Bus emulator offline"} color={emulator.running ? "success" : "default"} /><Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>{loading ? "Checking services…" : error ? "Status unavailable" : "Live"}</Typography><IconButton onClick={refresh} aria-label="Refresh status"><RefreshIcon /></IconButton></Box></Toolbar></AppBar>
     {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>Could not refresh status: {error}</Alert>}
     {activeTab === "digitalSite" ? <React.Suspense fallback={<CircularProgress />}><DigitalSite apiBaseUrl={config.digitalSiteApiBaseUrl} /></React.Suspense> : activeTab === "rostering" ? <RosteringWorkflow rosteringMappings={config.rosteringMappings} rosteringInputDefinitions={config.rosteringInputDefinitions} /> : activeTab === "pos" ? (posCatalog ? <PosProcessing catalog={posCatalog} receipts={posReceipts} onGenerate={generatePosReceipt} /> : <CircularProgress />) :     <>
-    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "260px minmax(320px, 1fr)" }, gap: 2 }}>
-      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><List dense>{["Contact events", "Regression checks", "New drafts"].map((folder) => <React.Fragment key={folder}><ListItemText primary={`› ${folder}`} sx={{ px: 2, py: 1, fontWeight: 700 }} />{drafts.filter((draft) => draft.folder === folder).map((draft) => <ListItemButton key={draft.id} selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ pl: 3 }}><ListItemText primary={`▱ ${draft.name}`} /></ListItemButton>)}</React.Fragment>)}</List></Paper>
+    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(440px, 1.4fr) minmax(320px, 1fr)" }, gap: 2 }}>
+      <Paper variant="outlined"><Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}><Box><Typography variant="h6">Draft explorer</Typography><Typography variant="body2" color="text.secondary">Published by Producer</Typography></Box><IconButton aria-label="Create draft" onClick={() => setNewMessageOpen(true)}><AddIcon /></IconButton></Box><Divider /><Box sx={{ overflowX: "auto" }}><Table size="small" aria-label="Draft explorer table"><TableHead><TableRow><TableCell>Contact ID</TableCell><TableCell>Type</TableCell><TableCell>Surname, firstname</TableCell><TableCell>Action</TableCell></TableRow></TableHead><TableBody>{drafts.map((draft) => <TableRow key={draft.id} hover selected={draft.id === selectedDraft.id} onClick={() => selectDraft(draft)} sx={{ cursor: "pointer" }}><TableCell>{draft.data?.contactId ?? ""}</TableCell><TableCell>{draft.type}</TableCell><TableCell>{surnameFirstname(draft.data)}</TableCell><TableCell>{draft.name}</TableCell></TableRow>)}</TableBody></Table></Box></Paper>
       <ActivityStream messages={messages} config={config} />
     </Box>
     <Box sx={{ mt: 2 }}><ContactHistory refreshKey={messages[0]?.messageId} /></Box>

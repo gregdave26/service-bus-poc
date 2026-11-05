@@ -10,7 +10,7 @@ namespace ServiceBusPoc.DigitalSite.CartProcessor;
 
 /// <summary>
 /// Turns a cart into an order once its payment has a successful authorisation for the cart total, then
-/// publishes a <c>ProductHoldingChange</c>. Every step checks commercetools state first, so a redelivered or
+/// publishes a <c>product.holding.changed</c>. Every step checks commercetools state first, so a redelivered or
 /// out-of-order message never creates a second order or a second holding event.
 /// </summary>
 public sealed class PaymentMessageHandler : ICommerceMessageHandler
@@ -163,7 +163,7 @@ public sealed class PaymentMessageHandler : ICommerceMessageHandler
 
         if (string.IsNullOrWhiteSpace(order.AnonymousId))
         {
-            _logger.LogWarning("Order {OrderNumber} has no CRM id, so no ProductHoldingChange is published", order.OrderNumber);
+            _logger.LogWarning("Order {OrderNumber} has no CRM id, so no product.holding.changed event is published", order.OrderNumber);
             return;
         }
 

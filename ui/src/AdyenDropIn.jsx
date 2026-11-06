@@ -63,6 +63,14 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
     };
   }, [checkout, onResult, onAdditionalDetails, ref]);
 
+  // Always hide Adyen's pay button - we'll use our own "Make Payment" button
+  useEffect(() => {
+    const payButton = containerRef.current?.querySelector('.adyen-checkout__button--pay');
+    if (payButton) {
+      payButton.style.display = 'none';
+    }
+  }, []);
+
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

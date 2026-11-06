@@ -354,7 +354,7 @@ function CoverSelector({ state, dispatch, covers }) {
             <Box component="span" className="upsell-option-offered" sx={{ display: "none" }} />
             <Box component="span" className="upsell-option-chosen" sx={{ display: "grid", gap: 0.35 }}>
               <Box component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>
-                <strong>{formatCurrency(cover.annualPrice)} a year</strong> or <strong>{formatCurrency(cover.monthlyPrice)} a month</strong>
+                <strong>{formatCurrency(cover.annualPrice)} a year</strong> or <strong>{formatCurrency(cover.annualPrice / 12)} a month</strong>
               </Box>
               {attributes.map((attribute, index) => <Box key={index} component="span" className="upsell-option-attribute" sx={{ display: "block", fontSize: "0.85rem", lineHeight: 1.25 }}>{attribute}</Box>)}
             </Box>
@@ -696,7 +696,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
         {state.paymentPlan === "Annual" && <PaymentMethodSelector state={state} dispatch={dispatch} />}
         {state.paymentMethod === "Card" && <Box>
           {["Adyen", "AdyenComponent"].includes(paymentGateway) && ["Adyen", "AdyenComponent"].includes(state.paymentSession?.gateway)
-            ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={NOOP} onValidity={onCardValidity} />
+            ? <AdyenDropIn checkout={state.paymentSession} showPayButton={false} onResult={NOOP} onValidity={onCardValidity} termsAccepted={state.acceptedRoadsideAssistTerms} />
             : <CreditCardPlaceholder onValidity={onCardValidity} />}
           {selectedPlanPrice && <Card background="gray" sx={{ p: 2, mt: 2 }}>
             <Typography sx={{ fontWeight: 500 }}>Payment summary</Typography>
@@ -726,7 +726,7 @@ export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditi
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {["Adyen", "AdyenComponent"].includes(checkout.gateway)
-      ? <AdyenDropIn checkout={checkout} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} />
+      ? <AdyenDropIn checkout={checkout} showPayButton={true} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} termsAccepted={state.acceptedRoadsideAssistTerms} />
       : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} />}
   </Stack>;
 }

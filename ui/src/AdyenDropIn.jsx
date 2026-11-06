@@ -27,22 +27,24 @@ export function AdyenDropIn({
   onValidity,
   onAdditionalDetails,
   showPayButton = true,
+  termsAccepted = true,
 }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dropin, setDropin] = useState(null);
 
   useEffect(() => {
-    let dropin;
     let cancelled = false;
     AdyenCheckout(checkoutConfiguration(checkout, onResult, setError, onAdditionalDetails))
       .then((adyenCheckout) => {
         if (cancelled) return;
-        dropin = new Dropin(adyenCheckout, {
+        const dropinInstance = new Dropin(adyenCheckout, {
           paymentMethodComponents: [Card],
           showPayButton,
           onChange: (state) => onValidity?.(state.isValid === true),
         }).mount(containerRef.current);
+        setDropin(dropinInstance);
       })
       .catch((initialiseError) => setError(initialiseError.message))
       .finally(() => setLoading(false));
@@ -50,7 +52,16 @@ export function AdyenDropIn({
       cancelled = true;
       dropin?.unmount();
     };
-  }, [checkout, onResult, onAdditionalDetails]);
+  }, [checkout, onResult, onAdditionalDetails, showPayButton]);
+
+  useEffect(() => {
+    if (!dropin || !showPayButton) return;
+    // Disable/enable the internal pay button based on terms acceptance
+    const payButton = containerRef.current?.querySelector('[data-testid="pay-button"]');
+    if (payButton) {
+      payButton.disabled = !termsAccepted;
+    }
+  }, [termsAccepted, dropin, showPayButton]);
 
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}

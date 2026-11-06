@@ -42,6 +42,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import SaveIcon from "@mui/icons-material/Save";
+import SendIcon from "@mui/icons-material/Send";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ContactPageIcon from "@mui/icons-material/ContactPage";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -216,9 +217,19 @@ function MessageEditorDialog({ open, draft, form, fields, config, messageName, d
           </Stack>
         </DialogContent>
         <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2 }}>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="outlined" onClick={onSave} disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}>Save message</Button>
-          <Button type="submit" variant="contained" disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}>Publish</Button>
+          <Tooltip title="Cancel">
+            <IconButton aria-label="Cancel" onClick={onClose}><ExitToAppIcon sx={{ transform: "rotate(180deg)" }} /></IconButton>
+          </Tooltip>
+          <Tooltip title="Save message">
+            <span>
+              <IconButton aria-label="Save message" onClick={onSave} disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}><SaveIcon /></IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Publish message">
+            <span>
+              <IconButton aria-label="Publish message" type="submit" color="primary" disabled={!messageName.trim() || duplicateName || configurationErrors.length > 0}><SendIcon /></IconButton>
+            </span>
+          </Tooltip>
         </Stack>
       </Box>
     </Dialog>;

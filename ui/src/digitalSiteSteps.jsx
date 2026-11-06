@@ -717,7 +717,7 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
   </Stack>;
 }
 
-export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditionalDetails }) {
+export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditionalDetails, adyenRef }) {
   const { checkout } = state;
   const plan = state.paymentPlan === "Monthly" ? "monthly" : "annual";
   const termsAccepted = state.acceptedRoadsideAssistTerms && (state.paymentMethod !== "BankAccount" || state.acceptedPaymentAuthTerms);
@@ -727,7 +727,7 @@ export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditi
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {["Adyen", "AdyenComponent"].includes(checkout.gateway)
-      ? <AdyenDropIn checkout={checkout} showPayButton={termsAccepted} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} />
+      ? <AdyenDropIn ref={adyenRef} checkout={checkout} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} />
       : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} disabled={!termsAccepted} />}
   </Stack>;
 }

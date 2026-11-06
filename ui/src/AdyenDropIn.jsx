@@ -26,7 +26,7 @@ export function AdyenDropIn({
   onResult,
   onValidity,
   onAdditionalDetails,
-  showPayButton = true,
+  showPayButton = false,
 }) {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,14 @@ export function AdyenDropIn({
       dropin?.unmount();
     };
   }, [checkout, onResult, onAdditionalDetails]);
+
+  // Hide/show pay button based on showPayButton prop using CSS
+  useEffect(() => {
+    const payButton = containerRef.current?.querySelector('.adyen-checkout__button--pay');
+    if (payButton) {
+      payButton.style.display = showPayButton ? 'block' : 'none';
+    }
+  }, [showPayButton]);
 
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}

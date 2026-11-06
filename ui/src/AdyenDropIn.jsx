@@ -65,10 +65,25 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
 
   // Always hide Adyen's pay button - we'll use our own "Make Payment" button
   useEffect(() => {
-    const payButton = containerRef.current?.querySelector('.adyen-checkout__button--pay');
-    if (payButton) {
-      payButton.style.display = 'none';
-    }
+    // Try to hide the button immediately and repeatedly since it may render dynamically
+    const hideButton = () => {
+      const payButton = containerRef.current?.querySelector('.adyen-checkout__button--pay');
+      if (payButton) {
+        payButton.style.display = 'none';
+      }
+    };
+    
+    // Hide immediately
+    hideButton();
+    
+    // Also hide after a delay in case button renders later
+    const timer = setTimeout(hideButton, 500);
+    const timer2 = setTimeout(hideButton, 1000);
+    
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(timer2);
+    };
   }, []);
 
   return <Box>

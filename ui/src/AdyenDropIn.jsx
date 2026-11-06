@@ -11,6 +11,7 @@ function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails)
     amount: { value: checkout.price.centAmount, currency: checkout.price.currencyCode },
     countryCode: "AU",
     locale: "en-AU",
+    showPayButton: false, // Hide Adyen's button - we'll use our own "Make Payment" button
     onPaymentCompleted: (result) => onResult(result.resultCode),
     onPaymentFailed: (result) => onResult(result?.resultCode ?? "Refused"),
     onError: (error) => onError(error.message),
@@ -50,7 +51,6 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
         if (cancelled) return;
         dropin = new Dropin(adyenCheckout, {
           paymentMethodComponents: [Card],
-          showPayButton: false, // Always hide Adyen's button, we'll use our own
           onChange: (state) => onValidity?.(state.isValid === true),
         }).mount(containerRef.current);
         dropinRef.current = dropin;
@@ -63,28 +63,8 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
     };
   }, [checkout, onResult, onAdditionalDetails, ref]);
 
-  // Always hide Adyen's pay button - we'll use our own "Make Payment" button
-  useEffect(() => {
-    // Try to hide the button immediately and repeatedly since it may render dynamically
-    const hideButton = () => {
-      const payButton = containerRef.current?.querySelector('.adyen-checkout__button--pay');
-      if (payButton) {
-        payButton.style.display = 'none';
-      }
-    };
-    
-    // Hide immediately
-    hideButton();
-    
-    // Also hide after a delay in case button renders later
-    const timer = setTimeout(hideButton, 500);
-    const timer2 = setTimeout(hideButton, 1000);
-    
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(timer2);
-    };
-  }, []);
+  // Hide Adyen's pay button via showPayButton: false in checkout configuration
+  // No DOM manipulation needed - the configuration is handled in checkoutConfiguration()
 
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}

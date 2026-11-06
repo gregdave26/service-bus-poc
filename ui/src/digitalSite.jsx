@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Alert, Box, CircularProgress, GlobalStyles, Paper, Stack } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { RacwaStepperTemplate, theme as racwaTheme } from "@racwa/react-components";
@@ -42,11 +42,11 @@ function takeRedirectResult() {
   return redirectResult;
 }
 
-function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity, paymentGateway }) {
+function CurrentStep({ state, dispatch, catalog, api, members, payment, onContinue, continueDisabled, loading, onCardValidity, paymentGateway, adyenRef }) {
   switch (state.page) {
     case "coverSelection": return <CoverSelectionStep state={state} dispatch={dispatch} covers={catalog.covers} />;
     case "yourDetails": return <YourDetailsStep state={state} dispatch={dispatch} lookupVehicle={api.lookupVehicle} covers={catalog.covers} onContinue={onContinue} continueDisabled={continueDisabled} loading={loading} {...members} />;
-    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onAdyenAdditionalDetails={payment.onAdyenAdditionalDetails} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />;
+    case "confirmPay": return <ConfirmPayStep state={state} dispatch={dispatch} covers={catalog.covers} paymentPlans={catalog.paymentPlans} simulatePayment={api.simulateStubPayment} onPaymentResult={payment.onPaymentResult} onAdyenAdditionalDetails={payment.onAdyenAdditionalDetails} onCardValidity={onCardValidity} paymentGateway={paymentGateway} adyenRef={adyenRef} />;
     default: return <ConfirmationStep state={state} getCheckoutStatus={api.getCheckoutStatus} onSettled={payment.onSettled} onRestart={() => dispatch({ type: "restart" })} onTryAgain={() => dispatch({ type: "retryPayment" })} />;
   }
 }
@@ -61,6 +61,7 @@ function DigitalSiteFlow({ api }) {
   const [paymentConfig, setPaymentConfig] = useState(null);
   const paymentGateway = paymentConfig?.gateway ?? "Stub";
   const { crmId } = state;
+  const adyenRef = useRef(null);
 
   const refreshMember = useCallback(() => {
     api.getHistory(crmId).then((memberHistory) => {
@@ -185,9 +186,16 @@ function DigitalSiteFlow({ api }) {
     cartBusy: busy,
   };
 
-  const nextActions = { yourDetails: saveCart, confirmPay: startCheckout };
+  const submitPayment = useCallback(() => {
+    adyenRef.current?.submit();
+  }, []);
+
+  const nextActions = {
+    yourDetails: saveCart,
+    confirmPay: state.checkout ? submitPayment : startCheckout,
+  };
   const onNext = nextActions[state.page] ?? (() => dispatch({ type: "next" }));
-  const showButtons = state.page !== "finished" && state.page !== "coverSelection" && state.page !== "yourDetails" && !state.checkout;
+  const showButtons = state.page !== "finished" && state.page !== "coverSelection" && state.page !== "yourDetails";
   const isOutsideStepper = state.page === "coverSelection" || state.page === "finished";
 
   return <Stack spacing={3}>
@@ -217,7 +225,7 @@ function DigitalSiteFlow({ api }) {
         >
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
           {catalog ? <>
-            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember, onAdyenAdditionalDetails }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} />
+            <CurrentStep state={state} dispatch={dispatch} catalog={catalog} api={api} members={members} payment={{ onPaymentResult, onSettled: refreshMember, onAdyenAdditionalDetails }} onContinue={saveCart} continueDisabled={!canContinue(state)} loading={busy} onCardValidity={onCardValidity} paymentGateway={paymentGateway} adyenRef={adyenRef} />
             {showButtons && <StepButtons
               onBack={state.page === "yourDetails" || state.page === "coverSelection" ? undefined : () => dispatch({ type: "back" })}
               onNext={state.page === "pay" ? undefined : onNext}

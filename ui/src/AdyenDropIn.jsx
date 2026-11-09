@@ -66,7 +66,7 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
       cancelled = true;
       dropin?.unmount();
     };
-  }, [checkout, onResult, onAdditionalDetails, showPayButton]);
+  }, [checkout, onResult, onAdditionalDetails, showPayButton, onValidity]);
 
   // Disable/enable the internal pay button based on terms acceptance
   useEffect(() => {

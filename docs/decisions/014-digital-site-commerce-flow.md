@@ -6,7 +6,7 @@
 
 ## Context
 
-The Digital Site tab (ADR-013) completed a purchase by writing an order to SQLite in the Node dashboard and publishing `ProductHoldingChange` straight away. No payment was taken and there was no cart.
+The Digital Site tab (ADR-013) completed a purchase by writing an order to SQLite in the Node dashboard and publishing `product.holding.changed` straight away. No payment was taken and there was no cart.
 
 The target RAC website architecture (Confluence: *RAC Website – CommerceTools – Adyen Flow POC*) uses:
 
@@ -39,7 +39,7 @@ How do we model the cart → payment → order → fulfilment journey so that:
 | `Shared` | `CommerceToolsClient` (typed `HttpClient`, optional OAuth client credentials), the CT models and update actions, and `CommerceSubscriptionRunner` for `commerce.events` consumers |
 | `CommerceToolsStub` | A subset of the CT HTTP API: `/{projectKey}/product-projections`, `carts`, `payments`, `orders`, `/oauth/token`. CT JSON shapes, version checks, `409 ConcurrentModification`, and `where` equality/`and` predicates. SQLite store. It publishes CT-style `MessageDeliveryPayload` messages to `commerce.events` through an outbox, imitating a CT Subscription with an Azure Service Bus destination. |
 | `CommerceApi` | The backend-for-frontend (`/api/digital-site/*`) that the browser calls directly (CORS). It also hosts the Adyen notification module (`POST /api/digital-site/notifications/adyen`). |
-| `CartProcessor` | Consumes `PaymentTransactionAdded` / `PaymentTransactionStateChanged`. On a successful Authorization whose amount equals the cart total, it calls `createOrderFromCart`, then publishes `ProductHoldingChange` (`roadside-assistance`) to `contact.events` once. |
+| `CartProcessor` | Consumes `PaymentTransactionAdded` / `PaymentTransactionStateChanged`. On a successful Authorization whose amount equals the cart total, it calls `createOrderFromCart`, then publishes `product.holding.changed` (`roadside-assistance`) to `contact.events` once. |
 | `FulfilmentStub` | Consumes `OrderCreated`, logs a "D365 F&O provisioning (stub)" entry, then sets the order state to `Complete`. |
 
 ### Payment gateway abstraction (feature toggle)
@@ -68,7 +68,7 @@ Idempotency comes from three things:
 
 - the transaction state rules
 - CT version checks with conflict retry
-- the order `holdingEventId` custom field, which ensures `ProductHoldingChange` is published once
+- the order `holdingEventId` custom field, which ensures `product.holding.changed` is published once
 
 ### Frontend (`ui/`)
 
@@ -87,7 +87,7 @@ A correlation id is created with the cart and carried through the following, and
 - the cart and payment custom fields
 - Adyen `metadata`
 - the Service Bus `CorrelationId`
-- `ProductHoldingChange`
+- `product.holding.changed`
 
 The ids we log are crmId (a mock, non-PII value), cartId, paymentId/key, pspReference, eventCode, orderId/orderNumber and the CT message type/sequenceNumber. We never log card data, the HMAC key, API keys or session data.
 

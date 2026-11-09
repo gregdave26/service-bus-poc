@@ -417,7 +417,7 @@ public sealed class CommerceApiEndpointTests : IDisposable
         var holding = Assert.Single(_publishedHoldings);
         Assert.Equal(cart.CorrelationId, holding.CorrelationId);
         var envelope = JsonDocument.Parse(holding.Body.ToString()).RootElement;
-        Assert.Equal("ProductHoldingChange", envelope.GetProperty("type").GetString());
+        Assert.Equal("product.holding.changed", envelope.GetProperty("type").GetString());
         Assert.Equal(CrmId, envelope.GetProperty("data").GetProperty("contactId").GetString());
         Assert.Equal("roadside-assistance", envelope.GetProperty("data").GetProperty("productType").GetString());
 
@@ -521,6 +521,16 @@ public sealed class CommerceApiEndpointTests : IDisposable
         return settings;
     }
 
+    [Fact]
+    public async Task StubNotifications_DisabledByDefault_NoNotificationDispatchedAfterCheckout()
+    {
+        var cart = await CreateCartAsync("STD");
+        var session = await StartCheckoutAsync(cart);
+
+        var status = await GetStatusAsync(session.PaymentId);
+        Assert.Equal(PaymentStates.Pending, status.PaymentState);
+    }
+
     private async Task<HttpResponseMessage> PreflightAsync(string origin)
     {
         using var request = new HttpRequestMessage(HttpMethod.Options, $"{Api}/carts");
@@ -595,3 +605,4 @@ public sealed class CommerceApiEndpointTests : IDisposable
         return JsonSerializer.Deserialize<T>(body, Json)!;
     }
 }
+

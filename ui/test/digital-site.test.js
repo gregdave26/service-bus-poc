@@ -115,12 +115,12 @@ test("creates an order ignoring any client supplied price", () => {
   assert.equal(createOrder({ ...validRequest, vehicle: { searchChoice: "Skip" } }, { sequence: 1 }).vehicle, null);
 });
 
-test("maps an order to a valid ProductHoldingChange publish request", () => {
+test("maps an order to a valid product.holding.changed publish request", () => {
   const order = createOrder(validRequest, { sequence: 7, createContactId: () => "contact-7" });
   const request = toProductHoldingChange(order);
   assert.equal(validatePublishRequest(request), null);
   const message = createPublishMessage(request);
-  assert.equal(message.subject, "ProductHoldingChange");
+  assert.equal(message.subject, "product.holding.changed");
   assert.deepEqual(message.body.data, {
     contactId: "contact-7",
     holdingId: "RSA-000007",

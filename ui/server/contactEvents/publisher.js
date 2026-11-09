@@ -3,9 +3,10 @@ import { ServiceBusClient } from "@azure/service-bus";
 import { randomUUID } from "node:crypto";
 import { messageTypes } from "./messageTypes.js";
 import { storeMessage } from "./messageStore.js";
+import { recordContactUpdate } from "./contactHistory.js";
 
 export function validatePublishRequest(body) {
-  const type = body?.type ?? "ContactUpdated";
+  const type = body?.type ?? "contact.updated";
   const configuredType = messageTypes[type];
   if (!configuredType) return `Unsupported message type: ${type}`;
   const requiredFields = (configuredType.Fields ?? [])
@@ -30,7 +31,7 @@ function isPlainObject(value) {
 }
 
 export function createPublishMessage(request) {
-  const type = request.type ?? "ContactUpdated";
+  const type = request.type ?? "contact.updated";
   const configuredType = messageTypes[type];
   const data = {};
   for (const field of configuredType?.Fields ?? []) {
@@ -44,7 +45,7 @@ export function createPublishMessage(request) {
       .filter((field) => field.Type === "boolean")
       .map((field) => [field.Name, data[field.Name] === true]),
   );
-  if (type === "ContactUpdated") data.attributes = { ...applicationProperties };
+  if (type === "contact.updated") data.attributes = { ...applicationProperties };
   const event = {
     id: randomUUID(),
     type,
@@ -105,5 +106,6 @@ export async function publishAndRecordContactEvent(request) {
     timestamp: event.timestamp,
     payload: JSON.stringify(event),
   });
+  if (event.type === "contact.updated") recordContactUpdate(event);
   return event;
 }

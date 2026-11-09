@@ -77,9 +77,9 @@ public sealed class AdyenPaymentAdapterTests
             CancellationToken.None);
 
         Assert.Equal(new PaymentActionResult("Authorised", "PSP1", false), result);
-        var paymentDetailsRequest = Assert.IsType<PaymentDetailsRequest>(sent);
-        Assert.NotNull(paymentDetailsRequest.Details);
-        Assert.Equal("redirect", paymentDetailsRequest.Details!.RedirectResult);
+        Assert.Equal("redirect", sent!.Details.RedirectResult);
+        Assert.Equal("payment-data", sent.PaymentData);
+        Assert.Equal("challenge", sent.Details.Threeds2ChallengeResult);
     }
 
     [Fact]
@@ -213,3 +213,4 @@ public sealed class AdyenPaymentAdapterTests
         }
     }
 }
+

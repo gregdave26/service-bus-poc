@@ -6,7 +6,7 @@ public sealed class CartProcessorSettings
     /// <summary>The configuration section name.</summary>
     public const string SectionName = "CartProcessor";
 
-    /// <summary>Gets or sets the topic that receives <c>ProductHoldingChange</c> events.</summary>
+    /// <summary>Gets or sets the topic that receives <c>product.holding.changed</c> events.</summary>
     public string ContactEventsTopicName { get; set; } = "contact.events";
 
     /// <summary>Gets or sets the event source recorded on published events.</summary>

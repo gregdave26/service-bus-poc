@@ -23,20 +23,24 @@ function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails)
 
 // Card data and 3D Secure stay inside Adyen's iframes; the browser result is only an interim status.
 // Exposes the Adyen Dropin instance via ref so external buttons can trigger submission.
+// Also supports showPayButton and termsAccepted props for visibility/disable gating.
 export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
   checkout,
   onResult,
   onValidity,
   onAdditionalDetails,
+  showPayButton = true,
+  termsAccepted = true,
 }, ref) {
   const containerRef = useRef(null);
   const dropinRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dropin, setDropin] = useState(null);
 
   // Expose submit method via ref
   useEffect(() => {
-    if (ref) {
+    if (ref && dropinRef.current) {
       ref.current = {
         submit: () => dropinRef.current?.submit(),
       };
@@ -44,16 +48,17 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
   }, [ref]);
 
   useEffect(() => {
-    let dropin;
     let cancelled = false;
     AdyenCheckout(checkoutConfiguration(checkout, onResult, setError, onAdditionalDetails))
       .then((adyenCheckout) => {
         if (cancelled) return;
-        dropin = new Dropin(adyenCheckout, {
+        const dropinInstance = new Dropin(adyenCheckout, {
           paymentMethodComponents: [Card],
+          showPayButton,
           onChange: (state) => onValidity?.(state.isValid === true),
         }).mount(containerRef.current);
-        dropinRef.current = dropin;
+        dropinRef.current = dropinInstance;
+        setDropin(dropinInstance);
       })
       .catch((initialiseError) => setError(initialiseError.message))
       .finally(() => setLoading(false));
@@ -61,10 +66,16 @@ export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
       cancelled = true;
       dropin?.unmount();
     };
-  }, [checkout, onResult, onAdditionalDetails, ref]);
+  }, [checkout, onResult, onAdditionalDetails, showPayButton]);
 
-  // Hide Adyen's pay button via showPayButton: false in checkout configuration
-  // No DOM manipulation needed - the configuration is handled in checkoutConfiguration()
+  // Disable/enable the internal pay button based on terms acceptance
+  useEffect(() => {
+    if (!dropin || !showPayButton) return;
+    const payButton = containerRef.current?.querySelector('[data-testid="pay-button"]');
+    if (payButton) {
+      payButton.disabled = !termsAccepted;
+    }
+  }, [termsAccepted, dropin, showPayButton]);
 
   return <Box>
     {loading && <Box sx={{ py: 4, textAlign: "center" }}><CircularProgress /></Box>}

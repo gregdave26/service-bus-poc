@@ -75,6 +75,7 @@ public sealed class AdyenPaymentAdapter : IPaymentGatewayAdapter
             CountryCode = _siteSettings.Country,
             ShopperLocale = _siteSettings.ShopperLocale,
             Channel = CreateCheckoutSessionRequest.ChannelEnum.Web,
+            ShopperInteraction = CreateCheckoutSessionRequest.ShopperInteractionEnum.Ecommerce,
             Metadata = CreateMetadata(request),
         };
 

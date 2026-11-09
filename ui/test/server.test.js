@@ -111,22 +111,22 @@ test("promotes capability flags to Service Bus application properties", () => {
   assert.deepEqual(message.body.data.attributes, message.applicationProperties);
 });
 
-test("creates configured ProductHoldingChange messages with dynamic fields", () => {
+test("creates configured product.holding.changed messages with dynamic fields", () => {
   assert.equal(validatePublishRequest({
-    type: "ProductHoldingChange",
+    type: "product.holding.changed",
     contactId: "c-2",
     holdingId: "holding-2",
     productType: "insurance",
     action: "created",
   }), null);
   const message = createPublishMessage({
-    type: "ProductHoldingChange",
+    type: "product.holding.changed",
     contactId: "c-2",
     holdingId: "holding-2",
     productType: "insurance",
     action: "created",
   });
-  assert.equal(message.body.type, "ProductHoldingChange");
+  assert.equal(message.body.type, "product.holding.changed");
   assert.deepEqual(message.body.data, {
     contactId: "c-2",
     holdingId: "holding-2",

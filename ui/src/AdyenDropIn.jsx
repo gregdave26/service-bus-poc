@@ -11,6 +11,7 @@ function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails)
     amount: { value: checkout.price.centAmount, currency: checkout.price.currencyCode },
     countryCode: "AU",
     locale: "en-AU",
+    showPayButton: false, // Hide Adyen's button - we'll use our own "Make Payment" button
     onPaymentCompleted: (result) => onResult(result.resultCode),
     onPaymentFailed: (result) => onResult(result?.resultCode ?? "Refused"),
     onError: (error) => onError(error.message),
@@ -21,18 +22,30 @@ function checkoutConfiguration(checkout, onResult, onError, onAdditionalDetails)
 }
 
 // Card data and 3D Secure stay inside Adyen's iframes; the browser result is only an interim status.
-export function AdyenDropIn({
+// Exposes the Adyen Dropin instance via ref so external buttons can trigger submission.
+// Also supports showPayButton and termsAccepted props for visibility/disable gating.
+export const AdyenDropIn = React.forwardRef(function AdyenDropInComponent({
   checkout,
   onResult,
   onValidity,
   onAdditionalDetails,
   showPayButton = true,
   termsAccepted = true,
-}) {
+}, ref) {
   const containerRef = useRef(null);
+  const dropinRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dropin, setDropin] = useState(null);
+
+  // Expose submit method via ref
+  useEffect(() => {
+    if (ref && dropinRef.current) {
+      ref.current = {
+        submit: () => dropinRef.current?.submit(),
+      };
+    }
+  }, [ref]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +57,7 @@ export function AdyenDropIn({
           showPayButton,
           onChange: (state) => onValidity?.(state.isValid === true),
         }).mount(containerRef.current);
+        dropinRef.current = dropinInstance;
         setDropin(dropinInstance);
       })
       .catch((initialiseError) => setError(initialiseError.message))
@@ -54,9 +68,9 @@ export function AdyenDropIn({
     };
   }, [checkout, onResult, onAdditionalDetails, showPayButton]);
 
+  // Disable/enable the internal pay button based on terms acceptance
   useEffect(() => {
     if (!dropin || !showPayButton) return;
-    // Disable/enable the internal pay button based on terms acceptance
     const payButton = containerRef.current?.querySelector('[data-testid="pay-button"]');
     if (payButton) {
       payButton.disabled = !termsAccepted;
@@ -68,7 +82,7 @@ export function AdyenDropIn({
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     <div ref={containerRef} aria-label="Adyen payment form" />
   </Box>;
-}
+});
 
 // A redirect payment method returns the shopper with ?redirectResult; Adyen finishes the session from it.
 export async function completeAdyenRedirect(checkout, redirectResult) {

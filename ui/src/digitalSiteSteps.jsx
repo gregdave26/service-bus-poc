@@ -472,9 +472,9 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
   </Stack>;
 }
 
-export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onAdyenAdditionalDetails, onCardValidity, paymentGateway }) {
+export function ConfirmPayStep({ state, dispatch, covers, paymentPlans, simulatePayment, onPaymentResult, onAdyenAdditionalDetails, onCardValidity, paymentGateway, adyenRef }) {
   return state.checkout
-    ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} onAdyenAdditionalDetails={onAdyenAdditionalDetails} />
+    ? <PayStep state={state} simulatePayment={simulatePayment} onPaymentResult={onPaymentResult} onAdyenAdditionalDetails={onAdyenAdditionalDetails} onCardValidity={onCardValidity} adyenRef={adyenRef} />
     : <PaymentPlanStep
       state={state}
       dispatch={dispatch}
@@ -717,17 +717,18 @@ export function PaymentPlanStep({ state, dispatch, cart, covers, paymentPlans, o
   </Stack>;
 }
 
-export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditionalDetails }) {
+export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditionalDetails, onCardValidity, adyenRef }) {
   const { checkout } = state;
   const plan = state.paymentPlan === "Monthly" ? "monthly" : "annual";
+  const termsAccepted = state.acceptedRoadsideAssistTerms && (state.paymentMethod !== "BankAccount" || state.acceptedPaymentAuthTerms);
   return <Stack spacing={3}>
     <Box>
       <Typography variant="h2">Payment</Typography>
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {["Adyen", "AdyenComponent"].includes(checkout.gateway)
-      ? <AdyenDropIn checkout={checkout} showPayButton={true} onResult={onPaymentResult} onAdditionalDetails={onAdyenAdditionalDetails} termsAccepted={state.acceptedRoadsideAssistTerms} />
-      : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} />}
+      ? <AdyenDropIn ref={adyenRef} checkout={checkout} showPayButton={true} onResult={onPaymentResult} onValidity={onCardValidity} onAdditionalDetails={onAdyenAdditionalDetails} termsAccepted={termsAccepted} />
+      : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} disabled={!termsAccepted} />}
   </Stack>;
 }
 

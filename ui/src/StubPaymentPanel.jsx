@@ -9,7 +9,7 @@ const OUTCOMES = [
 ];
 
 // Stands in for the Drop-in: each button sends a signed notification through the same webhook module Adyen would call.
-export function StubPaymentPanel({ checkout, simulatePayment, onResult }) {
+export function StubPaymentPanel({ checkout, simulatePayment, onResult, disabled = false }) {
   const [submitting, setSubmitting] = useState(null);
   const [error, setError] = useState(null);
 
@@ -33,7 +33,7 @@ export function StubPaymentPanel({ checkout, simulatePayment, onResult }) {
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-        {OUTCOMES.map(({ outcome, label, color }) => <Button key={outcome} variant={outcome === "Authorised" ? "contained" : "outlined"} color={color} disabled={submitting !== null} onClick={() => simulate(outcome)}>{label}</Button>)}
+        {OUTCOMES.map(({ outcome, label, color }) => <Button key={outcome} variant={outcome === "Authorised" ? "contained" : "outlined"} color={color} disabled={disabled || submitting !== null} onClick={() => simulate(outcome)}>{label}</Button>)}
       </Stack>
     </Stack>
   </Card>;

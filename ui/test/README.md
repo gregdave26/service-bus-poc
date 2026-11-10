@@ -2,6 +2,43 @@
 
 This directory contains both traditional Playwright tests and BDD-style tests using Gherkin and Cucumber.
 
+## Prerequisites
+
+Before running tests, ensure:
+
+1. **Aspire and Services are Running**
+   ```bash
+   # In the project root directory
+   .\scripts\run-aspire.ps1 -NoBrowser
+   ```
+   - This starts the Service Bus emulator and backend services
+   - Dashboard will be available at http://localhost:5100
+   - Allow 30-60 seconds for services to fully initialize
+
+2. **UI Server is Running**
+   ```bash
+   cd ui
+   npm run dev
+   # or
+   npm start
+   ```
+   - Makes the UI available at http://localhost:5173 (dev) or http://localhost:5100 (production)
+
+3. **Dependencies Installed**
+   ```bash
+   cd ui
+   npm install
+   ```
+
+## Quick Start
+
+Run the one-liner startup script (PowerShell 7+):
+```powershell
+.\scripts\start_tests.ps1
+```
+
+This will start Aspire, UI server, and run BDD tests in parallel.
+
 ## Structure
 
 ```
@@ -31,21 +68,33 @@ npx playwright test --reporter=list
 ```
 
 ### BDD Tests (Gherkin + Cucumber)
-To run BDD tests, you need to install Cucumber first:
+To run BDD tests, use the following command (requires Aspire running):
 
 ```bash
-# Install Cucumber and required dependencies
-npm install --save-dev @cucumber/cucumber
+# Run BDD tests with explicit step definitions and extended timeout
+# This is the recommended command for running BDD tests locally
+npx cucumber-js --import 'test/steps/card-validity-and-terms-gating.steps.js' test/features/card-validity-and-terms-gating.feature
 
-# Run Gherkin features
-npx cucumber-js
+# Run specific scenario
+npx cucumber-js --import 'test/steps/card-validity-and-terms-gating.steps.js' --name "Make Payment button" test/features/card-validity-and-terms-gating.feature
 
-# Run specific feature
-npx cucumber-js test/features/card-validity-and-terms-gating.feature
-
-# Run with specific format
-npx cucumber-js --format progress-bar
+# Run with dry-run (check steps without executing)
+npx cucumber-js --import 'test/steps/card-validity-and-terms-gating.steps.js' --dry-run test/features/card-validity-and-terms-gating.feature
 ```
+
+**Note**: The Cucumber configuration file (`cucumber.js`) includes a 30-second timeout for steps to handle form navigation complexity. When running via `npm run test:bdd`, ensure you're running from the `ui` directory with Aspire services running.
+
+## Current Test Status
+
+### Passing Tests (3/5 scenarios)
+✅ Verify the payment form structure  
+✅ Terms checkbox state persists through form interactions  
+✅ Button gating with Adyen card component
+
+### In Progress (2/5 scenarios)
+⏳ Make Payment button is disabled until card valid and terms accepted  
+⏳ Payment flow blocked without terms acceptance  
+*(These test complex form navigation requiring all 8+ fields to be validated)*
 
 ## Test Coverage
 

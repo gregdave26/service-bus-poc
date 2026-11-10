@@ -1,13 +1,23 @@
 {
   "cucumberautocomplete.steps": [
-    "ui/test/steps/**/*.steps.js"
+    "ui/test/steps/**/*.steps.js",
+    "test/steps/**/*.steps.js"
   ],
   "cucumberautocomplete.strictGherkinCompletion": false,
   "cucumberautocomplete.smartSnippets": true,
   "cucumberautocomplete.onTypeRegex": "^(\\s|\t)*(Given|When|Then|And|But|\\*)",
   "cucumberautocomplete.formatWithCucumber": true,
+  "cucumberautocomplete.features": [
+    "ui/test/features/**/*.feature",
+    "test/features/**/*.feature"
+  ],
   "editor.formatOnSave": false,
   "[gherkin]": {
-    "editor.defaultFormatter": "alexkrechik.cucumberautocomplete"
+    "editor.defaultFormatter": "alexkrechik.cucumberautocomplete",
+    "editor.formatOnSave": true
+  },
+  "files.associations": {
+    "*.feature": "gherkin"
   }
 }
+

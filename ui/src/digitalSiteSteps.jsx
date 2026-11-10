@@ -727,7 +727,7 @@ export function PayStep({ state, simulatePayment, onPaymentResult, onAdyenAdditi
       <Typography color="text.secondary">{state.cart?.coverName} Roadside Assistance · {formatCurrency(checkout.amount)} / {plan}</Typography>
     </Box>
     {["Adyen", "AdyenComponent"].includes(checkout.gateway)
-      ? <AdyenDropIn ref={adyenRef} checkout={checkout} showPayButton={true} onResult={onPaymentResult} onValidity={onCardValidity} onAdditionalDetails={onAdyenAdditionalDetails} termsAccepted={termsAccepted} />
+      ? <AdyenDropIn ref={adyenRef} checkout={checkout} showPayButton={false} onResult={onPaymentResult} onValidity={onCardValidity} onAdditionalDetails={onAdyenAdditionalDetails} termsAccepted={termsAccepted} />
       : <StubPaymentPanel checkout={checkout} simulatePayment={simulatePayment} onResult={onPaymentResult} disabled={!termsAccepted} />}
   </Stack>;
 }

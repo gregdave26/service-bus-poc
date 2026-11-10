@@ -1,0 +1,299 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> service-bus-poc-dashboard@1.0.0 test:bdd
+> cucumber-js test/features/card-validity-and-terms-gating.feature
+
+This Node.js version (v26.13.0) has not been tested with this version of Cucumber; it should work normally, but please raise an issue if you see anything unexpected.
+UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+
+Failures:
+
+1) Scenario: Make Payment button is disabled until card valid and terms accepted # test\features\card-validity-and-terms-gating.feature:10
+   ? Given I am on the digital site join flow
+       Undefined. Implement with the following snippet:
+
+         Given('I am on the digital site join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I have selected a cover membership
+       Undefined. Implement with the following snippet:
+
+         Given('I have selected a cover membership', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I fill in my personal details
+       Undefined. Implement with the following snippet:
+
+         When('I fill in my personal details', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I navigate to the Confirm & pay step
+       Undefined. Implement with the following snippet:
+
+         When('I navigate to the Confirm & pay step', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then I should see the Make Payment button
+       Undefined. Implement with the following snippet:
+
+         Then('I should see the Make Payment button', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I should see the Roadside Assistance terms checkbox
+       Undefined. Implement with the following snippet:
+
+         Then('I should see the Roadside Assistance terms checkbox', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I check the Roadside Assistance terms checkbox
+       Undefined. Implement with the following snippet:
+
+         When('I check the Roadside Assistance terms checkbox', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then the button state should reflect the terms acceptance
+       Undefined. Implement with the following snippet:
+
+         Then('the button state should reflect the terms acceptance', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+
+2) Scenario: Verify the payment form structure # test\features\card-validity-and-terms-gating.feature:18
+   ? Given I am on the digital site join flow
+       Undefined. Implement with the following snippet:
+
+         Given('I am on the digital site join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I have selected a cover membership
+       Undefined. Implement with the following snippet:
+
+         Given('I have selected a cover membership', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I navigate through the join flow
+       Undefined. Implement with the following snippet:
+
+         When('I navigate through the join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I reach the Confirm & pay step
+       Undefined. Implement with the following snippet:
+
+         When('I reach the Confirm & pay step', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then the page should display:
+       | Element                            |
+       | Make Payment button                |
+       | Roadside Assistance terms checkbox |
+       | Payment details form               |
+       Undefined. Implement with the following snippet:
+
+         Then('the page should display:', function (dataTable) {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+
+3) Scenario: Terms checkbox state persists through form interactions # test\features\card-validity-and-terms-gating.feature:27
+   ? Given I am on the digital site join flow
+       Undefined. Implement with the following snippet:
+
+         Given('I am on the digital site join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I have selected a cover membership
+       Undefined. Implement with the following snippet:
+
+         Given('I have selected a cover membership', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I accept the Roadside Assistance terms
+       Undefined. Implement with the following snippet:
+
+         When('I accept the Roadside Assistance terms', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I interact with payment form fields
+       Undefined. Implement with the following snippet:
+
+         When('I interact with payment form fields', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then the terms checkbox should remain checked
+       Undefined. Implement with the following snippet:
+
+         Then('the terms checkbox should remain checked', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And the Make Payment button state should be tracked
+       Undefined. Implement with the following snippet:
+
+         Then('the Make Payment button state should be tracked', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+
+4) Scenario: Button gating with Adyen card component # test\features\card-validity-and-terms-gating.feature:33
+   ? Given I am on the digital site join flow
+       Undefined. Implement with the following snippet:
+
+         Given('I am on the digital site join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I have selected a cover membership
+       Undefined. Implement with the following snippet:
+
+         Given('I have selected a cover membership', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I fill in my personal details
+       Undefined. Implement with the following snippet:
+
+         When('I fill in my personal details', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I navigate to the payment step
+       Undefined. Implement with the following snippet:
+
+         When('I navigate to the payment step', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And the Adyen card component is loaded
+       Undefined. Implement with the following snippet:
+
+         When('the Adyen card component is loaded', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then entering a valid test card should enable payment flow
+       Undefined. Implement with the following snippet:
+
+         Then('entering a valid test card should enable payment flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I accept the terms
+       Undefined. Implement with the following snippet:
+
+         When('I accept the terms', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then the Make Payment button should be ready for submission
+       Undefined. Implement with the following snippet:
+
+         Then('the Make Payment button should be ready for submission', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+
+5) Scenario: Payment flow blocked without terms acceptance # test\features\card-validity-and-terms-gating.feature:41
+   ? Given I am on the digital site join flow
+       Undefined. Implement with the following snippet:
+
+         Given('I am on the digital site join flow', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I have selected a cover membership
+       Undefined. Implement with the following snippet:
+
+         Given('I have selected a cover membership', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? When I fill in my personal details
+       Undefined. Implement with the following snippet:
+
+         When('I fill in my personal details', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I navigate to the Confirm & pay step
+       Undefined. Implement with the following snippet:
+
+         When('I navigate to the Confirm & pay step', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And I do NOT accept the terms checkbox
+       Undefined. Implement with the following snippet:
+
+         When('I do NOT accept the terms checkbox', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? Then the Make Payment button should remain disabled
+       Undefined. Implement with the following snippet:
+
+         Then('the Make Payment button should remain disabled', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+   ? And no payment should be possible without terms acceptance
+       Undefined. Implement with the following snippet:
+
+         Then('no payment should be possible without terms acceptance', function () {
+           // Write code here that turns the phrase above into concrete actions
+           return 'pending';
+         });
+
+
+5 scenarios (5 undefined)
+34 steps (34 undefined)
+0m00.003s (executing steps: 0m00.000s)

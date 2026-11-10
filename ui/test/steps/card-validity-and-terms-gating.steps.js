@@ -1,20 +1,18 @@
 import { Given, When, Then, Before, After } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
-import { chromium } from '@playwright/core';
+import { chromium } from '@playwright/test';
 
 let browser;
 let page;
-let context;
 
 Before(async function() {
   browser = await chromium.launch();
-  context = await browser.createContext();
-  page = await context.newPage();
+  page = await browser.newPage();
 });
 
 After(async function() {
-  await context.close();
-  await browser.close();
+  if (page) await page.close();
+  if (browser) await browser.close();
 });
 
 /**
@@ -215,6 +213,28 @@ When('the Adyen card component is loaded', async function() {
 
 When('entering a valid test card should enable payment flow', async function() {
   console.log('✓ Test card validation would enable payment flow');
+});
+
+When('I accept the terms', async function() {
+  const checkboxes = await page.$$('input[type="checkbox"]');
+  
+  for (const checkbox of checkboxes) {
+    const parent = await checkbox.evaluate(el => {
+      const container = el.closest('label') || el.parentElement;
+      return container?.textContent || '';
+    });
+    
+    if (parent && parent.includes('Roadside Assistance')) {
+      const isChecked = await checkbox.isChecked();
+      if (!isChecked) {
+        await checkbox.click();
+        await page.waitForTimeout(500);
+      }
+      console.log('✓ Accepted Roadside Assistance terms');
+      this.termsCheckbox = checkbox;
+      break;
+    }
+  }
 });
 
 /**

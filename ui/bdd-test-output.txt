@@ -1,4 +1,0 @@
-npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
-This Node.js version (v26.13.0) has not been tested with this version of Cucumber; it should work normally, but please raise an issue if you see anything unexpected.
-error: unknown option '--timeout'
-(Did you mean --import?)

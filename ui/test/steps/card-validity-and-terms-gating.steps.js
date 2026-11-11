@@ -28,20 +28,16 @@ Given('I am on the digital site join flow', async function() {
 });
 
 Given('I have selected a cover membership', async function() {
-  const joinButtons = await page.$$('button');
-  let coverSelected = false;
+  // Find the "Join now" button - use a more specific selector
+  // The buttons are inside the cover selection grid
+  const joinButton = await page.locator('button:has-text("Join now")').first();
   
-  for (const btn of joinButtons) {
-    const text = await btn.textContent();
-    if (text && text.includes('Join now')) {
-      await btn.click();
-      coverSelected = true;
-      await page.waitForTimeout(1500);
-      break;
-    }
+  if (!await joinButton.isVisible()) {
+    throw new Error('Join now button not found or not visible on the page');
   }
   
-  expect(coverSelected).toBe(true);
+  await joinButton.click();
+  await page.waitForTimeout(1500);
   console.log('✓ Cover membership selected');
 });
 

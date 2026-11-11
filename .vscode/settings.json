@@ -1,14 +1,15 @@
 {
   "cucumberautocomplete.steps": [
-    "ui/test/steps/**/*.steps.js",
-    "test/steps/**/*.steps.js"
+    "**/steps/**/*.steps.js"
   ],
-  "cucumberautocomplete.syncfeatures": "ui/test/features/**/*.feature",
+  "cucumberautocomplete.syncfeatures": "**/features/**/*.feature",
   "cucumberautocomplete.strictGherkinCompletion": false,
   "cucumberautocomplete.smartSnippets": true,
   "cucumberautocomplete.onTypeFormat": true,
   "cucumberautocomplete.gherkinDefinitionPart": "(Given|When|Then|Before|After)\\(",
   "cucumberautocomplete.stepRegExSymbol": "'",
+  "cucumberautocomplete.pureTextSteps": true,
+  "cucumberautocomplete.stepsInvariants": true,
   "editor.quickSuggestions": {
     "comments": false,
     "strings": true,
@@ -23,3 +24,4 @@
     "*.feature": "gherkin"
   }
 }
+

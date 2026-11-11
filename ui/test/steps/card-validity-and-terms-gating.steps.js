@@ -73,26 +73,28 @@ When('I fill in my personal details', async function() {
 When('I navigate to the Confirm & pay step', async function() {
   await page.waitForTimeout(1000);
   
-  const buttons = await page.$$('button');
-  let continueClicked = false;
-  let retries = 5;
+  // Use modern Playwright locator API
+  const continueButton = await page.locator('button:has-text("Continue")').filter({ hasNot: page.locator('[disabled]') }).first();
   
-  while (!continueClicked && retries > 0) {
-    for (const btn of buttons) {
-      const text = await btn.textContent();
-      if (text && text.trim() === 'Continue') {
-        const disabled = await btn.isDisabled();
-        if (!disabled) {
-          await btn.click();
-          continueClicked = true;
-          console.log('✓ Clicked Continue to Confirm & pay step');
-          break;
-        }
+  // Wait for button to be visible and enabled
+  await continueButton.waitFor({ state: 'visible', timeout: 10000 });
+  
+  // Try clicking with retries
+  let clicked = false;
+  let attempts = 3;
+  
+  while (!clicked && attempts > 0) {
+    try {
+      await continueButton.click();
+      clicked = true;
+      console.log('✓ Clicked Continue to Confirm & pay step');
+    } catch (e) {
+      attempts--;
+      if (attempts > 0) {
+        await page.waitForTimeout(500);
+      } else {
+        throw new Error(`Failed to click Continue button after 3 attempts: ${e.message}`);
       }
-    }
-    if (!continueClicked) {
-      await page.waitForTimeout(500);
-      retries--;
     }
   }
   

@@ -2,8 +2,12 @@
   "files.associations": {
     "*.feature": "gherkin"
   },
+  "workbench.editorAssociations": {
+    "*.feature": "cucumberopen.cucumber-official"
+  },
   "[gherkin]": {
-    "editor.defaultFormatter": "cucumberopen.cucumber-official"
+    "editor.defaultFormatter": "cucumberopen.cucumber-official",
+    "editor.formatOnSave": true
   },
   "cucumber.glue": [
     "ui/test/steps/**/*.steps.js"
@@ -11,7 +15,6 @@
   "cucumber.features": [
     "ui/test/features/**/*.feature"
   ],
-  "cucumber.formatOnSave": true,
   "editor.quickSuggestions": {
     "comments": false,
     "strings": true,

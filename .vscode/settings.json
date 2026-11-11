@@ -1,11 +1,8 @@
 {
   "files.associations": {
-    "*.feature": "gherkin"
+    "*.feature": "cucumber"
   },
-  "workbench.editorAssociations": {
-    "*.feature": "cucumberopen.cucumber-official"
-  },
-  "[gherkin]": {
+  "[cucumber]": {
     "editor.defaultFormatter": "cucumberopen.cucumber-official",
     "editor.formatOnSave": true
   },

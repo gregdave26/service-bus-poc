@@ -6,13 +6,28 @@ let browser;
 let page;
 
 Before(async function() {
-  browser = await chromium.launch();
-  page = await browser.newPage();
+  // Only create browser/page if they don't exist
+  if (!browser) {
+    browser = await chromium.launch();
+  }
+  if (!page) {
+    page = await browser.newPage();
+  }
 });
 
-After(async function() {
-  if (page) await page.close();
-  if (browser) await browser.close();
+After(async function(scenario) {
+  // Only close after the entire scenario is done
+  // If the scenario failed, take a screenshot for debugging
+  if (scenario.result.status === 'FAILED') {
+    const screenshot = await page.screenshot({ path: `test-results/failed-${Date.now()}.png` });
+    console.log('📸 Screenshot saved for failed scenario');
+  }
+});
+
+// Clean up after all scenarios
+process.on('exit', async () => {
+  if (page) await page.close().catch(() => {});
+  if (browser) await browser.close().catch(() => {});
 });
 
 /**

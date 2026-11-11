@@ -17,4 +17,4 @@ Start-Sleep -Seconds 10
 
 Write-Host "Running BDD tests..."
 cd $repoRoot\ui
-npm run test:bdd test/features/card-validity-and-terms-gating.feature
+npm run test:bdd

@@ -18,11 +18,8 @@
   },
   "files.associations": {
     "*.feature": "gherkin"
-  },
-  "workbench.editorAssociations": {
-    "*.feature": "default",
-    "glob:**.feature": "alexkrechik.cucumberautocomplete"
   }
 }
+
 
 

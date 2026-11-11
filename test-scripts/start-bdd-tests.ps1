@@ -1,10 +1,47 @@
 # Start-BDD-Tests.ps1
 # Starts Aspire, UI dev server, and runs BDD tests
 # Run from repo root: .\test-scripts\start-bdd-tests.ps1
-# Avoids starting duplicate processes if already running
+# 
+# Usage:
+#   .\test-scripts\start-bdd-tests.ps1                    # Use cached builds
+#   .\test-scripts\start-bdd-tests.ps1 -FreshBackend      # Clean rebuild .NET backend
+#   .\test-scripts\start-bdd-tests.ps1 -FreshUI           # Clean rebuild UI (npm ci, rebuild)
+#   .\test-scripts\start-bdd-tests.ps1 -FreshBackend -FreshUI  # Full clean build
+
+param(
+  [switch]$FreshBackend = $false,
+  [switch]$FreshUI = $false
+)
 
 # Get the repo root by going up from test-scripts directory
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+
+# Kill existing processes if doing fresh builds
+if ($FreshBackend -or $FreshUI) {
+  Write-Host "Stopping existing processes..."
+  Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "AppHost" } | Stop-Process -Force
+  Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "vite" } | Stop-Process -Force
+  Start-Sleep -Seconds 2
+}
+
+# Fresh backend build if requested
+if ($FreshBackend) {
+  Write-Host "Cleaning and rebuilding backend..."
+  cd $repoRoot
+  dotnet clean
+  dotnet build
+  Write-Host "✓ Backend rebuild complete"
+}
+
+# Fresh UI build if requested
+if ($FreshUI) {
+  Write-Host "Cleaning and rebuilding UI..."
+  cd $repoRoot\ui
+  Remove-Item -Path "node_modules" -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -Path ".vite" -Recurse -Force -ErrorAction SilentlyContinue
+  npm ci  # Clean install from package-lock.json
+  Write-Host "✓ UI rebuild complete"
+}
 
 # Check if Aspire is already running
 $aspireProcess = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "AppHost" }

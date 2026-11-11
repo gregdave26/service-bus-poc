@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   default: {
     paths: ['test/features/**/*.feature'],
     import: ['test/steps/**/*.steps.js'],

@@ -73,32 +73,24 @@ When('I fill in my personal details', async function() {
 When('I navigate to the Confirm & pay step', async function() {
   await page.waitForTimeout(1000);
   
-  // Use modern Playwright locator API
-  const continueButton = await page.locator('button:has-text("Continue")').filter({ hasNot: page.locator('[disabled]') }).first();
+  // Use modern Playwright locator API - find enabled Continue button
+  const continueButton = page.locator('button:has-text("Continue"):not([disabled])').first();
   
-  // Wait for button to be visible and enabled
-  await continueButton.waitFor({ state: 'visible', timeout: 10000 });
-  
-  // Try clicking with retries
-  let clicked = false;
-  let attempts = 3;
-  
-  while (!clicked && attempts > 0) {
-    try {
-      await continueButton.click();
-      clicked = true;
-      console.log('✓ Clicked Continue to Confirm & pay step');
-    } catch (e) {
-      attempts--;
-      if (attempts > 0) {
-        await page.waitForTimeout(500);
-      } else {
-        throw new Error(`Failed to click Continue button after 3 attempts: ${e.message}`);
-      }
-    }
+  try {
+    // Wait for button to be visible and enabled
+    await continueButton.waitFor({ state: 'visible', timeout: 15000 });
+    console.log('✓ Continue button found and visible');
+    
+    // Click the button
+    await continueButton.click();
+    console.log('✓ Clicked Continue to Confirm & pay step');
+    
+    // Wait for navigation to complete
+    await page.waitForTimeout(2000);
+  } catch (e) {
+    console.error('Failed to navigate to Confirm & pay step:', e.message);
+    throw e;
   }
-  
-  await page.waitForTimeout(2000);
 });
 
 When('I navigate through the join flow', async function() {

@@ -11,6 +11,13 @@
     "ui/test/features/**/*.feature",
     "test/features/**/*.feature"
   ],
+  "cucumberautocomplete.gherkinDefinitionPart": "(Given|When|Then|Before|After)\\(",
+  "cucumberautocomplete.stepRegExSymbol": "'",
+  "editor.quickSuggestions": {
+    "comments": false,
+    "strings": true,
+    "other": true
+  },
   "editor.formatOnSave": false,
   "[gherkin]": {
     "editor.defaultFormatter": "alexkrechik.cucumberautocomplete",
@@ -20,6 +27,7 @@
     "*.feature": "gherkin"
   }
 }
+
 
 
 

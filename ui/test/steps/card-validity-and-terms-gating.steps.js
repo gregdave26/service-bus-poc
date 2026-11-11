@@ -11,11 +11,16 @@ let scenarioCount = 0;
 
 Before(async function() {
   scenarioCount++;
-  // Only create browser/page if they don't exist
+  // Create browser on first run
   if (!browser) {
     browser = await chromium.launch();
-    page = await browser.newPage();
   }
+  
+  // Always create a fresh page for each scenario
+  if (page) {
+    await page.close().catch(() => {});
+  }
+  page = await browser.newPage();
 });
 
 After(async function(scenario) {

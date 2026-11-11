@@ -1,33 +1,33 @@
-import { Given, When, Then, Before, After } from '@cucumber/cucumber';
+import { Given, When, Then, Before, After, setDefaultTimeout } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { chromium } from '@playwright/test';
 
+// Increase default timeout for Cucumber
+setDefaultTimeout(60 * 1000); // 60 seconds
+
 let browser;
 let page;
+let scenarioCount = 0;
 
 Before(async function() {
+  scenarioCount++;
   // Only create browser/page if they don't exist
   if (!browser) {
     browser = await chromium.launch();
-  }
-  if (!page) {
     page = await browser.newPage();
   }
 });
 
 After(async function(scenario) {
-  // Only close after the entire scenario is done
-  // If the scenario failed, take a screenshot for debugging
+  // Capture screenshot on failure
   if (scenario.result.status === 'FAILED') {
-    const screenshot = await page.screenshot({ path: `test-results/failed-${Date.now()}.png` });
-    console.log('📸 Screenshot saved for failed scenario');
+    try {
+      await page.screenshot({ path: `test-results/failed-${Date.now()}.png` });
+      console.log('📸 Screenshot saved for failed scenario');
+    } catch (e) {
+      console.error('Failed to capture screenshot:', e.message);
+    }
   }
-});
-
-// Clean up after all scenarios
-process.on('exit', async () => {
-  if (page) await page.close().catch(() => {});
-  if (browser) await browser.close().catch(() => {});
 });
 
 /**

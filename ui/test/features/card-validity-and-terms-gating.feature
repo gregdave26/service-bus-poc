@@ -3,13 +3,32 @@ Feature: Card Validity and Terms Gating
   I want the Make Payment button to be properly gated
   So that I can only proceed with payment when both card details are valid and I've accepted the terms
 
+  # Vehicle Configuration:
+  # To test with different vehicles, change the rego in the vehicle details table below.
+  # Available demo regos: 1ANURAG, 1ABC123, 1RAC000, 1UTE999
+  # Each rego returns a complete vehicle record from the lookup.
+
   Background:
     Given I am on the digital site join flow
     And I have selected a cover membership
+    And I have the following personal details:
+      | firstName    | John                |
+      | lastName     | Smith               |
+      | dateOfBirth  | 15/03/1990          |
+      | email        | john@example.com    |
+      | phone        | 0412345678          |
+      | addressLine1 | 123 Main Street     |
+      | suburb       | Perth               |
+      | state        | WA                  |
+      | postcode     | 6000                |
+    And I have the following vehicle details:
+      | rego | 1RAC000 |
 
   Scenario: Make Payment button is disabled until card valid and terms accepted
     When I fill in my personal details
+    And I lookup the vehicle by rego
     And I navigate to the Confirm & pay step
+    And I choose the "Annual" payment plan
     Then I should see the Make Payment button
     And I should see the Roadside Assistance terms checkbox
     When I check the Roadside Assistance terms checkbox
@@ -40,7 +59,9 @@ Feature: Card Validity and Terms Gating
 
   Scenario: Payment flow blocked without terms acceptance
     When I fill in my personal details
+    And I lookup the vehicle by rego
     And I navigate to the Confirm & pay step
+    And I choose the "Annual" payment plan
     And I do NOT accept the terms checkbox
     Then the Make Payment button should remain disabled
     And no payment should be possible without terms acceptance

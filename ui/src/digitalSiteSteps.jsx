@@ -464,9 +464,11 @@ export function VehicleDetailsStep({ state, dispatch, lookupVehicle }) {
             {selectOptions(field).map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
           </TextField>)}
         </Box>
-        {details && <RacwaCardNotification severity="success" title={`${details.year} ${details.make}`.toUpperCase()} subtitle={`${details.rego} · ${details.model} ${details.body} ${details.transmission} ${details.fuel}`.toUpperCase()}>
-          Is this your vehicle? You can change it any time before checkout.
-        </RacwaCardNotification>}
+        {details && <Box data-testid="vehicle-details">
+          <RacwaCardNotification severity="success" title={`${details.year} ${details.make}`.toUpperCase()} subtitle={`${details.rego} · ${details.model} ${details.body} ${details.transmission} ${details.fuel}`.toUpperCase()}>
+            Is this your vehicle? You can change it any time before checkout.
+          </RacwaCardNotification>
+        </Box>}
       </Stack>
     </Box>
   </Stack>;

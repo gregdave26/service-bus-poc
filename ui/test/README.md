@@ -44,11 +44,14 @@ This will start Aspire, UI server, and run BDD tests in parallel.
 ```
 test/
 ├── features/                           # Gherkin feature files
-│   └── card-validity-and-terms-gating.feature
+│   ├── adyen-payment-button.feature    # @wip - blocked on server checkout endpoints
+│   ├── card-validity-and-terms-gating.feature
+│   └── make-payment-button.feature     # @wip - blocked on server checkout endpoints
 ├── steps/                              # Step definitions for Cucumber
-│   └── card-validity-and-terms-gating.steps.js
-├── card-validity-and-terms-gating.test.js  # Traditional Playwright tests (JavaScript)
-└── make-payment-button.test.js        # Existing Playwright tests
+│   ├── adyen-payment-button.steps.js
+│   ├── card-validity-and-terms-gating.steps.js
+│   └── make-payment-button.steps.js
+└── card-validity-and-terms-gating.test.js  # Traditional Playwright tests (JavaScript)
 ```
 
 ## Running Tests
@@ -83,6 +86,14 @@ npx cucumber-js --import 'test/steps/card-validity-and-terms-gating.steps.js' --
 ```
 
 **Note**: The Cucumber configuration file (`cucumber.js`) includes a 30-second timeout for steps to handle form navigation complexity. When running via `npm run test:bdd`, ensure you're running from the `ui` directory with Aspire services running.
+
+**`@wip` scenarios**: Scenarios tagged `@wip` (the Make Payment and Adyen features) are excluded from the default run. They depend on server endpoints that are not implemented yet (cart, members, checkout, and an Adyen gateway config), so they fail at the Continue step until those exist. Run them explicitly with:
+
+```powershell
+$env:BDD_TAGS='@wip'; npm run test:bdd
+```
+
+Once the endpoints exist, remove the `@wip` tags from the feature files. `BDD_TAGS` overrides the default tag filter in `cucumber.cjs`; cucumber-js ANDs `--tags` with the profile filter, so `--tags` alone can't select `@wip`.
 
 ## Current Test Status
 

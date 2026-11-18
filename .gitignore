@@ -63,3 +63,5 @@ Desktop.ini
 
 # commercetools stub state (CommerceToolsStub__DatabasePath default)
 /data/
+/ui/test-results/**/*
+/ui/playwright-report/*.html

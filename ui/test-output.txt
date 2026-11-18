@@ -1,0 +1,137 @@
+npm warn Unknown user config "always-auth". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> service-bus-poc-dashboard@1.0.0 test:bdd
+> cucumber-js
+
+This Node.js version (v26.13.0) has not been tested with this version of Cucumber; it should work normally, but please raise an issue if you see anything unexpected.
+Cannot use 'progress-bar' formatter for output to 'stdout' as not a TTY. Switching to 'progress' formatter.
+.✓ On digital site page: Join Roadside Assistance
+.✓ Cover membership selected
+.Found 7 personal detail fields
+✓ Personal details filled
+.F----📸 Screenshot saved for failed scenario
+..✓ On digital site page: Join Roadside Assistance
+.F---📸 Screenshot saved for failed scenario
+..✓ On digital site page: Join Roadside Assistance
+.F----📸 Screenshot saved for failed scenario
+..✓ On digital site page: Join Roadside Assistance
+.F------📸 Screenshot saved for failed scenario
+..✓ On digital site page: Join Roadside Assistance
+.F-----📸 Screenshot saved for failed scenario
+.
+
+Failures:
+
+1) Scenario: Make Payment button is disabled until card valid and terms accepted # test\features\card-validity-and-terms-gating.feature:10
+   √ Before # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:8
+   √ Given I am on the digital site join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:36
+   √ And I have selected a cover membership # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:45
+   √ When I fill in my personal details # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:62
+   × And I navigate to the Confirm & pay step # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:88
+       Error: function timed out, ensure the promise resolves within 5000 milliseconds
+           at Timeout.<anonymous> (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\time.js:64:20)
+           at listOnTimeout (node:internal/timers:685:17)
+           at process.processTimers (node:internal/timers:618:7)
+   - Then I should see the Make Payment button # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:248
+   - And I should see the Roadside Assistance terms checkbox # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:265
+   - When I check the Roadside Assistance terms checkbox # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:133
+   - Then the button state should reflect the terms acceptance # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:286
+   √ After # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:18
+
+2) Scenario: Verify the payment form structure # test\features\card-validity-and-terms-gating.feature:18
+   √ Before # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:8
+   √ Given I am on the digital site join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:36
+   × And I have selected a cover membership # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:45
+       Error: Join now button not found or not visible on the page
+           at World.<anonymous> (file:///C:/Users/dg15938/development/service-bus-poc.worktrees/digital-site-tab-adyen-component/ui/test/steps/card-validity-and-terms-gating.steps.js:51:11)
+           at async wrapPromiseWithTimeout (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\time.js:67:12)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\user_code_runner.js:64:22)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\step_runner.js:64:26)
+           at async TestCaseRunner.invokeStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:123:16)
+           at async TestCaseRunner.runStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:275:26)
+           at async C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:206:44
+           at async TestCaseRunner.aroundTestStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:148:32)
+           at async TestCaseRunner.runAttempt (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:189:13)
+           at async TestCaseRunner.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:164:35)
+   - When I navigate through the join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:111
+   - And I reach the Confirm & pay step # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:116
+   - Then the page should display: # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:298
+       | Element                            |
+       | Make Payment button                |
+       | Roadside Assistance terms checkbox |
+       | Payment details form               |
+   √ After # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:18
+
+3) Scenario: Terms checkbox state persists through form interactions # test\features\card-validity-and-terms-gating.feature:27
+   √ Before # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:8
+   √ Given I am on the digital site join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:36
+   × And I have selected a cover membership # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:45
+       Error: Join now button not found or not visible on the page
+           at World.<anonymous> (file:///C:/Users/dg15938/development/service-bus-poc.worktrees/digital-site-tab-adyen-component/ui/test/steps/card-validity-and-terms-gating.steps.js:51:11)
+           at async wrapPromiseWithTimeout (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\time.js:67:12)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\user_code_runner.js:64:22)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\step_runner.js:64:26)
+           at async TestCaseRunner.invokeStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:123:16)
+           at async TestCaseRunner.runStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:275:26)
+           at async C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:206:44
+           at async TestCaseRunner.aroundTestStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:148:32)
+           at async TestCaseRunner.runAttempt (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:189:13)
+           at async TestCaseRunner.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:164:35)
+   - When I accept the Roadside Assistance terms # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:160
+   - And I interact with payment form fields # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:204
+   - Then the terms checkbox should remain checked # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:340
+   - And the Make Payment button state should be tracked # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:348
+   √ After # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:18
+
+4) Scenario: Button gating with Adyen card component # test\features\card-validity-and-terms-gating.feature:33
+   √ Before # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:8
+   √ Given I am on the digital site join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:36
+   × And I have selected a cover membership # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:45
+       Error: Join now button not found or not visible on the page
+           at World.<anonymous> (file:///C:/Users/dg15938/development/service-bus-poc.worktrees/digital-site-tab-adyen-component/ui/test/steps/card-validity-and-terms-gating.steps.js:51:11)
+           at async wrapPromiseWithTimeout (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\time.js:67:12)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\user_code_runner.js:64:22)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\step_runner.js:64:26)
+           at async TestCaseRunner.invokeStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:123:16)
+           at async TestCaseRunner.runStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:275:26)
+           at async C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:206:44
+           at async TestCaseRunner.aroundTestStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:148:32)
+           at async TestCaseRunner.runAttempt (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:189:13)
+           at async TestCaseRunner.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:164:35)
+   - When I fill in my personal details # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:62
+   - And I navigate to the payment step # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:209
+   - And the Adyen card component is loaded # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:214
+   - Then entering a valid test card should enable payment flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:219
+   - When I accept the terms # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:223
+   - Then the Make Payment button should be ready for submission # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:355
+   √ After # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:18
+
+5) Scenario: Payment flow blocked without terms acceptance # test\features\card-validity-and-terms-gating.feature:41
+   √ Before # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:8
+   √ Given I am on the digital site join flow # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:36
+   × And I have selected a cover membership # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:45
+       Error: Join now button not found or not visible on the page
+           at World.<anonymous> (file:///C:/Users/dg15938/development/service-bus-poc.worktrees/digital-site-tab-adyen-component/ui/test/steps/card-validity-and-terms-gating.steps.js:51:11)
+           at async wrapPromiseWithTimeout (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\time.js:67:12)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\user_code_runner.js:64:22)
+           at async Object.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\step_runner.js:64:26)
+           at async TestCaseRunner.invokeStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:123:16)
+           at async TestCaseRunner.runStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:275:26)
+           at async C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:206:44
+           at async TestCaseRunner.aroundTestStep (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:148:32)
+           at async TestCaseRunner.runAttempt (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:189:13)
+           at async TestCaseRunner.run (C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\node_modules\@cucumber\cucumber\lib\runtime\test_case_runner.js:164:35)
+   - When I fill in my personal details # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:62
+   - And I navigate to the Confirm & pay step # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:88
+   - And I do NOT accept the terms checkbox # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:182
+   - Then the Make Payment button should remain disabled # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:362
+   - And no payment should be possible without terms acceptance # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:370
+   √ After # file:\C:\Users\dg15938\development\service-bus-poc.worktrees\digital-site-tab-adyen-component\ui\test\steps\card-validity-and-terms-gating.steps.js:18
+
+5 scenarios (5 failed)
+34 steps (5 failed, 22 skipped, 7 passed)
+0m18.964s (executing steps: 0m18.941s)
+Failed to navigate to Confirm & pay step: locator.waitFor: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator('button:has-text("Continue"):not([disabled])').first() to be visible
+

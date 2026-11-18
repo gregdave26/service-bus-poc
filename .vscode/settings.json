@@ -1,0 +1,21 @@
+{
+  "files.associations": {
+    "*.feature": "cucumber"
+  },
+  "[cucumber]": {
+    "editor.defaultFormatter": "cucumberopen.cucumber-official",
+    "editor.formatOnSave": true
+  },
+  "cucumber.glue": [
+    "ui/test/steps/**/*.steps.js"
+  ],
+  "cucumber.features": [
+    "ui/test/features/**/*.feature"
+  ],
+  "editor.quickSuggestions": {
+    "comments": false,
+    "strings": true,
+    "other": true
+  }
+}
+
